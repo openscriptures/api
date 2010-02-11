@@ -1,0 +1,40 @@
+#Pseudo-SQL
+
+work(
+	id       PRIMARY KEY AUTO_INCREMENT,
+	osis_id  VARCHAR(255) NOT NULL INDEX,
+	lang     VARCHAR(16)  NOT NULL,
+	title    VARCHAR(255) NOT NULL
+)
+token(
+	id       PRIMARY KEY AUTO_INCREMENT,
+	data     VARCHAR(255) NOT NULL COMMENT "Token data could be word, punctuation, whitespace, or any other atomic textual unit.",
+	position INTEGER      NOT NULL,
+	work_id  INTEGER      NOT NULL,
+	copied_token_id           NULL FOREIGN KEY token(id) COMMENT "When a work contains variants, each needs to be associated with a work?",
+	unified_token_id          NULL FOREIGN KEY token(id) COMMENT "When works are merged together; unification"
+)
+
+TODO: We need to make each book a separate work.
+
+/* This is stand-off markup to indicate suprasegmental features */
+structure(
+	id   PRIMARY KEY AUTO_INCREMENT,
+	type NOT NULL ENUM('chapter', 'verse', 'section', 'paragraph', 'quotation', 'title'),
+	start_token_id    NOT NULL FOREIGN KEY token(id),
+	end_token_id      NOT NULL FOREIGN KEY token(id),
+	start_marker_token_id NULL FOREIGN KEY token(id) COMMENT "In a quotation, this would point to the quotation mark, after which the start_token_id would point.",
+	end_marker_token_id   NULL FOREIGN KEY token(id)
+)
+
+/* These relate to interlinearization */
+linkage_cluster(
+	id        PRIMARY KEY AUTO_INCREMENT, #TODO: This needs to be stable too!
+	work_id_1 INTEGER NOT NULL FOREIGN KEY work(id),
+	work_id_2 INTEGER NOT NULL FOREIGN KEY work(id)
+)
+
+linkage_cluster_token(
+	id         PRIMARY KEY AUTO_INCREMENT, #TODO: This needs to be stable too!
+	token_id   NOT NULL FOREIGN KEY token(id),
+)
