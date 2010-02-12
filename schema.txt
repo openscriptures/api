@@ -4,30 +4,33 @@ work(
 	id       PRIMARY KEY AUTO_INCREMENT,
 	osis_id  VARCHAR(255) NOT NULL INDEX,
 	lang     VARCHAR(16)  NOT NULL,
-	title    VARCHAR(255) NOT NULL
+	title    VARCHAR(255) NOT NULL,
+	variants_for_work_id      NULL FOREIGN KEY work(id) COMMENT "If a work contains variants from other works, then those variants can be assigned to another work which is then associated with the parent work via this relationship; for example, the main work could be WLC Ketiv, but there could be another WLC Qere variant work that would be subordinate to it",
+	variant_bit  BYTE     NOT NULL DEFAULT 00000001     COMMENT "This is a bit mask which is applied to token.variant_bits to obtain all of the tokens that occur in this work alone"
 )
 token(
 	id       PRIMARY KEY AUTO_INCREMENT,
 	data     VARCHAR(255) NOT NULL COMMENT "Token data could be word, punctuation, whitespace, or any other atomic textual unit.",
 	position INTEGER      NOT NULL,
-	work_id  INTEGER      NOT NULL,
+	work_id  INTEGER      NOT NULL FOREIGN KEY work(id)  COMMENT "This points to a work whose variants_for_work_id = NULL",
 	copied_token_id           NULL FOREIGN KEY token(id) COMMENT "When a work contains variants, each needs to be associated with a work?",
-	unified_token_id          NULL FOREIGN KEY token(id) COMMENT "When works are merged together; unification"
+	unified_token_id          NULL FOREIGN KEY token(id) COMMENT "When works are merged together; unification",
+	variant_bits     BYTE NOT NULL DEFAULT 00000001      COMMENT "The bits in this byte are flags indicating which works it is associated with."
 )
-
-TODO: We need to make each book a separate work.
+#TODO: What to do about transposed tokens? How to discover and represent the relationship?
 
 /* This is stand-off markup to indicate suprasegmental features */
 structure(
 	id   PRIMARY KEY AUTO_INCREMENT,
-	type NOT NULL ENUM('chapter', 'verse', 'section', 'paragraph', 'quotation', 'title'),
+	type NOT NULL ENUM('book', 'bookGroup', 'chapter', 'verse', 'section', 'subSection', 'title', 'paragraph', 'quotation' /*…*/),
+	
 	start_token_id    NOT NULL FOREIGN KEY token(id),
 	end_token_id      NOT NULL FOREIGN KEY token(id),
 	start_marker_token_id NULL FOREIGN KEY token(id) COMMENT "In a quotation, this would point to the quotation mark, after which the start_token_id would point.",
 	end_marker_token_id   NULL FOREIGN KEY token(id)
 )
 
-/* These relate to interlinearization */
+/* These relate to interlinearization; these could also be used for unification instead of relying on unified_token_id */
 linkage_cluster(
 	id        PRIMARY KEY AUTO_INCREMENT, #TODO: This needs to be stable too!
 	work_id_1 INTEGER NOT NULL FOREIGN KEY work(id),
