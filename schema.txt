@@ -26,7 +26,8 @@ token(
 /* This is stand-off markup to indicate suprasegmental features */
 structure(
 	id   PRIMARY KEY AUTO_INCREMENT,
-	type NOT NULL ENUM('book', 'bookGroup', 'chapter', 'verse', 'section', 'subSection', 'title', 'paragraph', 'quotation' /*…*/),
+	type NOT NULL ENUM('book', 'bookGroup', 'chapter', 'verse', 'section', 'subSection', 'title', 'paragraph', 'quotation', 'questionable-1', 'questionable-2' /*…*/),
+	variant_bits     BYTE NOT NULL    COMMENT "The bits in this byte are flags indicating which works it is associated with.",
 	
 	start_token_id    NOT NULL FOREIGN KEY token(id),
 	end_token_id      NOT NULL FOREIGN KEY token(id),
