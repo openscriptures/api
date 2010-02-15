@@ -29,6 +29,7 @@ structure(
 	type NOT NULL ENUM('book', 'bookGroup', 'chapter', 'verse', 'section', 'subSection', 'title', 'paragraph', 'quotation', 'questionable-1', 'questionable-2' /*…*/),
 	variant_bits     BYTE NOT NULL    COMMENT "The bits in this byte are flags indicating which works it is associated with.",
 	
+	/* For each of the tokens referenced, their work_id must be the same */
 	start_token_id    NOT NULL FOREIGN KEY token(id),
 	end_token_id      NOT NULL FOREIGN KEY token(id),
 	start_marker_token_id NULL FOREIGN KEY token(id) COMMENT "In a quotation, this would point to the quotation mark, after which the start_token_id would point.",
