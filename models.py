@@ -148,6 +148,9 @@ class TokenStructure(models.Model):
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
     osis_id = models.CharField(max_length=32, choices=TYPES, null=True, db_index=True)
     
+    numerical_start = models.PositiveIntegerField(help_text="A number that may be associated with this structure, such as a chapter or verse number.")
+    numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
+    
     work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work")
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     
