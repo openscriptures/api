@@ -106,10 +106,19 @@ class Token(models.Model):
 
 
 class TokenStructure(models.Model):
-    "Represent supra-segmental structures in the text, various markup"
+    "Represent supra-segmental structures in the text, various markup; really what this needs to do is represent everything found in OSIS"
     
-    #Todo: Is there a better way of doing these enumerations? Integers chosen instead
-    #      of a CharField to save space.
+    #Todo: Is there a better way of doing these enumerations? Integers chosen
+    #      instead of a CharField to save space.
+    #TODO: We need to be able to represent a lot more than this! To faithfully
+    #      store OSIS, it will need be able to represent every feature.
+    #      The various structure types each need to have a certain number of possible attribues?
+    #      Idea: why not just store the OSIS element name in one field, and then
+    #      store all of the the attributes in another? When serializing out the
+    #      data as-is into XML, it would result in overlapping hierarchies, so
+    #      then whichever structure is desired could then be presented.
+    
+    
     BOOK_GROUP = 1
     BOOK = 2
     CHAPTER = 3
@@ -137,6 +146,9 @@ class TokenStructure(models.Model):
         (PAGE, "page"),
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
+    osis_id = models.CharField(max_length=32, choices=TYPES, null=True, db_index=True)
+    
+    work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work")
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     
     start_token = models.ForeignKey(Token, related_name='start_token_structure_set', help_text="Used to demarcate the exclusive start point for the structure; excludes any typographical marker that marks up the structure in the text, such as quotation marks.")
@@ -144,6 +156,9 @@ class TokenStructure(models.Model):
     
     start_marker_token = models.ForeignKey(Token, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
     end_marker_token   = models.ForeignKey(Token, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
+    
+    #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
+    src = models.CharField(max_length=255, null=True, help_text="XPointer to where this token came from")
 
 
 
@@ -160,4 +175,5 @@ class TokenLinkage(models.Model):
 class TokenLinkageItem(models.Model):
     "Tokens from different works can be linked together by instantiating TokenLinkageItems and assigning them to the same TokenLinkage"
     token = models.ForeignKey(Token)
+    
 
