@@ -108,7 +108,8 @@ class Token(models.Model):
 class TokenStructure(models.Model):
     "Represent supra-segmental structures in the text, various markup"
     
-    #Todo: Is there a better way of storing 
+    #Todo: Is there a better way of doing these enumerations? Integers chosen instead
+    #      of a CharField to save space.
     BOOK_GROUP = 1
     BOOK = 2
     CHAPTER = 3
