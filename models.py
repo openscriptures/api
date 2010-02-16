@@ -40,7 +40,6 @@ class License(models.Model):
         return self.name
 
 
-
 class Work(models.Model):
     "Represents an OSIS work, such as the Bible or a non-biblical work such as the Qur'an or the Mishnah."
     
@@ -50,13 +49,11 @@ class Work(models.Model):
     src_url = models.URLField(null=True, help_text="URL where this resource was originally obtained")
     
     variants_for_work = models.ForeignKey('self', null=True, verbose_name="Parent work that this work provides variants for")
-    variant_bit = models.IntegerField() #00000001   #CommaSeparatedIntegerField?
+    variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and TokenStructure.variant_bits to query only those which belong to the work.")
     
-    #Bible.en.Crossway.ESV.2002
+    #Bible.en.Publisher.ABC.2010
     TYPES = (
         ('Bible', 'Bible'),
-        ('Mishna', 'Mishna'), #?
-        ('Quran', 'Quran') #?
     )
     type = models.CharField(max_length=16, choices=TYPES, null=False)
     language = models.ForeignKey(Language, null=True)
@@ -79,6 +76,7 @@ class Work(models.Model):
 
 
 class Token(models.Model):
+    "An atomic unit of text, such as a word, punctuation mark, or whitespace line break."
     data = models.CharField(max_length=255, db_index=True)
     
     WORD = 1
@@ -92,7 +90,7 @@ class Token(models.Model):
     type = models.PositiveSmallIntegerField(choices=TYPES, default=WORD, db_index=True)
     position = models.PositiveIntegerField(db_index=True)
     work = models.ForeignKey(Work)
-    variant_bits = models.IntegerField()
+    variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
     
     class Meta:
@@ -108,7 +106,9 @@ class Token(models.Model):
 
 
 class TokenStructure(models.Model):
-    #'book', 'bookGroup', 'chapter', 'verse', 'section', 'subSection', 'title', 'paragraph', 'quotation', 'questionable-1', 'questionable-2'
+    "Represent supra-segmental structures in the text, various markup"
+    
+    #Todo: Is there a better way of storing 
     BOOK_GROUP = 1
     BOOK = 2
     CHAPTER = 3
@@ -136,20 +136,27 @@ class TokenStructure(models.Model):
         (PAGE, "page"),
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
-    variant_bits = models.IntegerField()
+    variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     
-    start_token = models.ForeignKey(Token, related_name='start_token_structure_set')
-    end_token = models.ForeignKey(Token, related_name='end_token_structure_set')
-    start_marker_token = models.ForeignKey(Token, related_name='start_marker_token_structure_set')
-    end_marker_token = models.ForeignKey(Token, related_name='end_marker_token_structure_set')
+    start_token = models.ForeignKey(Token, related_name='start_token_structure_set', help_text="Used to demarcate the exclusive start point for the structure; excludes any typographical marker that marks up the structure in the text, such as quotation marks.")
+    end_token   = models.ForeignKey(Token, related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
+    
+    start_marker_token = models.ForeignKey(Token, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
+    end_marker_token   = models.ForeignKey(Token, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
 
 
+
+# These relate to interlinearization; these could also be used for unification
+# instead of relying on Token.unified_token
 class TokenLinkage(models.Model):
+    "Anchor point to link together multiple TokenLinkageItems"
     #work1 = models.ForeignKey(Work)
     #work2 = models.ForeignKey(Work)
     pass
 
 
+
 class TokenLinkageItem(models.Model):
+    "Tokens from different works can be linked together by instantiating TokenLinkageItems and assigning them to the same TokenLinkage"
     token = models.ForeignKey(Token)
 
