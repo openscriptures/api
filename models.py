@@ -76,7 +76,7 @@ class Work(models.Model):
 
 
 class Token(models.Model):
-    "An atomic unit of text, such as a word, punctuation mark, or whitespace line break."
+    "An atomic unit of text, such as a word, punctuation mark, or whitespace line break. Corresponds to OSIS w elements."
     data = models.CharField(max_length=255, db_index=True)
     
     WORD = 1
@@ -93,6 +93,9 @@ class Token(models.Model):
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
     
+    #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
+    src_href = models.CharField(max_length=255, null=True, help_text="XPointer to where this token came from")
+    
     class Meta:
         ordering = ['position'] #, 'variant_number'
         #Note: This unique constraint is removed due to the fact that in MySQL, the default utf8 collation means "Και" and "καὶ" are equivalent
@@ -106,17 +109,18 @@ class Token(models.Model):
 
 
 class TokenStructure(models.Model):
-    "Represent supra-segmental structures in the text, various markup; really what this needs to do is represent everything found in OSIS"
+    "Represent supra-segmental structures in the text, various markup; really what this needs to do is represent every non-w element in OSIS."
     
     #Todo: Is there a better way of doing these enumerations? Integers chosen
     #      instead of a CharField to save space.
     #TODO: We need to be able to represent a lot more than this! To faithfully
     #      store OSIS, it will need be able to represent every feature.
-    #      The various structure types each need to have a certain number of possible attribues?
-    #      Idea: why not just store the OSIS element name in one field, and then
-    #      store all of the the attributes in another? When serializing out the
-    #      data as-is into XML, it would result in overlapping hierarchies, so
-    #      then whichever structure is desired could then be presented.
+    #      The various structure types each need to have a certain number of
+    #      possible attribues? Idea: why not just store the OSIS element name in
+    #      one field, and then store all of the the attributes in another? When
+    #      serializing out the data as-is into XML, it would result in
+    #      overlapping hierarchies, so then whichever structure is desired could
+    #      then be presented.
     
     
     BOOK_GROUP = 1
@@ -146,27 +150,37 @@ class TokenStructure(models.Model):
         (PAGE, "page"),
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
-    osis_id = models.CharField(max_length=32, choices=TYPES, null=True, db_index=True)
+    osis_id = models.CharField(max_length=32, null=True, db_index=True)
     
-    numerical_start = models.PositiveIntegerField(help_text="A number that may be associated with this structure, such as a chapter or verse number.")
+    numerical_start = models.PositiveIntegerField(help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
     
     work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work")
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     
-    start_token = models.ForeignKey(Token, related_name='start_token_structure_set', help_text="Used to demarcate the exclusive start point for the structure; excludes any typographical marker that marks up the structure in the text, such as quotation marks.")
-    end_token   = models.ForeignKey(Token, related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
+    start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text="Used to demarcate the exclusive start point for the structure; excludes any typographical marker that marks up the structure in the text, such as quotation marks. If null, then tokens should be discovered via TokenStructureItem.")
+    end_token   = models.ForeignKey(Token, null=True, related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
     
     start_marker_token = models.ForeignKey(Token, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
     end_marker_token   = models.ForeignKey(Token, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
-    
-    #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
-    src = models.CharField(max_length=255, null=True, help_text="XPointer to where this token came from")
+
+
+
+# This is an alternative to the above and it allows non-consecutive tokens to be
+# included in a structure. But it incurs a huge amount of overhead. If
+# start_token is null, then it could be assumed that a structure's tokens should
+# be found via TokenStructureItem
+class TokenStructureItem(models.Model):
+    "Non-consecutive tokens can be assigned to a TokenStructure via this model."
+    structure = models.ForeignKey(TokenStructure)
+    token = models.ForeignKey(Token)
+    is_marker = models.BooleanField(default=False, help_text="Whether the token is any such typographical feature which marks up the structure in the text, such as a quotation mark.")
 
 
 
 # These relate to interlinearization; these could also be used for unification
 # instead of relying on Token.unified_token
+# TODO: This can also be used to associate words with a note; otherwise, start_token/end_token would be used
 class TokenLinkage(models.Model):
     "Anchor point to link together multiple TokenLinkageItems"
     #work1 = models.ForeignKey(Work)
@@ -176,7 +190,8 @@ class TokenLinkage(models.Model):
 
 
 class TokenLinkageItem(models.Model):
-    "Tokens from different works can be linked together by instantiating TokenLinkageItems and assigning them to the same TokenLinkage"
+    "Tokens from different works can be linked together by instantiating TokenLinkageItems and associating them with the same TokenLinkage."
+    linkage = models.ForeignKey(TokenLinkage)
     token = models.ForeignKey(Token)
     
 
