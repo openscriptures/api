@@ -48,7 +48,7 @@ class Work(models.Model):
     description = models.TextField(null=True)
     src_url = models.URLField(null=True, help_text="URL where this resource was originally obtained")
     
-    variants_for_work = models.ForeignKey('self', null=True, verbose_name="Parent work that this work provides variants for")
+    variants_for_work = models.ForeignKey('self', null=True, default=None, verbose_name="Parent work that this work provides variants for")
     variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and TokenStructure.variant_bits to query only those which belong to the work.")
     
     #Bible.en.Publisher.ABC.2010
@@ -69,6 +69,23 @@ class Work(models.Model):
     import_date = models.DateField(null=True, help_text="When the work was imported into the models.")
     
     #unified_work = models.ForeignKey('self', null=True, verbose_name="Work which this work has been merged into")
+    
+    
+    
+    def get_tokens_by_osis_ref(self, start_osis_id, end_osis_id = None, variant_bits = None):
+        mainWork = self
+        if self.variants_for_work:
+            mainWork = self.variants_for_work
+        if variant_bits is None:
+            variant_bits = self.variant_bit
+        
+        start_structure = TokenStructure.objects.get(osis_id = start_osis_id)
+        end_structure   = TokenStructure.objects.get(osis_id = end_osis_id)
+        
+        return Token.objects.filter(
+            work = mainWork
+        ).extra(where=['variant_bits & %s != 0'], params=[variant_bits]);
+
     
     def __unicode__(self):
         return self.title
@@ -152,6 +169,7 @@ class TokenStructure(models.Model):
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
     osis_id = models.CharField(max_length=32, null=True, db_index=True)
     
+    #position?
     numerical_start = models.PositiveIntegerField(help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
     
@@ -164,6 +182,15 @@ class TokenStructure(models.Model):
     start_marker_token = models.ForeignKey(Token, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
     end_marker_token   = models.ForeignKey(Token, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
 
+    
+    #def get_tokens(self, variant_bits = None):
+    #    return Token.objects.filter(
+    #        Q(variant_number = None) | Q(variant_number = variant_number),
+    #        work = self.work,
+    #        position__gte = self.start_token.position,
+    #        position__lte = self.end_token.position
+    #    )
+    #tokens = property(get_tokens)
 
 
 # This is an alternative to the above and it allows non-consecutive tokens to be
