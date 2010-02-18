@@ -57,6 +57,13 @@ class Work(models.Model):
     )
     type = models.CharField(max_length=16, choices=TYPES, null=False)
     language = models.ForeignKey(Language, null=True)
+    #Note: In the case of Daniel, both Hebrew and Aramaic in the book, though
+    #      Hebrew is predominat; in this case, Work.language would still be 'hbo'; the
+    #      language of the individual Tokens in the work can be indicated in a
+    #      separate TokenMetadata model. This would allow multiple languages to be
+    #      associated with a Token as there may be different opinions about what
+    #      language it is!
+    
     publisher = models.CharField(null=True, max_length=128)
     osis_slug = models.SlugField(max_length=16, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
     publish_date = models.DateField(null=True, help_text="When the work was published")
@@ -111,7 +118,9 @@ class Token(models.Model):
     unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
     
     #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
-    src_href = models.CharField(max_length=255, null=True, help_text="XPointer to where this token came from")
+    src_href = models.CharField(max_length=255, null=True, help_text="XPointer to where this token came from; base URL is work.src_url")
+    
+    #Note: Token metadata (e.g. parsings) would be stored in a separate location, e.g. TokenMeta model
     
     class Meta:
         ordering = ['position'] #, 'variant_number'
@@ -170,27 +179,62 @@ class TokenStructure(models.Model):
     osis_id = models.CharField(max_length=32, null=True, db_index=True)
     
     #position?
-    numerical_start = models.PositiveIntegerField(help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
+    numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
     
-    work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work")
+    work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it")
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     
     start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text="Used to demarcate the exclusive start point for the structure; excludes any typographical marker that marks up the structure in the text, such as quotation marks. If null, then tokens should be discovered via TokenStructureItem.")
     end_token   = models.ForeignKey(Token, null=True, related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
     
-    start_marker_token = models.ForeignKey(Token, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
-    end_marker_token   = models.ForeignKey(Token, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
-
+    start_marker_token = models.ForeignKey(Token, null=True, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
+    end_marker_token   = models.ForeignKey(Token, null=True, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
     
-    #def get_tokens(self, variant_bits = None):
-    #    return Token.objects.filter(
-    #        Q(variant_number = None) | Q(variant_number = variant_number),
-    #        work = self.work,
-    #        position__gte = self.start_token.position,
-    #        position__lte = self.end_token.position
-    #    )
-    #tokens = property(get_tokens)
+    is_structure_marker = None #This boolean is set when querying via get_tokens
+    
+    def get_tokens(self, variant_bits = None):
+        if variant_bits is None:
+            variant_bits = self.variant_bits
+        
+        if self.start_token:
+            token_start_pos = self.start_token.position
+            token_end_pos = token_start_pos
+            if self.end_token is not None:
+                token_end_pos = self.end_token.position
+            
+            marker_start_pos = token_start_pos
+            if self.start_marker_token is not None:
+                marker_start_pos = self.start_marker_token.position
+                assert(marker_start_pos <= token_start_pos)
+            
+            marker_end_pos = token_end_pos
+            if self.start_marker_token is not None:
+                marker_end_pos = self.end_marker_token.position
+                assert(token_end_pos >= marker_end_pos)
+            
+            tokens = Token.objects.filter(
+                work = self.work,
+                position__gte = marker_start_pos,
+                position__lte = marker_end_pos
+            ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
+            #if variant_bits is not None:
+            #    tokens = tokens.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
+            
+            for token in tokens:
+                if token.position >= token_start_pos:
+                    break
+                token.is_structure_marker = True
+            
+            for token in reversed(tokens):
+                if token.position <= token_end_pos:
+                    break
+                token.is_structure_marker = True
+                
+            return tokens
+        else:
+            pass
+    tokens = property(get_tokens)
 
 
 # This is an alternative to the above and it allows non-consecutive tokens to be
