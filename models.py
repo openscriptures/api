@@ -101,7 +101,7 @@ class Work(models.Model):
 
 class Token(models.Model):
     "An atomic unit of text, such as a word, punctuation mark, or whitespace line break. Corresponds to OSIS w elements."
-    data = models.CharField(max_length=255, db_index=True)
+    data = models.CharField(max_length=255, db_index=True, help_text="Unicode data in Normalization Form C (NFC)")
     
     WORD = 1
     PUNCTUATION = 2
