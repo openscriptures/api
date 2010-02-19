@@ -55,8 +55,8 @@ class Work(models.Model):
     TYPES = (
         ('Bible', 'Bible'),
     )
-    type = models.CharField(max_length=16, choices=TYPES, null=False)
-    language = models.ForeignKey(Language, null=True)
+    type = models.CharField(max_length=16, choices=TYPES, null=False, db_index=True)
+    language = models.ForeignKey(Language, null=True, db_index=True)
     #Note: In the case of Daniel, both Hebrew and Aramaic in the book, though
     #      Hebrew is predominat; in this case, Work.language would still be 'hbo'; the
     #      language of the individual Tokens in the work can be indicated in a
@@ -64,11 +64,23 @@ class Work(models.Model):
     #      associated with a Token as there may be different opinions about what
     #      language it is!
     
-    publisher = models.CharField(null=True, max_length=128)
-    osis_slug = models.SlugField(max_length=16, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
-    publish_date = models.DateField(null=True, help_text="When the work was published")
+    publisher = models.CharField(null=True, max_length=128, db_index=True)
+    osis_slug = models.SlugField(max_length=16, db_index=True, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
+    publish_date = models.DateField(null=True, db_index=True, help_text="When the work was published")
     #Concatenation of previous fields:
-    osis_id = models.CharField(max_length=32, choices=TYPES, null=False, db_index=True)
+    #osis_id = models.CharField(max_length=32, choices=TYPES, null=False, db_index=True)
+    def get_osis_id(self):
+        _osis_id = []
+        if self.type:
+            _osis_id.append(self.type)
+        if self.language:
+            _osis_id.append(self.language.code)
+        if self.osis_slug:
+            _osis_id.append(self.osis_slug)
+        if self.publish_date:
+            _osis_id.append(self.publish_date.year)
+        return ".".join(_osis_id)
+    osis_id = property(get_osis_id)
     
     copyright = models.TextField(null=True)
     license = models.ForeignKey(License)
@@ -111,7 +123,7 @@ class Token(models.Model):
         (PUNCTUATION, 'Punctuation'),
         (WHITESPACE,  'Whitespace'),
     )
-    type = models.PositiveSmallIntegerField(choices=TYPES, default=WORD, db_index=True)
+    type = models.PositiveSmallIntegerField(choices=TYPES, default=WORD, db_index=True, help_text="A general hint as to what the token data represents")
     position = models.PositiveIntegerField(db_index=True)
     work = models.ForeignKey(Work)
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
@@ -250,7 +262,7 @@ class TokenStructure(models.Model):
             for item in items:
                 items.token.is_structure_marker = item.is_marker
                 tokens.append(items.token)
-            return items.token
+            return tokens
     
     tokens = property(get_tokens)
 
