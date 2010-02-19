@@ -193,47 +193,65 @@ class TokenStructure(models.Model):
     
     is_structure_marker = None #This boolean is set when querying via get_tokens
     
-    def get_tokens(self, variant_bits = None):
+    
+    def get_tokens(self, include_markers = True, variant_bits = None):
         if variant_bits is None:
             variant_bits = self.variant_bits
         
+        # Get the tokens from a range
         if self.start_token:
-            token_start_pos = self.start_token.position
-            token_end_pos = token_start_pos
+            # Get start and end positions for the tokens
+            start_pos = token_start_pos = self.start_token.position
+            end_pos = token_end_pos = token_start_pos
             if self.end_token is not None:
                 token_end_pos = self.end_token.position
             
-            marker_start_pos = token_start_pos
-            if self.start_marker_token is not None:
-                marker_start_pos = self.start_marker_token.position
-                assert(marker_start_pos <= token_start_pos)
+            # Get start position for marker
+            if include_markers:
+                marker_start_pos = token_start_pos
+                if self.start_marker_token is not None:
+                    start_pos = marker_start_pos = self.start_marker_token.position
+                    assert(marker_start_pos <= token_start_pos)
+                
+                # Get end position for the marker
+                marker_end_pos = token_end_pos
+                if self.start_marker_token is not None:
+                    end_pos = marker_end_pos = self.end_marker_token.position
+                    assert(token_end_pos >= marker_end_pos)
             
-            marker_end_pos = token_end_pos
-            if self.start_marker_token is not None:
-                marker_end_pos = self.end_marker_token.position
-                assert(token_end_pos >= marker_end_pos)
-            
+            # Get all of the tokens between the marker start and marker end
+            # and who have variant bits that match the requested variant bits
             tokens = Token.objects.filter(
                 work = self.work,
-                position__gte = marker_start_pos,
-                position__lte = marker_end_pos
+                position__gte = start_pos,
+                position__lte = end_pos
             ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
             #if variant_bits is not None:
             #    tokens = tokens.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
             
+            # Indicate which of the beginning queried tokens are markers
             for token in tokens:
                 if token.position >= token_start_pos:
                     break
                 token.is_structure_marker = True
             
+            # Indicate which of the ending queried tokens are markers
             for token in reversed(tokens):
                 if token.position <= token_end_pos:
                     break
                 token.is_structure_marker = True
-                
+            
             return tokens
+        
+        # Get the tokens which are not consecutive
         else:
-            pass
+            items = TokenStructureItem.objects.extra(where=["token__variant_bits & %s != 0"], params=[variant_bits])
+            tokens = []
+            for item in items:
+                items.token.is_structure_marker = item.is_marker
+                tokens.append(items.token)
+            return items.token
+    
     tokens = property(get_tokens)
 
 
