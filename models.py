@@ -114,7 +114,6 @@ class Token(models.Model):
     type = models.PositiveSmallIntegerField(choices=TYPES, default=WORD, db_index=True)
     position = models.PositiveIntegerField(db_index=True)
     work = models.ForeignKey(Work)
-    #meta = models.ForeignKey('TokenMeta', null=True, help_text="Metadata about this token")
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
     
@@ -141,11 +140,11 @@ class TokenMeta(models.Model):
     work = models.ForeignKey(Work, null=True, help_text="The work that defines this parsing; may be null since a user may provide it. Usually same as token.work")
     language = models.ForeignKey(Language, null=True, help_text="The language of the token. Not necessarily the same as token.work.language")
     # TODO: Should be changed to a ForeignKey linking to strongs db when that comes online
-    strongs = models.CharField(max_length=255, help_text="The strongs number, prefixed by 'H' or 'G' specifying whether it is for the Hebrew or Greek, respectively. Multiple numbers separated by semicolon. Temporary measure until Lemma Lattice released.")
-    lemma = models.CharField(max_length=255, help_text="The lemma chosen for this token. Need not be supplied if strongs given. If multiple lemmas are provided, then separate with semicolon.  Temporary measure until Lemma Lattice released")
+    strongs = models.CharField(max_length=255, help_text="The strongs number, prefixed by 'H' or 'G' specifying whether it is for the Hebrew or Greek, respectively. Multiple numbers separated by semicolon.")
+    lemma = models.CharField(max_length=255, help_text="The lemma chosen for this token. Need not be supplied if strongs given. If multiple lemmas are provided, then separate with semicolon.")
     # Not sure of the purpose of the "raw" field. Shouldn't the parse field contain all the pertinent info?
     raw = models.CharField(max_length=255, help_text="All parsing information provided verbatim")
-    parse = models.CharField(max_length=256,  help_text="A string consisting of whatever the work provides; the unparsed parsing. Likely consisting of the lemma, Strong's number, morph, etc. This is temporary until we can integrate with lemma lattice.  Temporary measure until Lemma Lattice released")
+    parse = models.CharField(max_length=256,  help_text="A string consisting of whatever the work provides; the unparsed parsing.")
     
 
 
