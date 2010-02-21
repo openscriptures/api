@@ -141,11 +141,37 @@ class TokenMeta(models.Model):
     language = models.ForeignKey(Language, null=True, help_text="The language of the token. Not necessarily the same as token.work.language")
     # TODO: Should be changed to a ForeignKey linking to strongs db when that comes online
     strongs = models.CharField(max_length=255, help_text="The strongs number, prefixed by 'H' or 'G' specifying whether it is for the Hebrew or Greek, respectively. Multiple numbers separated by semicolon.")
+    # TODO: Lemma should probably expressed in TokenParsing_* objects,
+    #       since there can be a difference of opinion in some cases.
     lemma = models.CharField(max_length=255, help_text="The lemma chosen for this token. Need not be supplied if strongs given. If multiple lemmas are provided, then separate with semicolon.")
-    # Not sure of the purpose of the "raw" field. Shouldn't the parse field contain all the pertinent info?
-    raw = models.CharField(max_length=255, help_text="All parsing information provided verbatim")
-    parse = models.CharField(max_length=256,  help_text="A string consisting of whatever the work provides; the unparsed parsing.")
-    
+
+    # TODO: Get these TokenParsing models established
+    def get_parsing(self):
+        if self.language.code == "grc":
+            return TokenParsing_grc.objects.get(tokenmeta = self)
+        elif self.language.code = "hbo":
+            return TokenParsing_hbo.objects.get(tokenmata = self)
+        else:
+            raise Error("Unknown parsing language.")
+
+    parsing = property(get_parsing)
+
+
+
+class TokenParsing_grc(models.Model):
+    "Represent Greek parsing information for a given Token."
+
+    tokenmeta = models.ForeignKey(TokenMeta)
+    # TODO: Create the rest of the parsing model
+
+
+
+class TokenParsing_hbo(models.Model):
+    "Represent Hebrew parsing information for a given Token."
+
+    tokenmeta = models.ForeignKey(TokenMeta)
+    # TODO: Create the rest of the parsing model
+
 
 
 class TokenStructure(models.Model):
