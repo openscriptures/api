@@ -46,7 +46,7 @@ class Work(models.Model):
     title = models.CharField(max_length=255)
     abbreviation = models.CharField(max_length=255, null=True)
     description = models.TextField(null=True)
-    src_url = models.URLField(null=True, help_text="URL where this resource was originally obtained")
+    source_url = models.URLField(null=True, help_text="URL where this resource was originally obtained")
     
     variants_for_work = models.ForeignKey('self', null=True, default=None, verbose_name="Parent work that this work provides variants for")
     variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and TokenStructure.variant_bits to query only those which belong to the work.")
@@ -82,8 +82,9 @@ class Work(models.Model):
         return ".".join(_osis_id)
     osis_id = property(get_osis_id)
     
+    creator = models.TextField(null=True)
     copyright = models.TextField(null=True)
-    license = models.ForeignKey(License)
+    license = models.ForeignKey(License, null=True)
     
     import_date = models.DateField(null=True, help_text="When the work was imported into the models.")
     
