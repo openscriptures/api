@@ -150,8 +150,8 @@ class TokenMeta(models.Model):
     "Metadata about each token, including language, parsing information, etc."
 
     token = models.ForeignKey(Token, related_name="token_parsing_set")
-    work = models.ForeignKey(Work, null=True, help_text="The work that defines this parsing; may be null since a user may provide it. Usually same as token.work")
-    language = models.ForeignKey(Language, null=True, help_text="The language of the token. Not necessarily the same as token.work.language")
+    work = models.ForeignKey(Work, null=True, blank=True, help_text="The work that defines this parsing; may be null since a user may provide it. Usually same as token.work")
+    language = models.ForeignKey(Language, null=True, blank=True, help_text="The language of the token. Not necessarily the same as token.work.language")
     # TODO: Should be changed to a ForeignKey linking to strongs db when that comes online
     strongs = models.CharField(max_length=255, help_text="The strongs number, prefixed by 'H' or 'G' specifying whether it is for the Hebrew or Greek, respectively. Multiple numbers separated by semicolon.")
     # TODO: Lemma should probably expressed in TokenParsing_* objects,
