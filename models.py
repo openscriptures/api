@@ -150,8 +150,8 @@ class TokenMeta(models.Model):
     "Metadata about each token, including language, parsing information, etc."
 
     token = models.ForeignKey(Token, related_name="token_parsing_set")
-    work = models.ForeignKey(Work, null=True, help_text="The work that defines this parsing; may be null since a user may provide it. Usually same as token.work")
-    language = models.ForeignKey(Language, null=True, help_text="The language of the token. Not necessarily the same as token.work.language")
+    work = models.ForeignKey(Work, null=True, blank=True, help_text="The work that defines this parsing; may be null since a user may provide it. Usually same as token.work")
+    language = models.ForeignKey(Language, null=True, blank=True, help_text="The language of the token. Not necessarily the same as token.work.language")
     # TODO: Should be changed to a ForeignKey linking to strongs db when that comes online
     strongs = models.CharField(max_length=255, help_text="The strongs number, prefixed by 'H' or 'G' specifying whether it is for the Hebrew or Greek, respectively. Multiple numbers separated by semicolon.")
     # TODO: Lemma should probably expressed in TokenParsing_* objects,
@@ -242,14 +242,14 @@ class TokenParsing_grc(models.Model):
 
     # Fields here
     part = models.CharField(max_length=12, choices=PARTS_OF_SPEECH)
-    substantival_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
-    gender = models.CharField(max_length=12, choices=GENDERS, null=True)
-    case = models.CharField(max_length=12, choices=CASES, null=True)
-    tense = models.CharField(max_length=20, choices=TENSES, null=True)
-    voice = models.CharField(max_length=12, choices=VOICES, null=True)
-    mood = models.CharField(max_length=20, choices=MOODS, null=True)
-    person = models.CharField(max_length=12, choices=PERSONS, null=True)
-    verbal_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
+    substantival_number = models.CharField(max_length=12, choices=NUMBERS, null=True, blank=True)
+    gender = models.CharField(max_length=12, choices=GENDERS, null=True, blank=True)
+    case = models.CharField(max_length=12, choices=CASES, null=True, blank=True)
+    tense = models.CharField(max_length=20, choices=TENSES, null=True, blank=True)
+    voice = models.CharField(max_length=12, choices=VOICES, null=True, blank=True)
+    mood = models.CharField(max_length=20, choices=MOODS, null=True, blank=True)
+    person = models.CharField(max_length=12, choices=PERSONS, null=True, blank=True)
+    verbal_number = models.CharField(max_length=12, choices=NUMBERS, null=True, blank=True)
 
     # TODO: Model validation for parsings based on part of speech, mood, etc.
 
