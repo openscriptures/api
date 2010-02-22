@@ -162,9 +162,83 @@ class TokenParsing_grc(models.Model):
     "Represent Greek parsing information for a given Token."
 
     tokenmeta = models.ForeignKey(TokenMeta)
-    # TODO: Create the rest of the parsing model
+    # Choicse here
+    # From Smyth's grammar
+    PARTS_OF_SPEECH = (
+        ('Noun','Noun'),
+        ('Adjective','Adjective'),
+        ('Pronoun','Pronoun'),
+        ('Verb','Verb'),
+        ('Adverb','Adverb'),
+        ('Preposition','Preposition'),
+        ('Conjunction','Conjunction'),
+        ('Particle','Particle'),
+    )
 
+    NUMBERS = (
+        ('Singular','Singular'),
+        ('Dual','Dual'),
+        ('Plural','Plural'),
+    )
 
+    GENDERS = (
+        ('Masculine','Masculine'),
+        ('Feminine','Feminine'),
+        ('Neuter','Neuter'),
+    )
+
+    CASES = (
+        ('Nominative','Nominative'),
+        ('Genitive','Genitive'),
+        ('Dative','Dative'),
+        ('Accusative','Accusative'),
+        ('Vocative','Vocative'),
+    )
+
+    # TODO: Should 2nd aorist be expressed here, or have its own field?
+    TENSES = (
+        ('Present','Present'),
+        ('Imperfect','Imperfect'),
+        ('Future','Future'),
+        ('Aorist','Aorist'),
+        ('Perfect','Perfect'),
+        ('Pluperfect','Pluperfect'),
+        ('Future Perfect','Future Perfect'),
+    )
+
+    VOICES = (
+        ('Active','Active'),
+        ('Middle','Middle'),
+        ('Passive','Passive'),
+    )
+
+    MOODS = (
+        ('Indicative','Indicative'),
+        ('Subjunctive','Subjunctive'),
+        ('Optative','Optative'),
+        ('Imperative','Imperative'),
+        ('Infinitive','Infinitive'),
+        ('Participle','Participle'),
+    )
+
+    PERSONS = (
+        ('First','First'),
+        ('Second','Second'),
+        ('Third','Third'),
+    )
+
+    # Fields here
+    part = models.CharField(max_length=12, choices=PARTS_OF_SPEECH)
+    substantive_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
+    gender = models.CharField(max_length=12, choices=GENDERS, null=True)
+    case = models.CharField(max_length=12, choices=CASES, null=True)
+    tense = models.CharField(max_length=20, choices=TENSES, null=True)
+    voice = models.CharField(max_length=12, choices=VOICES, null=True)
+    mood = models.CharField(max_length=20, choices=MOODS, null=True)
+    person = models.CharField(max_length=12, choices=PERSONS, null=True)
+    verbal_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
+
+    # TODO: Model validation for parsings based on part of speech, mood, etc.
 
 class TokenParsing_hbo(models.Model):
     "Represent Hebrew parsing information for a given Token."
