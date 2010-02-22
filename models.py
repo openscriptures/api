@@ -26,8 +26,8 @@ class License(models.Model):
     "A license that a work uses to indicate the copyright restrictions or permissions."
     
     name = models.CharField(max_length=128)
-    abbreviation = models.CharField(max_length=32, null=True, db_index=True)
-    url = models.URLField(null=True, help_text="Primary URL which defines the license.")
+    abbreviation = models.CharField(max_length=32, blank=True, db_index=True)
+    url = models.URLField(blank=True, help_text="Primary URL which defines the license.")
     
     # We need a matrix describing what the license allows:
     # - attribution
@@ -44,9 +44,9 @@ class Work(models.Model):
     "Represents an OSIS work, such as the Bible or a non-biblical work such as the Qur'an or the Mishnah."
     
     title = models.CharField(max_length=255)
-    abbreviation = models.CharField(max_length=255, null=True)
-    description = models.TextField(null=True)
-    source_url = models.URLField(null=True, help_text="URL where this resource was originally obtained")
+    abbreviation = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    source_url = models.URLField(blank=True, help_text="URL where this resource was originally obtained")
     
     variants_for_work = models.ForeignKey('self', null=True, default=None, verbose_name="Parent work that this work provides variants for")
     variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and TokenStructure.variant_bits to query only those which belong to the work.")
@@ -64,7 +64,7 @@ class Work(models.Model):
     #      associated with a Token as there may be different opinions about what
     #      language it is!
     
-    publisher = models.CharField(null=True, max_length=128, db_index=True)
+    publisher = models.CharField(blank=True, max_length=128, db_index=True)
     osis_slug = models.SlugField(max_length=16, db_index=True, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
     publish_date = models.DateField(null=True, db_index=True, help_text="When the work was published")
     #Concatenation of previous fields:
@@ -82,8 +82,8 @@ class Work(models.Model):
         return ".".join(_osis_id)
     osis_id = property(get_osis_id)
     
-    creator = models.TextField(null=True)
-    copyright = models.TextField(null=True)
+    creator = models.TextField(blank=True)
+    copyright = models.TextField(blank=True)
     license = models.ForeignKey(License, null=True)
     
     import_date = models.DateField(null=True, help_text="When the work was imported into the models.")
@@ -131,7 +131,7 @@ class Token(models.Model):
     unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
     
     #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
-    src_href = models.CharField(max_length=255, null=True, help_text="XPointer to where this token came from; base URL is work.src_url")
+    src_href = models.CharField(max_length=255, blank=True, help_text="XPointer to where this token came from; base URL is work.src_url")
     
     #Note: Token metadata (e.g. parsings) would be stored in a separate location, e.g. TokenMeta model
     
@@ -242,14 +242,14 @@ class TokenParsing_grc(models.Model):
 
     # Fields here
     part = models.CharField(max_length=12, choices=PARTS_OF_SPEECH)
-    substantival_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
-    gender = models.CharField(max_length=12, choices=GENDERS, null=True)
-    case = models.CharField(max_length=12, choices=CASES, null=True)
-    tense = models.CharField(max_length=20, choices=TENSES, null=True)
-    voice = models.CharField(max_length=12, choices=VOICES, null=True)
-    mood = models.CharField(max_length=20, choices=MOODS, null=True)
-    person = models.CharField(max_length=12, choices=PERSONS, null=True)
-    verbal_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
+    substantival_number = models.CharField(max_length=12, choices=NUMBERS, blank=True)
+    gender = models.CharField(max_length=12, choices=GENDERS, blank=True)
+    case = models.CharField(max_length=12, choices=CASES, blank=True)
+    tense = models.CharField(max_length=20, choices=TENSES, blank=True)
+    voice = models.CharField(max_length=12, choices=VOICES, blank=True)
+    mood = models.CharField(max_length=20, choices=MOODS, blank=True)
+    person = models.CharField(max_length=12, choices=PERSONS, blank=True)
+    verbal_number = models.CharField(max_length=12, choices=NUMBERS, blank=True)
 
     # TODO: Model validation for parsings based on part of speech, mood, etc.
 
@@ -303,7 +303,7 @@ class TokenStructure(models.Model):
         (PAGE, "page"),
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
-    osis_id = models.CharField(max_length=32, null=True, db_index=True)
+    osis_id = models.CharField(max_length=32, blank=True, db_index=True)
     
     #position?
     numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
