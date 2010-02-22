@@ -149,7 +149,7 @@ class TokenMeta(models.Model):
     def get_parsing(self):
         if self.language.code == "grc":
             return TokenParsing_grc.objects.get(tokenmeta = self)
-        elif self.language.code = "hbo":
+        elif self.language.code == "hbo":
             return TokenParsing_hbo.objects.get(tokenmata = self)
         else:
             raise Error("Unknown parsing language.")
