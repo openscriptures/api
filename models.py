@@ -229,7 +229,7 @@ class TokenParsing_grc(models.Model):
 
     # Fields here
     part = models.CharField(max_length=12, choices=PARTS_OF_SPEECH)
-    substantive_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
+    substantival_number = models.CharField(max_length=12, choices=NUMBERS, null=True)
     gender = models.CharField(max_length=12, choices=GENDERS, null=True)
     case = models.CharField(max_length=12, choices=CASES, null=True)
     tense = models.CharField(max_length=20, choices=TENSES, null=True)
