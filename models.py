@@ -146,6 +146,7 @@ class Token(models.Model):
         return self.data
 
 
+
 class TokenMeta(models.Model):
     "Metadata about each token, including language, parsing information, etc."
 
@@ -160,21 +161,24 @@ class TokenMeta(models.Model):
 
     # TODO: Get these TokenParsing models established
     def get_parsing(self):
-        if self.language.code == "grc":
-            return TokenParsing_grc.objects.get(tokenmeta = self)
-        elif self.language.code == "hbo":
-            return TokenParsing_hbo.objects.get(tokenmata = self)
-        else:
-            raise Error("Unknown parsing language.")
+        return TokenParsing.objects.get(tokenmeta = self)
 
     parsing = property(get_parsing)
 
 
 
-class TokenParsing_grc(models.Model):
+class TokenParsing(models.Model):
+    "The base class for connecting language-specific parsing classes to TokenMeta objects."
+
+    # NOTE: This class should never be directly instantiated.
+    #       Only derived classes should be used.
+    tokenmeta = models.ForeignKey(TokenMeta)
+
+
+
+class TokenParsing_grc(TokenParsing):
     "Represent Greek parsing information for a given Token."
 
-    tokenmeta = models.ForeignKey(TokenMeta)
     # Choicse here
     # From Smyth's grammar
     PARTS_OF_SPEECH = (
@@ -253,11 +257,13 @@ class TokenParsing_grc(models.Model):
 
     # TODO: Model validation for parsings based on part of speech, mood, etc.
 
-class TokenParsing_hbo(models.Model):
+
+
+class TokenParsing_hbo(TokenParsing):
     "Represent Hebrew parsing information for a given Token."
 
-    tokenmeta = models.ForeignKey(TokenMeta)
     # TODO: Create the rest of the parsing model
+    part = models.CharField(max_length=20)
 
 
 
