@@ -23,47 +23,51 @@ import_helpers.download_resource(source_url)
 
 # Work for Kethiv edition (base text for qere)
 import_helpers.delete_work(workKethivID)
-workKethiv = Work(
+variant_bit_kethiv = 0b00000001
+main_work = Work(
     id           = workKethivID,
     title        = "Tischendorf 8th ed. v2.5 (Kethiv)",
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
     publish_date = date(2009, 1, 1),
+    variant_bit  = variant_bit_kethiv,
     #originality  = 'manuscript-edition',
     #creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
     source_url   = source_url,
-    #license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
+    license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
 )
-workKethiv.save()
+main_work.save()
 
-varGroupKethiv = VariantGroup(
-    work = workKethiv,
-    primacy = 0
-)
-varGroupKethiv.save()
+#varGroupKethiv = VariantGroup(
+#    work = main_work,
+#    primacy = 0
+#)
+#varGroupKethiv.save()
 
 # Work for Qere edition (Kethiv is base text)
 import_helpers.delete_work(workQereID)
-workQere = Work(
+variant_bit_qere = 0b00000010
+variant_work = Work(
     id           = workQereID,
     title        = "Tischendorf 8th ed. v2.5 (Qere)",
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
     publish_date = date(2009, 1, 1),
-    originality  = 'manuscript-edition',
+    variant_bit  = variant_bit_qere,
+    #originality  = 'manuscript-edition',
     #creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
     source_url   = source_url,
     license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
 )
-workQere.save()
+variant_work.save()
 
-varGroupQere = VariantGroup(
-    work = workQere,
-    primacy = 0
-)
-varGroupQere.save()
+#varGroupQere = VariantGroup(
+#    work = variant_work,
+#    primacy = 0
+#)
+#varGroupQere.save()
 
 
 
@@ -165,8 +169,8 @@ lineParser = re.compile(ur"""^
     re.VERBOSE
 )
 
-works = [workKethiv, workQere]
-bookRefs = [[], []]
+works = [main_work, variant_work]
+bookRefs = []
 bookTokens = [[], []]
 openBrackets = [0,0]
 precedingTokenCount = 0
@@ -181,19 +185,13 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     verseRefs = []
     
     # Set up the book ref
-    bookRefKethiv = Ref(
-        work = workKethiv,
-        type = Ref.BOOK,
+    bookRef = TokenStructure(
+        work = main_work,
+        type = TokenStructure.BOOK,
         osis_id = book_code,
         position = len(bookRefs),
-        title = OSIS_BOOK_NAMES[book_code]
-    )
-    bookRefQere = Ref(
-        work = workQere,
-        type = Ref.BOOK,
-        osis_id = book_code,
-        position = len(bookRefs),
-        title = OSIS_BOOK_NAMES[book_code]
+        variant_bits = variant_bit_qere | variant_bit_kethiv
+        #title = OSIS_BOOK_NAMES[book_code]
     )
     
     for line in StringIO.StringIO(zip.read("Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code])):
@@ -209,8 +207,9 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             token = Token(
                 data     = "¶",
                 type     = Token.PUNCTUATION,
-                work     = workQere,
-                position = precedingTokenCount + len(bookTokens)
+                work     = main_work,
+                position = precedingTokenCount + len(bookTokens),
+                variant_bits = variant_bit_qere | variant_bit_kethiv
             )
             token.save()
             bookTokens.append(token) #NOTE: identical for both Qere and Kethiv, so no variant group needed
@@ -220,8 +219,9 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             token = Token(
                 data     = " ",
                 type     = Token.WHITESPACE,
-                work     = workQere,
-                position = precedingTokenCount + len(bookTokens)
+                work     = variant_work,
+                position = precedingTokenCount + len(bookTokens),
+                variant_bits = variant_bit_qere | variant_bit_kethiv
             )
             token.save()
             bookTokens.append(token) #NOTE: identical for both Qere and Kethiv, so no variant group needed
@@ -238,7 +238,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
         token = Token(
             data     = word.group('qere'),
             type     = Token.WORD,
-            work     = workQere,
+            work     = variant_work,
             position = precedingTokenCount + len(bookTokens)
         )
         token.save()
@@ -251,7 +251,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             strongs = word.group('strongsNumber'),
             lemma = word.group('strongsLemma') + '; ' + word.group('anlexLemma'),
             language = Language('grc'),
-            work = workQere
+            work = variant_work
         )
         parsing.save()
         
@@ -260,7 +260,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             token = Token(
                 data     = word.group('qerePunc'),
                 type     = Token.PUNCTUATION,
-                work     = workQere,
+                work     = variant_work,
                 position = precedingTokenCount + len(bookTokens)
             )
             token.save()
@@ -282,7 +282,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             if(len(chapterRefs)):
                 chapterRefs[-1].end_token = bookTokens[-2]
             chapterRef = Ref(
-                work = workQere,
+                work = variant_work,
                 type = Ref.CHAPTER,
                 osis_id = ("%s.%s" % (book_code, word.group('chapter'))),
                 position = len(chapterRefs),
@@ -298,7 +298,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             if(len(verseRefs)):
                 verseRefs[-1].end_token = bookTokens[-2]
             verseRef = Ref(
-                work = workQere,
+                work = variant_work,
                 type = Ref.VERSE,
                 osis_id = ("%s.%s" % (chapterRef.osis_id, word.group('verse'))),
                 position = len(verseRefs),

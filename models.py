@@ -304,6 +304,7 @@ class TokenStructure(models.Model):
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
     osis_id = models.CharField(max_length=32, blank=True, db_index=True)
+    #title?
     
     #position?
     numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
