@@ -245,126 +245,6 @@ class Token(models.Model):
 
 
 
-class TokenMeta(models.Model):
-    "Metadata about each token, including language, parsing information, etc."
-
-    token = models.ForeignKey(Token, related_name="token_parsing_set")
-    work = models.ForeignKey(Work, null=True, blank=True, help_text="The work that defines this parsing; may be null since a user may provide it. Usually same as token.work")
-    language = models.ForeignKey(Language, null=True, blank=True, help_text="The language of the token. Not necessarily the same as token.work.language")
-    # TODO: Should be changed to a ForeignKey linking to strongs db when that comes online
-    strongs = models.CharField(max_length=255, help_text="The strongs number, prefixed by 'H' or 'G' specifying whether it is for the Hebrew or Greek, respectively. Multiple numbers separated by semicolon.")
-    # TODO: Lemma should probably expressed in TokenParsing_* objects,
-    #       since there can be a difference of opinion in some cases.
-    lemma = models.CharField(max_length=255, help_text="The lemma chosen for this token. Need not be supplied if strongs given. If multiple lemmas are provided, then separate with semicolon.")
-
-    # TODO: Get these TokenParsing models established
-    def get_parsing(self):
-        return TokenParsing.objects.get(tokenmeta = self)
-
-    parsing = property(get_parsing)
-
-
-
-class TokenParsing(models.Model):
-    "The base class for connecting language-specific parsing classes to TokenMeta objects."
-
-    # NOTE: This class should never be directly instantiated.
-    #       Only derived classes should be used.
-    tokenmeta = models.ForeignKey(TokenMeta)
-
-
-
-class TokenParsing_grc(TokenParsing):
-    "Represent Greek parsing information for a given Token."
-
-    # Choicse here
-    # From Smyth's grammar
-    PARTS_OF_SPEECH = (
-        ('Noun','Noun'),
-        ('Adjective','Adjective'),
-        ('Pronoun','Pronoun'),
-        ('Verb','Verb'),
-        ('Adverb','Adverb'),
-        ('Preposition','Preposition'),
-        ('Conjunction','Conjunction'),
-        ('Particle','Particle'),
-    )
-
-    NUMBERS = (
-        ('Singular','Singular'),
-        ('Dual','Dual'),
-        ('Plural','Plural'),
-    )
-
-    GENDERS = (
-        ('Masculine','Masculine'),
-        ('Feminine','Feminine'),
-        ('Neuter','Neuter'),
-    )
-
-    CASES = (
-        ('Nominative','Nominative'),
-        ('Genitive','Genitive'),
-        ('Dative','Dative'),
-        ('Accusative','Accusative'),
-        ('Vocative','Vocative'),
-    )
-
-    # TODO: Should 2nd aorist be expressed here, or have its own field?
-    TENSES = (
-        ('Present','Present'),
-        ('Imperfect','Imperfect'),
-        ('Future','Future'),
-        ('Aorist','Aorist'),
-        ('Perfect','Perfect'),
-        ('Pluperfect','Pluperfect'),
-        ('Future Perfect','Future Perfect'),
-    )
-
-    VOICES = (
-        ('Active','Active'),
-        ('Middle','Middle'),
-        ('Passive','Passive'),
-    )
-
-    MOODS = (
-        ('Indicative','Indicative'),
-        ('Subjunctive','Subjunctive'),
-        ('Optative','Optative'),
-        ('Imperative','Imperative'),
-        ('Infinitive','Infinitive'),
-        ('Participle','Participle'),
-    )
-
-    PERSONS = (
-        ('First','First'),
-        ('Second','Second'),
-        ('Third','Third'),
-    )
-
-    # Fields here
-    part = models.CharField(max_length=12, choices=PARTS_OF_SPEECH)
-    substantival_number = models.CharField(max_length=12, choices=NUMBERS, blank=True)
-    gender = models.CharField(max_length=12, choices=GENDERS, blank=True)
-    case = models.CharField(max_length=12, choices=CASES, blank=True)
-    tense = models.CharField(max_length=20, choices=TENSES, blank=True)
-    voice = models.CharField(max_length=12, choices=VOICES, blank=True)
-    mood = models.CharField(max_length=20, choices=MOODS, blank=True)
-    person = models.CharField(max_length=12, choices=PERSONS, blank=True)
-    verbal_number = models.CharField(max_length=12, choices=NUMBERS, blank=True)
-
-    # TODO: Model validation for parsings based on part of speech, mood, etc.
-
-
-
-class TokenParsing_hbo(TokenParsing):
-    "Represent Hebrew parsing information for a given Token."
-
-    # TODO: Create the rest of the parsing model
-    part = models.CharField(max_length=20)
-
-
-
 class TokenStructure(models.Model):
     "Represent supra-segmental structures in the text, various markup; really what this needs to do is represent every non-w element in OSIS."
     
@@ -496,6 +376,126 @@ class TokenStructureItem(models.Model):
     structure = models.ForeignKey(TokenStructure)
     token = models.ForeignKey(Token)
     is_marker = models.BooleanField(default=False, help_text="Whether the token is any such typographical feature which marks up the structure in the text, such as a quotation mark.")
+
+
+
+class TokenMeta(models.Model):
+    "Metadata about each token, including language, parsing information, etc."
+
+    token = models.ForeignKey(Token, related_name="token_parsing_set")
+    work = models.ForeignKey(Work, null=True, blank=True, help_text="The work that defines this parsing; may be null since a user may provide it. Usually same as token.work")
+    language = models.ForeignKey(Language, null=True, blank=True, help_text="The language of the token. Not necessarily the same as token.work.language")
+    # TODO: Should be changed to a ForeignKey linking to strongs db when that comes online
+    strongs = models.CharField(max_length=255, help_text="The strongs number, prefixed by 'H' or 'G' specifying whether it is for the Hebrew or Greek, respectively. Multiple numbers separated by semicolon.")
+    # TODO: Lemma should probably expressed in TokenParsing_* objects,
+    #       since there can be a difference of opinion in some cases.
+    lemma = models.CharField(max_length=255, help_text="The lemma chosen for this token. Need not be supplied if strongs given. If multiple lemmas are provided, then separate with semicolon.")
+
+    # TODO: Get these TokenParsing models established
+    def get_parsing(self):
+        return TokenParsing.objects.get(tokenmeta = self)
+
+    parsing = property(get_parsing)
+
+
+
+class TokenParsing(models.Model):
+    "The base class for connecting language-specific parsing classes to TokenMeta objects."
+
+    # NOTE: This class should never be directly instantiated.
+    #       Only derived classes should be used.
+    tokenmeta = models.ForeignKey(TokenMeta)
+
+
+
+class TokenParsing_grc(TokenParsing):
+    "Represent Greek parsing information for a given Token."
+
+    # Choicse here
+    # From Smyth's grammar
+    PARTS_OF_SPEECH = (
+        ('Noun','Noun'),
+        ('Adjective','Adjective'),
+        ('Pronoun','Pronoun'),
+        ('Verb','Verb'),
+        ('Adverb','Adverb'),
+        ('Preposition','Preposition'),
+        ('Conjunction','Conjunction'),
+        ('Particle','Particle'),
+    )
+
+    NUMBERS = (
+        ('Singular','Singular'),
+        ('Dual','Dual'),
+        ('Plural','Plural'),
+    )
+
+    GENDERS = (
+        ('Masculine','Masculine'),
+        ('Feminine','Feminine'),
+        ('Neuter','Neuter'),
+    )
+
+    CASES = (
+        ('Nominative','Nominative'),
+        ('Genitive','Genitive'),
+        ('Dative','Dative'),
+        ('Accusative','Accusative'),
+        ('Vocative','Vocative'),
+    )
+
+    # TODO: Should 2nd aorist be expressed here, or have its own field?
+    TENSES = (
+        ('Present','Present'),
+        ('Imperfect','Imperfect'),
+        ('Future','Future'),
+        ('Aorist','Aorist'),
+        ('Perfect','Perfect'),
+        ('Pluperfect','Pluperfect'),
+        ('Future Perfect','Future Perfect'),
+    )
+
+    VOICES = (
+        ('Active','Active'),
+        ('Middle','Middle'),
+        ('Passive','Passive'),
+    )
+
+    MOODS = (
+        ('Indicative','Indicative'),
+        ('Subjunctive','Subjunctive'),
+        ('Optative','Optative'),
+        ('Imperative','Imperative'),
+        ('Infinitive','Infinitive'),
+        ('Participle','Participle'),
+    )
+
+    PERSONS = (
+        ('First','First'),
+        ('Second','Second'),
+        ('Third','Third'),
+    )
+
+    # Fields here
+    part = models.CharField(max_length=12, choices=PARTS_OF_SPEECH)
+    substantival_number = models.CharField(max_length=12, choices=NUMBERS, blank=True)
+    gender = models.CharField(max_length=12, choices=GENDERS, blank=True)
+    case = models.CharField(max_length=12, choices=CASES, blank=True)
+    tense = models.CharField(max_length=20, choices=TENSES, blank=True)
+    voice = models.CharField(max_length=12, choices=VOICES, blank=True)
+    mood = models.CharField(max_length=20, choices=MOODS, blank=True)
+    person = models.CharField(max_length=12, choices=PERSONS, blank=True)
+    verbal_number = models.CharField(max_length=12, choices=NUMBERS, blank=True)
+
+    # TODO: Model validation for parsings based on part of speech, mood, etc.
+
+
+
+class TokenParsing_hbo(TokenParsing):
+    "Represent Hebrew parsing information for a given Token."
+
+    # TODO: Create the rest of the parsing model
+    part = models.CharField(max_length=20)
 
 
 
