@@ -7,7 +7,7 @@ from django.db.models import Q
 OSIS_BIBLE_BOOK_CODES = (
     "Gen", "Exod", "Lev", "Num", "Deut", "Josh", "Judg", "Ruth", "1Sam", "2Sam", "1Kgs", "2Kgs", "1Chr", "2Chr", "Ezra", "Neh", "Esth", "Job", "Ps", "Prov", "Eccl", "Song", "Isa", "Jer", "Lam", "Ezek", "Dan", "Hos", "Joel", "Amos", "Obad", "Jonah", "Mic", "Nah", "Hab", "Zeph", "Hag", "Zech", "Mal",
     "Matt", "Mark", "Luke", "John", "Acts", "Rom", "1Cor", "2Cor", "Gal", "Eph", "Phil", "Col", "1Thess", "2Thess", "1Tim", "2Tim", "Titus", "Phlm", "Heb", "Jas", "1Pet", "2Pet", "1John", "2John", "3John", "Jude", "Rev",
-    "Bar", "AddDan", "PrAzar", "Bel", "SgThree", "Sus", "1Esd", "2Esd", "AddEsth", "EpJer", "Jdt", "1Macc", "2Macc", "3Macc", "4Macc", "PrMan", "Sir", "Tob", "Wis", "Wisdom of Solomon"
+    "Bar", "AddDan", "PrAzar", "Bel", "SgThree", "Sus", "1Esd", "2Esd", "AddEsth", "EpJer", "Jdt", "1Macc", "2Macc", "3Macc", "4Macc", "PrMan", "Sir", "Tob", "Wis"
 )
 
 OSIS_BOOK_NAMES = {
@@ -288,9 +288,11 @@ class TokenStructure(models.Model):
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
     osis_id = models.CharField(max_length=32, blank=True, db_index=True)
-    #title?
     
-    #position?
+    # title?
+    # position?
+    # parent?
+    
     numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
     
@@ -304,7 +306,6 @@ class TokenStructure(models.Model):
     end_marker_token   = models.ForeignKey(Token, null=True, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
     
     is_structure_marker = None #This boolean is set when querying via get_tokens
-    
     
     def get_tokens(self, include_markers = True, variant_bits = None):
         if variant_bits is None:

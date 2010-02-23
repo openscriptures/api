@@ -159,17 +159,22 @@ lineParser = re.compile(ur"""^
     re.VERBOSE
 )
 
-works = [work1, work2]
-bookRefs = []
-bookTokens = [[], []]
-openBrackets = [0,0]
-precedingTokenCount = 0
+#works = [work1, work2]
+#bookRefs = []
+#bookTokens = [[], []]
+#openBrackets = [0,0]
+#precedingTokenCount = 0
 
 zip = zipfile.ZipFile(os.path.basename(source_url))
 for book_code in OSIS_BIBLE_BOOK_CODES:
     print OSIS_BOOK_NAMES[book_code]
     
-    precedingTokenCount = precedingTokenCount + len(max(bookTokens[0], bookTokens[1]))
+    
+    
+    
+    continue
+    
+    #precedingTokenCount = precedingTokenCount + len(max(bookTokens[0], bookTokens[1]))
     bookTokens = []
     chapterRefs = []
     verseRefs = []
