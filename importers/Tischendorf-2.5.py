@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-workQereID = 1
-workKethivID = 2
+work1_id = 1 # Tischendorf Kethiv
+work1_variant_bit = 0b00000001
+work2_id = 2 # Tischendorf Qere
+work2_variant_bit = 0b00000010
 
 import sys, os, re, unicodedata, urllib, zipfile, StringIO
 from datetime import date
@@ -14,60 +16,48 @@ from openscriptures.api.models import *
 from openscriptures.api.importers import import_helpers
 
 # Abort if MS has already been added (or --force not supplied)
-import_helpers.abort_if_imported(workQereID)
+import_helpers.abort_if_imported(work1_id)
 
 # Download the source file
 source_url = "http://files.morphgnt.org/tischendorf/Tischendorf-2.5.zip"
 import_helpers.download_resource(source_url)
 
+# Delete existing works
+import_helpers.delete_work(work2_id)
+import_helpers.delete_work(work1_id)
 
 # Work for Kethiv edition (base text for qere)
-import_helpers.delete_work(workKethivID)
-variant_bit_kethiv = 0b00000001
-main_work = Work(
-    id           = workKethivID,
+work1 = Work(
+    id           = work1_id,
     title        = "Tischendorf 8th ed. v2.5 (Kethiv)",
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
     publish_date = date(2009, 1, 1),
-    variant_bit  = variant_bit_kethiv,
-    #originality  = 'manuscript-edition',
-    #creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
+    variant_bit  = work1_variant_bit,
+    creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
     source_url   = source_url,
     license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
 )
-main_work.save()
+work1.save()
 
-#varGroupKethiv = VariantGroup(
-#    work = main_work,
-#    primacy = 0
-#)
-#varGroupKethiv.save()
 
 # Work for Qere edition (Kethiv is base text)
-import_helpers.delete_work(workQereID)
-variant_bit_qere = 0b00000010
-variant_work = Work(
-    id           = workQereID,
+import_helpers.delete_work(work2_id)
+work2 = Work(
+    id           = work1_id,
     title        = "Tischendorf 8th ed. v2.5 (Qere)",
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
     publish_date = date(2009, 1, 1),
-    variant_bit  = variant_bit_qere,
-    #originality  = 'manuscript-edition',
-    #creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
+    variant_bit  = work2_variant_bit,
+    variants_for_work = work1,
+    creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
     source_url   = source_url,
     license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
 )
-variant_work.save()
-
-#varGroupQere = VariantGroup(
-#    work = variant_work,
-#    primacy = 0
-#)
-#varGroupQere.save()
+work2.save()
 
 
 
@@ -169,7 +159,7 @@ lineParser = re.compile(ur"""^
     re.VERBOSE
 )
 
-works = [main_work, variant_work]
+works = [work1, work2]
 bookRefs = []
 bookTokens = [[], []]
 openBrackets = [0,0]
@@ -186,11 +176,11 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     
     # Set up the book ref
     bookRef = TokenStructure(
-        work = main_work,
+        work = work1,
         type = TokenStructure.BOOK,
         osis_id = book_code,
         position = len(bookRefs),
-        variant_bits = variant_bit_qere | variant_bit_kethiv
+        variant_bits = work2_variant_bit | work1_variant_bit
         #title = OSIS_BOOK_NAMES[book_code]
     )
     
@@ -207,9 +197,9 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             token = Token(
                 data     = "¶",
                 type     = Token.PUNCTUATION,
-                work     = main_work,
+                work     = work1,
                 position = precedingTokenCount + len(bookTokens),
-                variant_bits = variant_bit_qere | variant_bit_kethiv
+                variant_bits = work2_variant_bit | work1_variant_bit
             )
             token.save()
             bookTokens.append(token) #NOTE: identical for both Qere and Kethiv, so no variant group needed
@@ -219,9 +209,9 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             token = Token(
                 data     = " ",
                 type     = Token.WHITESPACE,
-                work     = variant_work,
+                work     = work2,
                 position = precedingTokenCount + len(bookTokens),
-                variant_bits = variant_bit_qere | variant_bit_kethiv
+                variant_bits = work2_variant_bit | work1_variant_bit
             )
             token.save()
             bookTokens.append(token) #NOTE: identical for both Qere and Kethiv, so no variant group needed
@@ -238,7 +228,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
         token = Token(
             data     = word.group('qere'),
             type     = Token.WORD,
-            work     = variant_work,
+            work     = work2,
             position = precedingTokenCount + len(bookTokens)
         )
         token.save()
@@ -251,7 +241,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             strongs = word.group('strongsNumber'),
             lemma = word.group('strongsLemma') + '; ' + word.group('anlexLemma'),
             language = Language('grc'),
-            work = variant_work
+            work = work2
         )
         parsing.save()
         
@@ -260,7 +250,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             token = Token(
                 data     = word.group('qerePunc'),
                 type     = Token.PUNCTUATION,
-                work     = variant_work,
+                work     = work2,
                 position = precedingTokenCount + len(bookTokens)
             )
             token.save()
@@ -282,7 +272,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             if(len(chapterRefs)):
                 chapterRefs[-1].end_token = bookTokens[-2]
             chapterRef = Ref(
-                work = variant_work,
+                work = work2,
                 type = Ref.CHAPTER,
                 osis_id = ("%s.%s" % (book_code, word.group('chapter'))),
                 position = len(chapterRefs),
@@ -298,7 +288,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             if(len(verseRefs)):
                 verseRefs[-1].end_token = bookTokens[-2]
             verseRef = Ref(
-                work = variant_work,
+                work = work2,
                 type = Ref.VERSE,
                 osis_id = ("%s.%s" % (chapterRef.osis_id, word.group('verse'))),
                 position = len(verseRefs),
