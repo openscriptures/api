@@ -409,7 +409,7 @@ class TokenMeta(models.Model):
 class TokenParsing_grc(models.Model):
     "Represent Greek parsing information for a given Token."
 
-    tokenmeta = models.ForegnKey(TokenMeta)
+    tokenmeta = models.ForeignKey(TokenMeta)
     # Choicse here
     # From Smyth's grammar
     PARTS_OF_SPEECH = (
