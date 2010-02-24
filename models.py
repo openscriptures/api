@@ -393,25 +393,23 @@ class TokenMeta(models.Model):
     lemma = models.CharField(max_length=255, help_text="The lemma chosen for this token. Need not be supplied if strongs given. If multiple lemmas are provided, then separate with semicolon.")
 
     # TODO: Get these TokenParsing models established
+ # TODO: Get these TokenParsing models established
     def get_parsing(self):
-        return TokenParsing.objects.get(tokenmeta = self)
+        if self.language.code == "grc":
+            return TokenParsing_grc.objects.get(tokenmeta = self)
+        elif self.language.code == "hbo":
+            return TokenParsing_hbo.objects.get(tokenmata = self)
+        else:
+            raise Error("Unknown parsing language.")
 
     parsing = property(get_parsing)
 
 
 
-class TokenParsing(models.Model):
-    "The base class for connecting language-specific parsing classes to TokenMeta objects."
-
-    # NOTE: This class should never be directly instantiated.
-    #       Only derived classes should be used.
-    tokenmeta = models.ForeignKey(TokenMeta)
-
-
-
-class TokenParsing_grc(TokenParsing):
+class TokenParsing_grc(models.Model):
     "Represent Greek parsing information for a given Token."
 
+    tokenmeta = models.ForegnKey(TokenMeta)
     # Choicse here
     # From Smyth's grammar
     PARTS_OF_SPEECH = (
@@ -492,11 +490,11 @@ class TokenParsing_grc(TokenParsing):
 
 
 
-class TokenParsing_hbo(TokenParsing):
+class TokenParsing_hbo(models.Model):
     "Represent Hebrew parsing information for a given Token."
 
+    tokenmeta = models.ForeignKey(TokenMeta)
     # TODO: Create the rest of the parsing model
-    part = models.CharField(max_length=20)
 
 
 
