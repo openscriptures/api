@@ -6,7 +6,7 @@ work1_variant_bit = 0b00000001
 work2_id = 2 # Tischendorf Qere
 work2_variant_bit = 0b00000010
 
-import sys, os, re, unicodedata, urllib, zipfile, StringIO
+import sys, string, os, re, unicodedata, urllib, zipfile, StringIO
 from datetime import date
 from django.core.management import setup_environ
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../')) #There's probably a better way of doing this
@@ -165,9 +165,108 @@ lineParser = re.compile(ur"""^
 #openBrackets = [0,0]
 #precedingTokenCount = 0
 
+structCount = 0
+tokenCount = 0
+
 zip = zipfile.ZipFile(os.path.basename(source_url))
 for book_code in OSIS_BIBLE_BOOK_CODES:
+    #TEMP:
+    if book_code != "Eph" and book_code != "2Cor":
+        continue
+    
+    if not bookFilenameLookup.has_key(book_code):
+        continue
+    
     print OSIS_BOOK_NAMES[book_code]
+    
+    # Set up the book ref
+    bookRef = TokenStructure(
+        work = work1,
+        type = TokenStructure.BOOK,
+        osis_id = book_code,
+        position = structCount,
+        variant_bits = work2_variant_bit | work1_variant_bit
+        #title = OSIS_BOOK_NAMES[book_code]
+    )
+    structCount += 1
+    
+    structs = {}
+    structs[TokenStructure.BOOK] = bookRef
+    
+    tokens = {}
+    tokens[TokenStructure.BOOK] = []
+    tokens[TokenStructure.CHAPTER] = []
+    tokens[TokenStructure.VERSE] = []
+    tokens[TokenStructure.PARAGRAPH] = []
+    tokens[TokenStructure.UNCERTAIN1] = []
+    
+    for line in StringIO.StringIO(zip.read("Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code])):
+        line = unicodedata.normalize("NFC", unicode(line, 'utf-8'))
+        word = lineParser.match(line)
+        if word is None:
+            print " -- Warning: Unable to parse line: " + line 
+            continue
+        
+        token = None
+        
+        if word.group('break') == 'P':
+            # Note: This token need not always be created!
+            token = Token(
+                data     = "\n\n", #¶
+                type     = Token.PUNCTUATION,
+                work     = work1,
+                position = tokenCount,
+                variant_bits = work2_variant_bit | work1_variant_bit
+            )
+            tokenCount += 1
+            token.save()
+            
+            # Set paragraph end marker
+            if structs.has_key(TokenStructure.PARAGRAPH):
+                structs[TokenStructure.PARAGRAPH].end_marker_token = token
+                structs[TokenStructure.PARAGRAPH].save()
+            
+            # Create new paragraph structure
+            structs[TokenStructure.PARAGRAPH] = TokenStructure(
+                work = work1,
+                type = TokenStructure.PARAGRAPH,
+                osis_id = book_code,
+                position = structCount,
+                variant_bits = work2_variant_bit | work1_variant_bit,
+                start_marker_token = token
+            )
+            structs[TokenStructure.PARAGRAPH].save()
+            structCount += 1
+            
+            
+            #del tokens[TokenStructure.BOOK]
+            #tokens.clear()
+        
+        if token is not None:
+            tokens[TokenStructure.BOOK].append(token)
+        
+        
+        
+        
+        #if string.find(line, '[') != -1 or string.find(line, ']') != -1 or word.group('kethiv') != word.group('qere'):
+        #    print line
+        continue
+        
+        
+        #if word.group('kethiv') != word.group('qere'):
+        #    print line #print word.group('kethiv') + " -- " + word.group('qere')
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
@@ -175,19 +274,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     continue
     
     #precedingTokenCount = precedingTokenCount + len(max(bookTokens[0], bookTokens[1]))
-    bookTokens = []
-    chapterRefs = []
-    verseRefs = []
-    
-    # Set up the book ref
-    bookRef = TokenStructure(
-        work = work1,
-        type = TokenStructure.BOOK,
-        osis_id = book_code,
-        position = len(bookRefs),
-        variant_bits = work2_variant_bit | work1_variant_bit
-        #title = OSIS_BOOK_NAMES[book_code]
-    )
+
     
     for line in StringIO.StringIO(zip.read("Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code])):
         line = unicodedata.normalize("NFC", unicode(line, 'utf-8'))

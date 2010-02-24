@@ -285,6 +285,7 @@ class TokenStructure(models.Model):
         (UNCERTAIN1, "uncertain-1"), #single square brackets around tokens
         (UNCERTAIN2, "uncertain-2"), #double square brackets around tokens
         (PAGE, "page"),
+        #...
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
     osis_id = models.CharField(max_length=32, blank=True, db_index=True)
@@ -292,6 +293,7 @@ class TokenStructure(models.Model):
     # title?
     # position?
     # parent?
+    position = models.PositiveIntegerField(help_text="The order where this appears in the work.")
     
     numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
@@ -393,7 +395,6 @@ class TokenMeta(models.Model):
     lemma = models.CharField(max_length=255, help_text="The lemma chosen for this token. Need not be supplied if strongs given. If multiple lemmas are provided, then separate with semicolon.")
 
     # TODO: Get these TokenParsing models established
- # TODO: Get these TokenParsing models established
     def get_parsing(self):
         if self.language.code == "grc":
             return TokenParsing_grc.objects.get(tokenmeta = self)
