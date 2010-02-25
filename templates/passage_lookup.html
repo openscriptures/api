@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %} Passage Lookup for {{osis_id}} {% endblock %}
+
+
+
+{% block content %}
+    <h2>Passage Lookup {{ osis_id }}</h2>
+	
+	<p>Token Positions: {{ structure.start_token.position }}-{{ structure.end_token.position }}</p>
+	
+    <ul>
+        {% for token in tokens %}
+            <li>{{ token.data}}</li>
+        {% endfor %}
+    </ul>
+	
+	
+
+{% endblock %}
