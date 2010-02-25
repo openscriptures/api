@@ -180,7 +180,8 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     print OSIS_BOOK_NAMES[book_code]
     
     # Set up the book ref
-    bookRef = TokenStructure(
+    structs = {}
+    structs[TokenStructure.BOOK] = TokenStructure(
         work = work1,
         type = TokenStructure.BOOK,
         osis_id = book_code,
@@ -190,9 +191,6 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     )
     structCount += 1
     
-    structs = {}
-    structs[TokenStructure.BOOK] = bookRef
-    
     tokens = {}
     tokens[TokenStructure.BOOK] = []
     tokens[TokenStructure.CHAPTER] = []
@@ -201,30 +199,202 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     tokens[TokenStructure.UNCERTAIN1] = []
     
     for line in StringIO.StringIO(zip.read("Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code])):
-        line = unicodedata.normalize("NFC", unicode(line, 'utf-8'))
-        word = lineParser.match(line)
-        if word is None:
+        lineMatches = lineParser.match(unicodedata.normalize("NFC", unicode(line, 'utf-8')))
+        if lineMatches is None:
             print " -- Warning: Unable to parse line: " + line 
             continue
         
-        token = None
+        assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
+        assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
+        assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
         
-        if word.group('break') == 'P':
-            # Note: This token need not always be created!
-            token = Token(
-                data     = "\n\n", #¶
+        #if string.find(line, '[') != -1 or string.find(line, ']') != -1 or lineMatches.group('kethiv') != lineMatches.group('qere'):
+        #    print line
+        #continue
+        
+        lineTokens = []
+        
+        # Open UNCERTAIN1 bracket
+        assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
+        if lineMatches.group('kethivStartBracket'):
+            assert(not structs.has_key(TokenStructure.UNCERTAIN1))
+            
+            # Make start_marker_token for UNCERTAIN1
+            open_bracket_token = Token(
+                data     = '[',
+                type     = Token.PUNCTUATION,
+                work     = work1,
+                position = tokenCount
+            )
+            tokenCount += 1
+            open_bracket_token.save()
+            lineTokens.append(open_bracket_token)
+            
+            # Create the UNCERTAIN1 structure
+            structs[TokenStructure.UNCERTAIN1] = TokenStructure(
+                work = work1, # remember work2 is subsumed by work1
+                type = TokenStructure.UNCERTAIN1,
+                position = structCount,
+                variant_bits = work2_variant_bit | work1_variant_bit,
+                start_marker_token = open_bracket_token
+            )
+            structCount += 1
+        
+        # Kethiv token
+        token_work1 = Token(
+            data     = lineMatches.group('kethiv'),
+            type     = Token.WORD,
+            work     = work1,
+            position = tokenCount,
+            variant_bits = work1_variant_bit | work2_variant_bit
+        )
+        if lineMatches.group('kethiv') == lineMatches.group('qere'):
+            token_work1.variant_bits = work1_variant_bit | work2_variant_bit
+        else:
+            token_work1.variant_bits = work1_variant_bit
+        tokenCount += 1
+        token_work1.save()
+        lineTokens.append(token_work1)
+        
+        # Make this token the start of the UNCERTAIN structure
+        if lineMatches.group('kethivStartBracket'):
+            structs[TokenStructure.UNCERTAIN1].start_token = token_work1
+        
+        # Qere token
+        if lineMatches.group('kethiv') != lineMatches.group('qere'):
+            token_work2 = Token(
+                data     = lineMatches.group('qere'),
+                type     = Token.WORD,
+                work     = work1, # yes, this should be work1
+                position = tokenCount,   #token_work1.position #should this be the same!?
+                variant_bits = work2_variant_bit
+                # What will happen with range?? end_token = work1, but then work2?
+                # Having two tokens at the same position could mean that they are
+                #  co-variants at that one spot. But then we can't reliably get
+                #  tokens by a range? Also, the position can indicate transposition?
+            )
+            tokenCount += 1
+            token_work2.save()
+            lineTokens.append(token_work2)
+        
+        # Punctuation token
+        assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
+        if lineMatches.group('kethivPunc'):
+            punc_token = Token(
+                data     = lineMatches.group('kethivPunc'),
                 type     = Token.PUNCTUATION,
                 work     = work1,
                 position = tokenCount,
-                variant_bits = work2_variant_bit | work1_variant_bit
+                variant_bits = work1_variant_bit | work2_variant_bit
             )
             tokenCount += 1
-            token.save()
+            punc_token.save()
+            lineTokens.append(punc_token)
             
-            # Set paragraph end marker
-            if structs.has_key(TokenStructure.PARAGRAPH):
-                structs[TokenStructure.PARAGRAPH].end_marker_token = token
-                structs[TokenStructure.PARAGRAPH].save()
+            pass
+        
+        # Close UNCERTAIN1 bracket
+        assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
+        if lineMatches.group('kethivEndBracket'):
+            assert(structs.has_key(TokenStructure.UNCERTAIN1))
+            
+            structs[TokenStructure.UNCERTAIN1].end_token = lineTokens[-1]
+            
+            # Make end_marker_token for UNCERTAIN1
+            close_bracket_token = Token(
+                data     = ']',
+                type     = Token.PUNCTUATION,
+                work     = work1,
+                position = tokenCount,
+                variant_bits = work1_variant_bit | work2_variant_bit
+            )
+            tokenCount += 1
+            lineTokens.append(open_bracket_token)
+            
+            # Close the UNCERTAIN1 structure
+            structs[TokenStructure.UNCERTAIN1].end_marker_token = close_bracket_token
+            structs[TokenStructure.UNCERTAIN1].save()
+            del structs[TokenStructure.UNCERTAIN1]
+        
+        
+        #TODO: Here, create a token for startBracket, kethivWord, qereWord, punc, and endBracket
+        #      and iterate over them. A structure will need to be created for the brackets
+        
+        for token in lineTokens:
+            
+            pass
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        continue
+        
+        
+        
+        # CHAPTER (TODO: Is this even needed?)
+        if line.group('break') == 'C':
+            # Close the previously opened chapter
+            if structs.has_key(TokenStructure.CHAPTER) and len(tokens[TokenStructure.BOOK]) != 0:
+                structs[TokenStructure.CHAPTER].end_token = tokens[TokenStructure.BOOK][-1]
+                structs[TokenStructure.CHAPTER].save()
+            
+            # Reset chapter tokens
+            tokens[TokenStructure.CHAPTER] = []
+            
+            # Create new chapter
+            structs[TokenStructure.CHAPTER] = TokenStructure(
+                work = work1, # remember work2 is subsumed by work1
+                type = TokenStructure.CHAPTER,
+                osis_id = book_code + '.' + line.group('chapter'),
+                position = structCount,
+                variant_bits = work2_variant_bit | work1_variant_bit,
+                #start_token = ???
+            )
+            structCount += 1
+            
+        
+        
+        # Token first?
+        #if word.group('break') == 'P' or len(tokens[TokenStructure.BOOK]) == 0:
+        
+        continue
+        
+        
+        
+        if word.group('break') == 'P' or len(tokens[TokenStructure.BOOK]) == 0:
+            print line
+            
+            # Note: This token need not always be created!
+            if word.group('break') == 'P':
+                token = Token(
+                    data     = "\n\n", #¶
+                    type     = Token.PUNCTUATION,
+                    work     = work1,
+                    position = tokenCount,
+                    variant_bits = work2_variant_bit | work1_variant_bit
+                )
+                tokenCount += 1
+                token.save()
+            
+                # Set paragraph end marker
+                if structs.has_key(TokenStructure.PARAGRAPH):
+                    structs[TokenStructure.PARAGRAPH].end_marker_token = token
+                    structs[TokenStructure.PARAGRAPH].save()
+            
             
             # Create new paragraph structure
             structs[TokenStructure.PARAGRAPH] = TokenStructure(
