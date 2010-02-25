@@ -227,6 +227,8 @@ class Token(models.Model):
     work = models.ForeignKey(Work)
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
+        
+    is_structure_marker = None #This boolean is set when querying via TokenStructure.get_tokens
     
     #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
     src_href = models.CharField(max_length=255, blank=True, help_text="XPointer to where this token came from; base URL is work.src_url")
@@ -307,8 +309,6 @@ class TokenStructure(models.Model):
     start_marker_token = models.ForeignKey(Token, null=True, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
     end_marker_token   = models.ForeignKey(Token, null=True, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
     
-    is_structure_marker = None #This boolean is set when querying via get_tokens
-    
     def get_tokens(self, include_markers = True, variant_bits = None):
         if variant_bits is None:
             variant_bits = self.variant_bits
@@ -368,6 +368,13 @@ class TokenStructure(models.Model):
             return tokens
     
     tokens = property(get_tokens)
+    
+    class Meta:
+        ordering = ['position'] #, 'variant_number'
+        #Note: This unique constraint is removed due to the fact that in MySQL, the default utf8 collation means "Και" and "καὶ" are equivalent
+        #unique_together = (
+        #    ('data', 'position', 'work'),
+        #)
 
 
 # This is an alternative to the above and it allows non-consecutive tokens to be

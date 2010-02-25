@@ -11,10 +11,12 @@ def get_osis(request, osis_id):
         raise Http404
     
     tokens = structure.get_tokens()
+    structures = TokenStructure.objects.all()
     
     return render_to_response('passage_lookup.html', {
         'osis_id': osis_id,
         'structure': structure,
-        'tokens': tokens
+        'tokens': tokens,
+        'structures': structures
     })
     

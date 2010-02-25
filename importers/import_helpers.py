@@ -14,6 +14,7 @@ def normalize_token(data):
     data = data.replace(u"’", '')
     return data
 
+
 def download_resource(source_url):
     "Download the file in the provided URL if it does not already exist in the working directory."
     if(not os.path.exists(os.path.basename(source_url))):
@@ -27,6 +28,7 @@ def abort_if_imported(workID):
     if(len(Work.objects.filter(id=workID)) and not (len(sys.argv)>1 and sys.argv[1] == '--force')):
         print " (already imported; pass --force option to delete existing work and reimport)"
         exit()
+
 
 def delete_work(workID):
     "Deletes a work without a greedy cascade"
@@ -47,4 +49,12 @@ def delete_work(workID):
     # Delete work
     #Work.objects.filter(id=workID).update(unified_token=None)
     Work.objects.filter(id=workID).delete()
-    return true
+    return True
+
+
+def get_book_code_args():
+    book_codes = []
+    for arg in sys.argv:
+        if arg in OSIS_BIBLE_BOOK_CODES:
+            book_codes.append(arg)
+    return book_codes

@@ -61,7 +61,6 @@ work2.save()
 
 
 
-
 bookFilenameLookup = {
 	'Matt'   : "MT.txt"   ,
 	'Mark'   : "MR.txt"   ,
@@ -142,13 +141,13 @@ lineParser = re.compile(ur"""^
         (?P<break>\S)\s+            # Pagraph break ("P") / Chapter break ("C") / No break (".")
         (?P<kethivStartBracket>\[)?
         (?P<kethiv>\S+?)            # The text as it is written in the printed Tischendorf (Kethiv)
-        (?P<kethivPunc>[%s])?\s+    # Kethiv punctuation
-        (?P<kethivEndBracket>\])?
+        (?P<kethivPunc>[%s])?       # Kethiv punctuation
+        (?P<kethivEndBracket>\])?\s+
     (?P<rawParsing>
         (?P<qereStartBracket>\[)?
         (?P<qere>\S+?)              # The text as the editor thinks it should have been (Qere)
-        (?P<qerePunc>  [%s])?\s+    # Qere punctuation
-        (?P<qereEndBracket>\])?
+        (?P<qerePunc>  [%s])?       # Qere punctuation
+        (?P<qereEndBracket>\])?\s+
         (?P<morph>\S+)\s+           # The morphological tag (following the Qere)
         (?P<strongsNumber>\d+)\s+   # The Strong's number (following the Qere)
         (?P<strongsLemma>.+?)       # Lemma which corresponds to The NEW Strong's Complete Dictionary of Bible Words. (There may be several words in each lemma.)
@@ -160,16 +159,17 @@ lineParser = re.compile(ur"""^
 )
 
 
+
+# Get the subset of OSIS book codes provided on command line
+book_codes = import_helpers.get_book_code_args()
+if len(book_codes) == 0:
+    book_codes = OSIS_BIBLE_BOOK_CODES
+
+# Read each of the Book files
 structCount = 0
 tokenCount = 0
-
 zip = zipfile.ZipFile(os.path.basename(source_url))
-for book_code in OSIS_BIBLE_BOOK_CODES:
-    #TEMP:
-    if book_code != "Jude":
-    #if book_code != "Eph" and book_code != "2Cor":
-        continue
-    
+for book_code in book_codes:
     if not bookFilenameLookup.has_key(book_code):
         continue
     
@@ -182,6 +182,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
         type = TokenStructure.BOOK,
         osis_id = book_code,
         position = structCount,
+        numerical_start = book_codes.index(book_code),
         variant_bits = work2_variant_bit | work1_variant_bit
         #title = OSIS_BOOK_NAMES[book_code]
     )
@@ -189,41 +190,22 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     
     bookTokens = []
     
-    #structTokens = {}
-    #structTokens[TokenStructure.BOOK] = []
-    #structTokens[TokenStructure.CHAPTER] = []
-    #structTokens[TokenStructure.VERSE] = []
-    #structTokens[TokenStructure.PARAGRAPH] = []
-    #structTokens[TokenStructure.UNCERTAIN1] = [] #not needed
-    
     current_chapter = None
     current_verse = None
     
     def closeStructure(type):
         if structs.has_key(type):
-            #print "END CHAPTER"
             assert(structs[type].start_token is not None)
-            structs[type].end_token = bookTokens[-1] #set end of paragraph to previous token
+            if structs[type].end_token is None:
+                structs[type].end_token = bookTokens[-1]
             structs[type].save()
             del structs[type]
-    
-    #def closeVerse():
-    #    if structs.has_key(TokenStructure.VERSE):
-    #        print "END VERSE"
-    #        structs[TokenStructure.VERSE].end_token = bookTokens[-1] #set end of paragraph to previous token
-    #        structs[TokenStructure.VERSE].save()
-    #        del structs[TokenStructure.VERSE]
     
     for line in StringIO.StringIO(zip.read("Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code])):
         lineMatches = lineParser.match(unicodedata.normalize("NFC", unicode(line, 'utf-8')))
         if lineMatches is None:
             print " -- Warning: Unable to parse line: " + line 
             continue
-        
-        
-        # Now whitespace??? If not beginning of book, or paragraph, then yes!
-        # Inter-word whitespace after last token in a work shouldn't be part of the verse
-        
         
         # New Chapter start
         if lineMatches.group('chapter') != current_chapter:
@@ -232,14 +214,15 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             
             # Start the next chapter
             current_chapter = lineMatches.group('chapter')
-            print "START CHAPTER " + current_chapter
             structs[TokenStructure.CHAPTER] = TokenStructure(
                 work = work1, # remember work2 is subsumed by work1
                 type = TokenStructure.CHAPTER,
                 position = structCount,
                 osis_id = book_code + "." + current_chapter,
+                numerical_start = current_chapter,
                 variant_bits = work2_variant_bit | work1_variant_bit
             )
+            print structs[TokenStructure.CHAPTER].osis_id
             structCount += 1
         
         # New Verse start
@@ -249,21 +232,21 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             
             # Start the next verse
             current_verse = lineMatches.group('verse')
-            print "START VERSE " + current_verse
             structs[TokenStructure.VERSE] = TokenStructure(
                 work = work1, # remember work2 is subsumed by work1
                 type = TokenStructure.VERSE,
                 position = structCount,
                 osis_id = book_code + "." + current_chapter + "." + current_verse,
+                numerical_start = current_verse,
                 variant_bits = work2_variant_bit | work1_variant_bit
             )
+            print structs[TokenStructure.VERSE].osis_id
             structCount += 1
         
         
         # End paragraph
         paragraph_marker = None
         if lineMatches.group('break') == 'P' and structs.has_key(TokenStructure.PARAGRAPH):
-            print "END PARAGRAPH"
             assert(len(bookTokens) > 0)
             
             paragraph_marker = Token(
@@ -275,14 +258,14 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             )
             tokenCount += 1
             paragraph_marker.save()
-            bookTokens.append(paragraph_marker)
             structs[TokenStructure.PARAGRAPH].end_marker_token = paragraph_marker
             closeStructure(TokenStructure.PARAGRAPH)
+            bookTokens.append(paragraph_marker)
         
         # Start paragraph
         if len(bookTokens) == 0 or lineMatches.group('break') == 'P':
             assert(not structs.has_key(TokenStructure.PARAGRAPH))
-            print "START PARAGRAPH"
+            print "¶"
             structs[TokenStructure.PARAGRAPH] = TokenStructure(
                 work = work1, # remember work2 is subsumed by work1
                 type = TokenStructure.PARAGRAPH,
@@ -292,13 +275,12 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             if paragraph_marker:
                 structs[TokenStructure.PARAGRAPH].start_marker_token = paragraph_marker
             structCount += 1
-            # to be saved below
         
         # Insert whitespace
         if not paragraph_marker and len(bookTokens) > 0:
             ws_token = Token(
-                data     = " ", #¶
-                type     = Token.WHITESPACE, #i.e. PARAGRAPH
+                data     = " ",
+                type     = Token.WHITESPACE,
                 work     = work1,
                 position = tokenCount,
                 variant_bits = work2_variant_bit | work1_variant_bit
@@ -322,6 +304,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
         assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
         if lineMatches.group('kethivStartBracket'):
             assert(not structs.has_key(TokenStructure.UNCERTAIN1))
+            print "### OPEN BRACKET"
             
             # Make start_marker_token for UNCERTAIN1
             open_bracket_token = Token(
@@ -366,6 +349,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
         
         # Qere token
         if lineMatches.group('kethiv') != lineMatches.group('qere'):
+            print lineMatches.group('kethiv') + " != " + lineMatches.group('qere')
             token_work2 = Token(
                 data     = lineMatches.group('qere'),
                 type     = Token.WORD,
@@ -399,6 +383,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
         assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
         if lineMatches.group('kethivEndBracket'):
             assert(structs.has_key(TokenStructure.UNCERTAIN1))
+            print "### CLOSE BRACKET"
             
             structs[TokenStructure.UNCERTAIN1].end_token = lineTokens[-1]
             
@@ -411,15 +396,13 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
                 variant_bits = work1_variant_bit | work2_variant_bit
             )
             tokenCount += 1
-            lineTokens.append(open_bracket_token)
+            close_bracket_token.save()
             
             # Close the UNCERTAIN1 structure
             structs[TokenStructure.UNCERTAIN1].end_marker_token = close_bracket_token
             closeStructure(TokenStructure.UNCERTAIN1)
+            lineTokens.append(open_bracket_token)
         
-        
-        #TODO: Here, create a token for startBracket, kethivWord, qereWord, punc, and endBracket
-        #      and iterate over them. A structure will need to be created for the brackets
         
         # Set the start_token for each structure that isn't set
         for struct in structs.values():
@@ -431,9 +414,7 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     
     for structType in structs.keys():
         closeStructure(structType)
-    
-    print "END BOOK"
 
-print "structCount == " + str(structCount)
-print "tokenCount == " + str(tokenCount)
+print "structCount: " + str(structCount)
+print "tokenCount:  " + str(tokenCount)
     

@@ -2,19 +2,83 @@
 
 {% block title %} Passage Lookup for {{osis_id}} {% endblock %}
 
+{% block style %}
+<style>
+small {
+	color:#DDD;
+}
+:target {
+	background:yellow;
+}
+pre {
+	margin:0;
+}
+</style>
+{% endblock %}
+
 
 
 {% block content %}
-    <h2>Passage Lookup {{ osis_id }}</h2>
+    <h1>Passage Lookup {{ osis_id }}</h1>
 	
-	<p>Token Positions: {{ structure.start_token.position }}-{{ structure.end_token.position }}</p>
+	<h2>All Structures</h2>
+	<p><em>TODO: This should be only those which are contained with the queried structure</em></p>
+	<table border=1 cellpadding=3 cellspacing=0 style="border-collapse:collapse">
+		<thead>
+			<tr>
+				<th>pos</th>
+				<th>type</th>
+				<th>numerical_start</th>
+				<th>osis_id</th>
+				<th>start_marker_token</th>
+				<th>start_token</th>
+				<th>end_token</th>
+				<th>end_marker_token</th>
+			</tr>
+		</thead>
+		{% for struct in structures %}
+			<tr>
+				<td>{{ struct.position }}</td>
+				<td>{{ struct.type }}</td>
+				<td>{{ struct.numerical_start }}</td>
+				<td>{{ struct.osis_id }}</td>
+				<td>
+					{% if struct.start_marker_token %}
+						<pre><a href="#{{ struct.start_marker_token.id }}">{{ struct.start_marker_token.id }} {{ struct.start_marker_token }}</a></pre>
+					{% endif %}
+				</td>
+				<td><pre><a href="#{{ struct.start_token.id }}">{{ struct.start_token.id }} {{ struct.start_token }}</a></pre></td>
+				<td><pre><a href="#{{ struct.end_token.id }}">{{ struct.end_token.id }} {{ struct.end_token }}</a></pre></td>
+				<td>
+					{% if struct.end_marker_token %}
+						<pre><a href="#{{ struct.end_marker_token.id }}">{{ struct.end_marker_token.id }} {{ struct.end_marker_token}}</a></pre>
+					{% endif %}
+				</td>
+			</tr>
+		{% endfor %}
+	</table>
 	
-    <ul>
-        {% for token in tokens %}
-            <li>{{ token.data}}</li>
-        {% endfor %}
-    </ul>
 	
+	<hr>
+	<h2>Tokens</h2>
+	<table>
+		<thead>
+			<th>id</th>
+			<th>type</th>
+			<th>data</th>
+			<th>variant_bits</th>
+		</thead>
+		<tbody>
+		{% for token in tokens %}
+			<tr id="{{ token.id }}" >
+				<th>{{ token.id }}</th>
+				<td>{{ token.type }}</td>
+				<td>{{ token.data }}</td>
+				<td>{{ token.variant_bits }}</td>
+			</tr>
+		{% endfor %}
+		</tbody>
+	</table>
 	
 
 {% endblock %}
