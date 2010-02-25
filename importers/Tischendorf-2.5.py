@@ -247,7 +247,6 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             )
             structCount += 1
         
-        
         # New Verse start
         if lineMatches.group('verse') != current_verse:
             # End the previous verse
@@ -281,9 +280,9 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
             )
             tokenCount += 1
             paragraph_marker.save()
+            bookTokens.append(paragraph_marker)
             structs[TokenStructure.PARAGRAPH].end_marker_token = paragraph_marker
             closeStructure(TokenStructure.PARAGRAPH)
-            bookTokens.append(paragraph_marker)
         
         # Start paragraph
         if len(bookTokens) == 0 or lineMatches.group('break') == 'P':
@@ -299,6 +298,19 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
                 structs[TokenStructure.PARAGRAPH].start_marker_token = paragraph_marker
             structCount += 1
             # to be saved below
+        
+        # Insert whitespace
+        if not paragraph_marker and len(bookTokens) > 0:
+            ws_token = Token(
+                data     = " ", #¶
+                type     = Token.WHITESPACE, #i.e. PARAGRAPH
+                work     = work1,
+                position = tokenCount,
+                variant_bits = work2_variant_bit | work1_variant_bit
+            )
+            tokenCount += 1
+            ws_token.save()
+            bookTokens.append(ws_token)
         
         assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
         assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
@@ -427,5 +439,6 @@ for book_code in OSIS_BIBLE_BOOK_CODES:
     
     print "END BOOK"
 
-
+print "structCount == " + str(structCount)
+print "tokenCount == " + str(tokenCount)
     
