@@ -319,7 +319,7 @@ class TokenStructure(models.Model):
             start_pos = token_start_pos = self.start_token.position
             end_pos = token_end_pos = token_start_pos
             if self.end_token is not None:
-                token_end_pos = self.end_token.position
+                end_pos = token_end_pos = self.end_token.position
             
             # Get start position for marker
             if include_markers:

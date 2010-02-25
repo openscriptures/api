@@ -45,7 +45,7 @@ work1.save()
 # Work for Qere edition (Kethiv is base text)
 import_helpers.delete_work(work2_id)
 work2 = Work(
-    id           = work1_id,
+    id           = work2_id,
     title        = "Tischendorf 8th ed. v2.5 (Qere)",
     language     = Language('grc'),
     type         = 'Bible',
@@ -159,11 +159,6 @@ lineParser = re.compile(ur"""^
     re.VERBOSE
 )
 
-#works = [work1, work2]
-#bookRefs = []
-#bookTokens = [[], []]
-#openBrackets = [0,0]
-#precedingTokenCount = 0
 
 structCount = 0
 tokenCount = 0
