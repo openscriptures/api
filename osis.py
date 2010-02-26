@@ -107,7 +107,7 @@ BIBLE_BOOK_NAMES = {
 def parse_osis_ref(osis_ref_string):
     parser = re.compile(ur"""
         ^(?:
-            (?P<osis_work>[^:]+?)(?: : | $ )
+            (?P<work_prefix>[^:]+?)(?: : | $ )
         )?
         (?P<start_osis_id>
             (?!-)
@@ -120,8 +120,8 @@ def parse_osis_ref(osis_ref_string):
     match = parser.match(osis_ref_string)
     if not match:
         raise Exception("Unable to parse osisRef")
-    if not match.group('osis_work') and not match.group('start_osis_id'):
-        raise Exception("Must have either osis_work or osis_id")
+    if not match.group('work_prefix') and not match.group('start_osis_id'):
+        raise Exception("Must have either work_prefix or osis_id")
     if not match.group('start_osis_id') and match.group('end_osis_id'):
         raise Exception("If having an end osisID, you must have a start.")
     
@@ -131,11 +131,14 @@ def parse_osis_ref(osis_ref_string):
         'end_osis_id':None
     }
     
-    #group = match.groupdict()
-    if match.group('osis_work'):
-        work_prefix = {}
+    
+    # Get work_prefix
+    if match.group('work_prefix'):
+        work_prefix = {
+            'original':match.group('work_prefix')
+        }
         
-        parts = match.group('osis_work').split('.')
+        parts = match.group('work_prefix').split('.')
         
         # Get the TYPE
         if parts[0] in TYPES:
@@ -145,7 +148,7 @@ def parse_osis_ref(osis_ref_string):
         for part in parts:
             # Get the year
             if not work_prefix.has_key('publish_date') and re.match(r'^\d\d\d\d$', part):
-                work_prefix['publish_date'] = date(int(part), 1, 1)
+                work_prefix['publish_date'] = part  #date(int(part), 1, 1)
             
             # Get the language
             elif not work_prefix.has_key('language') and re.match(r'^[a-z]{2,3}\b', part):
@@ -155,6 +158,7 @@ def parse_osis_ref(osis_ref_string):
             elif re.match(r'^\w+$', part):
                 slugs.append(part)
             
+            # Unrecognized 
             else:
                 raise Exception("Unexpected OSIS work prefix component: " + part)
         
@@ -168,8 +172,31 @@ def parse_osis_ref(osis_ref_string):
             raise Exception("Unexpected slug count in OSIS work prefix: " + str(work_prefix))
         
         result['work_prefix'] = work_prefix
+    
+    # Parse the start_osis_id and end_osis_id
+    parser = re.compile(ur"""
+        ^
+        (?P<book>[^\.]+?)
+        (?:\.(?P<chapter>[^\.]+?))?
+        (?:\.(?P<verse>[^\.]+?))?
+        # TODO: Add the grains too
+        $
+    """, re.VERBOSE)
+    
+    # Start osisID
+    if match.group('start_osis_id'):
+        id_match = parser.match(match.group('start_osis_id'))
+        if not id_match:
+            raise Exception("Invalid osisID: " + match.group('start_osis_id'))
+        result['start_osis_id'] = id_match.groupdict()
+        result['start_osis_id']['original'] = match.group('start_osis_id')
         
+    # End osisID
+    if match.group('end_osis_id'):
+        id_match = parser.match(match.group('end_osis_id'))
+        if not id_match:
+            raise Exception("Invalid osisID: " + match.group('end_osis_id'))
+        result['end_osis_id'] = id_match.groupdict()
+        result['end_osis_id']['original'] = match.group('end_osis_id')
     
-    
-    #result['groupdict'] = match.groupdict()
     return result
