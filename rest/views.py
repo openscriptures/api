@@ -12,7 +12,7 @@ def get_osis(request, osis_ref): #MORE #osis_work, osis_ref_start, osis_ref_end
     
     
     
-    return HttpResponse(json.dumps(parsed))
+    return HttpResponse(str(parsed))
     
     
     #todo: Query the OSIS work

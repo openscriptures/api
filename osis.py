@@ -1,5 +1,11 @@
 # coding: utf8 #
 import re
+from datetime import date
+
+TYPES = (
+    "Bible",
+    "Quran"
+)
 
 BIBLE_BOOK_CODES = (
     "Gen", "Exod", "Lev", "Num", "Deut", "Josh", "Judg", "Ruth", "1Sam", "2Sam", "1Kgs", "2Kgs", "1Chr", "2Chr", "Ezra", "Neh", "Esth", "Job", "Ps", "Prov", "Eccl", "Song", "Isa", "Jer", "Lam", "Ezek", "Dan", "Hos", "Joel", "Amos", "Obad", "Jonah", "Mic", "Nah", "Hab", "Zeph", "Hag", "Zech", "Mal",
@@ -101,39 +107,69 @@ BIBLE_BOOK_NAMES = {
 def parse_osis_ref(osis_ref_string):
     parser = re.compile(ur"""
         ^(?:
-            (?P<osis_work>.+?
-                #(?P<type>\w+)
-                #(?:\.(?P<language>[a-z]\w*))?
-                #(?:\.(?P<slug1>\w+))?
-                #(?:\.(?P<slug2>\w+))?
-                #(?:\.(?P<publish_date>.+))?
-            ):
+            (?P<osis_work>[^:]+?)(?: : | $ )
         )?
         (?P<start_osis_id>
+            (?!-)
             .+?
-        )
+        )?
         (?:-
-            (?P<end_osis_id>
-               .+? 
-            )
+            (?P<end_osis_id>.+? )
         )?$
     """, re.VERBOSE)
     match = parser.match(osis_ref_string)
     if not match:
         raise Exception("Unable to parse osisRef")
-    group = match.groupdict()
-    print group['osis_work'].split('.')
+    if not match.group('osis_work') and not match.group('start_osis_id'):
+        raise Exception("Must have either osis_work or osis_id")
+    if not match.group('start_osis_id') and match.group('end_osis_id'):
+        raise Exception("If having an end osisID, you must have a start.")
+    
+    result = {
+        'work_prefix':None,
+        'start_osis_id':None,
+        'end_osis_id':None
+    }
+    
+    #group = match.groupdict()
+    if match.group('osis_work'):
+        work_prefix = {}
+        
+        parts = match.group('osis_work').split('.')
+        
+        # Get the TYPE
+        if parts[0] in TYPES:
+            work_prefix['type'] = parts.pop(0)
+        
+        slugs = []
+        for part in parts:
+            # Get the year
+            if not work_prefix.has_key('publish_date') and re.match(r'^\d\d\d\d$', part):
+                work_prefix['publish_date'] = date(int(part), 1, 1)
+            
+            # Get the language
+            elif not work_prefix.has_key('language') and re.match(r'^[a-z]{2,3}\b', part):
+                work_prefix['language'] = part
+            
+            # Get the slugs
+            elif re.match(r'^\w+$', part):
+                slugs.append(part)
+            
+            else:
+                raise Exception("Unexpected OSIS work prefix component: " + part)
+        
+        # Get the osis_slug and publisher
+        if len(slugs) == 1:
+            work_prefix['osis_slug'] = slugs[0]
+        elif len(slugs) == 2:
+            work_prefix['publisher'] = slugs[0]
+            work_prefix['osis_slug'] = slugs[1]
+        elif len(slugs) != 0:
+            raise Exception("Unexpected slug count in OSIS work prefix: " + str(work_prefix))
+        
+        result['work_prefix'] = work_prefix
+        
     
     
-    
-    if group.has_key('slug2'):
-        group['publisher'] = group['slug1']
-        group['osis_slug'] = group['slug2']
-        del group['slug1']
-        del group['slug2']
-    elif group.has_key('slug1'):
-        group['publisher'] = None
-        group['osis_slug'] = group['slug1']
-        del group['slug1']
-    
-    return group
+    #result['groupdict'] = match.groupdict()
+    return result
