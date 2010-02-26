@@ -3,6 +3,7 @@
 
 import re, unicodedata, os, urllib, sys
 from openscriptures.api.models import *
+from openscriptures.api import osis
 
 def normalize_token(data):
     "Normalize to Unicode NFC, strip out all diacritics, apostrophies, and make lower-case."
@@ -55,6 +56,6 @@ def delete_work(workID):
 def get_book_code_args():
     book_codes = []
     for arg in sys.argv:
-        if arg in OSIS_BIBLE_BOOK_CODES:
+        if arg in osis.BIBLE_BOOK_CODES:
             book_codes.append(arg)
     return book_codes

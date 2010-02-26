@@ -14,6 +14,7 @@ from openscriptures import settings
 setup_environ(settings)
 from openscriptures.api.models import *
 from openscriptures.api.importers import import_helpers
+from openscriptures.api import osis
 
 # Abort if MS has already been added (or --force not supplied)
 import_helpers.abort_if_imported(work1_id)
@@ -163,7 +164,7 @@ lineParser = re.compile(ur"""^
 # Get the subset of OSIS book codes provided on command line
 book_codes = import_helpers.get_book_code_args()
 if len(book_codes) == 0:
-    book_codes = OSIS_BIBLE_BOOK_CODES
+    book_codes = osis.BIBLE_BOOK_CODES
 
 # Read each of the Book files
 structCount = 0
@@ -173,7 +174,7 @@ for book_code in book_codes:
     if not bookFilenameLookup.has_key(book_code):
         continue
     
-    print OSIS_BOOK_NAMES[book_code]
+    print osis.BIBLE_BOOK_NAMES[book_code]
     
     # Set up the book ref
     structs = {}
@@ -184,7 +185,7 @@ for book_code in book_codes:
         position = structCount,
         numerical_start = book_codes.index(book_code),
         variant_bits = work2_variant_bit | work1_variant_bit
-        #title = OSIS_BOOK_NAMES[book_code]
+        #title = osis.BIBLE_BOOK_NAMES[book_code]
     )
     structCount += 1
     

@@ -13,6 +13,14 @@ small {
 pre {
 	margin:0;
 }
+table {
+	border-collapse:collapse;
+}
+td,th {
+	padding:3px;
+	border-spacing:0;
+	border:solid 1px red;
+}
 </style>
 {% endblock %}
 
@@ -23,7 +31,7 @@ pre {
 	
 	<h2>All Structures</h2>
 	<p><em>TODO: This should be only those which are contained with the queried structure</em></p>
-	<table border=1 cellpadding=3 cellspacing=0 style="border-collapse:collapse">
+	<table>
 		<thead>
 			<tr>
 				<th>pos</th>
