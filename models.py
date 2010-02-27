@@ -100,25 +100,123 @@ class Work(models.Model):
     
     
     def lookup_osis_ref(self, start_osis_id, end_osis_id = None, variant_bits = None):
-        # Mostly same as TokenStructure.get_tokens
-        # 1. Get the start and end structure
-        # 2. Get the first and last (marker) token in each
-        # 3. Note the position of the first and last tokens
-        # 4. Get all structures in a work whose (start gte start_token or end lte end_token) or start lt start_token and end gt end_token
+        if not end_osis_id:
+            end_osis_id = start_osis_id
         
-        mainWork = self
-        if self.variants_for_work:
-            mainWork = self.variants_for_work
-        if variant_bits is None:
-            variant_bits = self.variant_bit
+        main_work = self
+        if self.variants_for_work is not None:
+            main_work = self.variants_for_work
+        # TODO: Take into account variant_bit
         
-        start_structure = TokenStructure.objects.get(osis_id = start_osis_id)
-        end_structure   = TokenStructure.objects.get(osis_id = end_osis_id)
+        # Get the structure for the start and end
+        start_structure = TokenStructure.objects.select_related(depth=1).get(
+            work = main_work,
+            start_token__isnull = False,
+            osis_id = start_osis_id
+        ) #.extra(where="variant_bits & %s != 0", params=[self.variant_bit])
         
-        return Token.objects.filter(
-            work = mainWork
-        ).extra(where=['variant_bits & %s != 0'], params=[variant_bits]);
-
+        if start_osis_id != end_osis_id:
+            end_structure = TokenStructure.objects.select_related(depth=1).get(
+                work = main_work,
+                end_token__isnull = False,
+                osis_id = end_osis_id
+            ) #.extra(where="variant_bits & %s != 0", params=[self.variant_bit])
+            #end_structure = end_structure[0]
+        else:
+            end_structure = start_structure
+        
+        # Now grab all structures from the work which have start/end_token or
+        #  start/end_marker_token whose positions are less 
+        
+        concurrent_structures = TokenStructure.objects.select_related(depth=1).filter(work = main_work).filter(
+            # Structures that are contained within the start_structure-end_structure span
+            (
+                (
+                    Q(start_token__position__lte = start_structure.start_token.position)
+                    |
+                    Q(
+                        start_marker_token__isnull = False,
+                        start_marker_token__position__lte = start_structure.start_token.position
+                    )
+                )
+                &
+                ( # is this right???
+                    Q(end_token__position__gte = end_structure.end_token.position)
+                    |
+                    Q(
+                        end_marker_token__isnull = False,
+                        end_marker_token__position__gte = end_structure.end_token.position
+                    )
+                )
+            )
+            |
+            # Structures that start inside of the selected range
+            Q(
+                start_token__position__gte = start_structure.start_token.position,
+                start_token__position__lte = end_structure.end_token.position
+            )
+            |
+            # Structures that end inside of the selected range
+            Q(
+                end_token__position__gte = start_structure.start_token.position,
+                end_token__position__lte = end_structure.end_token.position
+            )
+            # TODO: What about markers?
+        )#.extra(where="variant_bits & %s != 0", params=[self.variant_bit])
+        
+        for struct in concurrent_structures:
+            if struct.start_token.position < start_structure.start_token.position:
+                struct.shadow = struct.shadow | TokenStructure.SHADOW_START
+            if struct.end_token.position > end_structure.end_token.position:
+                struct.shadow = struct.shadow | TokenStructure.SHADOW_END
+        
+        # Now get all tokens that exist between the beginning of start_structure
+        # and the end of end_structure
+    
+        # Get start and end positions for the tokens
+        start_pos = token_start_pos = start_structure.start_token.position
+        end_pos   = token_end_pos   = end_structure.end_token.position
+        
+        # Get start position for marker
+        marker_start_pos = token_start_pos
+        if start_structure.start_marker_token is not None:
+            start_pos = marker_start_pos = start_structure.start_marker_token.position
+            assert(marker_start_pos <= token_start_pos)
+        
+        # Get end position for the marker
+        marker_end_pos = token_end_pos
+        if end_structure.end_marker_token is not None:
+            end_pos = marker_end_pos = end_structure.end_marker_token.position
+            assert(marker_end_pos >= token_end_pos)
+        
+        # Get all of the tokens between the marker start and marker end
+        # and who have variant bits that match the requested variant bits
+        tokens = Token.objects.filter(
+            work = main_work,
+            position__gte = start_pos,
+            position__lte = end_pos
+        ).extra(where=['variant_bits & %s != 0'], params=[self.variant_bit])
+        #if variant_bits is not None:
+        #    tokens = tokens.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
+        
+        # Indicate which of the beginning queried tokens are markers
+        for token in tokens:
+            if token.position >= token_start_pos:
+                break
+            token.is_structure_marker = True
+        
+        # Indicate which of the ending queried tokens are markers
+        for token in reversed(tokens):
+            if token.position <= token_end_pos:
+                break
+            token.is_structure_marker = True
+        
+        return {
+            'start_structure': start_structure,
+            'end_structure': end_structure,
+            'tokens': tokens,
+            'concurrent_structures': concurrent_structures
+        }
     
     def __unicode__(self):
         return self.title
