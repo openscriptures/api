@@ -126,6 +126,7 @@ def parse_osis_ref(osis_ref_string):
         raise Exception("If having an end osisID, you must have a start.")
     
     result = {
+        'groups':match.groupdict(),
         'work_prefix':None,
         'start_osis_id':None,
         'end_osis_id':None
@@ -135,7 +136,12 @@ def parse_osis_ref(osis_ref_string):
     # Get work_prefix
     if match.group('work_prefix'):
         work_prefix = {
-            'original':match.group('work_prefix')
+            #'original':match.group('work_prefix'),
+            #'type':None,
+            #'language':None,
+            #'publisher':None,
+            #'osis_slug':None,
+            #'publish_date':None
         }
         
         parts = match.group('work_prefix').split('.')

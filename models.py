@@ -71,20 +71,23 @@ class Work(models.Model):
     publisher = models.CharField(blank=True, max_length=128, db_index=True)
     osis_slug = models.SlugField(max_length=16, db_index=True, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
     publish_date = models.DateField(null=True, db_index=True, help_text="When the work was published")
+    #edition
+    #version
+    
     #Concatenation of previous fields:
     #osis_id = models.CharField(max_length=32, choices=TYPES, null=False, db_index=True)
-    def get_osis_id(self):
-        _osis_id = []
-        if self.type:
-            _osis_id.append(self.type)
-        if self.language:
-            _osis_id.append(self.language.code)
-        if self.osis_slug:
-            _osis_id.append(self.osis_slug)
-        if self.publish_date:
-            _osis_id.append(self.publish_date.year)
-        return ".".join(_osis_id)
-    osis_id = property(get_osis_id)
+    #def get_osis_id(self):
+    #    _osis_id = []
+    #    if self.type:
+    #        _osis_id.append(self.type)
+    #    if self.language:
+    #        _osis_id.append(self.language.code)
+    #    if self.osis_slug:
+    #        _osis_id.append(self.osis_slug)
+    #    if self.publish_date:
+    #        _osis_id.append(self.publish_date.year)
+    #    return ".".join(_osis_id)
+    #osis_id = property(get_osis_id)
     
     creator = models.TextField(blank=True)
     copyright = models.TextField(blank=True)
@@ -286,6 +289,16 @@ class TokenStructure(models.Model):
         #unique_together = (
         #    ('data', 'position', 'work'),
         #)
+    
+    def __unicode__(self):
+        if self.osis_id:
+            return self.osis_id
+        elif self.type == self.PARAGRAPH:
+            return u"¶" + self.start_token.data + "-" + self.end_token.data
+        elif self.type == self.UNCERTAIN1:
+            return u"[]"
+        else:
+            return self.type
 
 
 # This is an alternative to the above and it allows non-consecutive tokens to be
