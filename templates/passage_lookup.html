@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %} Passage Lookup for {{osis_id}} {% endblock %}
+{% block title %} Passage Lookup for {{osis_ref}} {% endblock %}
 
 {% block style %}
 <style>
@@ -27,7 +27,7 @@ td,th {
 
 
 {% block content %}
-    <h1>Passage Lookup {{ osis_id }}</h1>
+    <h1>Passage Lookup {{ osis_ref }}</h1>
 	
 	<h2>Structures</h2>
 	<p><em>TYPE: 2 = Book, 3 = Chapter, 4 = Verse, 8 = Paragraph, 10 = Uncertain1</em></p>

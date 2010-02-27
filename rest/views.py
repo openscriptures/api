@@ -31,6 +31,7 @@ def get_osis(request, osis_ref):
     )
     
     return render_to_response('passage_lookup.html', {
+        'osis_ref':osis_ref,
         'osis_ref_parsed': osis_ref_parsed,
         'start_structure': data['start_structure'],
         'end_structure': data['end_structure'],
