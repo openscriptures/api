@@ -386,6 +386,12 @@ class TokenStructure(models.Model):
     SHADOW_END   = 0b0010
     SHADOW_BOTH  = 0b0011
     shadow = SHADOW_NONE
+    SHADOW_CHOICES = (
+        (SHADOW_NONE, "None"),
+        (SHADOW_START, "Start"),
+        (SHADOW_END, "End"),
+        (SHADOW_BOTH, "Both")
+    )
     
     class Meta:
         ordering = ['position'] #, 'variant_number'
