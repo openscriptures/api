@@ -8,7 +8,7 @@ from django.db.models import Q
 from api import osis
 import json
 
-#TODO: allow range
+#BAD: This should be in the model for a Work? After getting work, then pass-in osisRef
 def get_osis(request, osis_ref): #MORE #osis_work, osis_ref_start, osis_ref_end
     osis_ref_parsed = osis.parse_osis_ref(osis_ref)
     #return HttpResponse(str(osis_ref_parsed['work_prefix']))
@@ -88,8 +88,18 @@ def get_osis(request, osis_ref): #MORE #osis_work, osis_ref_start, osis_ref_end
             end_token__position__lte = end_structure.end_token.position
         )
         # TODO: What about markers?
-    ).extra(where="variant_bits & %s != 0", params=[work.variant_bit])
+    )#.extra(where="variant_bits & %s != 0", params=[work.variant_bit])
     
+    # TODO: I need to do two separate queries, or three separate queries?
+    
+    for struct in concurrent_structures:
+        if struct.start_token.position < start_structure.start_token.position:
+            struct.shadow = struct.shadow | TokenStructure.SHADOW_START
+        if struct.end_token.position > end_structure.end_token.position:
+            struct.shadow = struct.shadow | TokenStructure.SHADOW_END
+    
+    
+    #return HttpResponse(len(concurrent_structures))
     
     #print concurrent_structures
     

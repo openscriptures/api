@@ -283,6 +283,12 @@ class TokenStructure(models.Model):
     
     tokens = property(get_tokens)
     
+    SHADOW_NONE  = 0b0000
+    SHADOW_START = 0b0001
+    SHADOW_END   = 0b0010
+    SHADOW_BOTH  = 0b0011
+    shadow = SHADOW_NONE
+    
     class Meta:
         ordering = ['position'] #, 'variant_number'
         #Note: This unique constraint is removed due to the fact that in MySQL, the default utf8 collation means "Και" and "καὶ" are equivalent
