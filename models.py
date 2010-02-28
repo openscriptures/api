@@ -118,19 +118,24 @@ class Work(models.Model):
             variant_bits = self.variant_bit
         
         # Get the structure for the start and end
-        start_structure = TokenStructure.objects.select_related(depth=1).get(
+        structures = TokenStructure.objects.select_related(depth=1).filter(
             work = main_work,
             start_token__isnull = False,
             osis_id = start_osis_id
-        ) #.extra(where="variant_bits & %s != 0", params=[self.variant_bit])
+        ).extra(where=["variant_bits & %s != 0"], params=[variant_bits])
+        if len(structures) == 0:
+            raise Exception("Start structure with osisID %s not found" % start_osis_id)
+        start_structure = structures[0]
         
         if start_osis_id != end_osis_id:
-            end_structure = TokenStructure.objects.select_related(depth=1).get(
+            structures = TokenStructure.objects.select_related(depth=1).filter(
                 work = main_work,
                 end_token__isnull = False,
                 osis_id = end_osis_id
-            ) #.extra(where="variant_bits & %s != 0", params=[self.variant_bit])
-            #end_structure = end_structure[0]
+            ).extra(where=["variant_bits & %s != 0"], params=[variant_bits])
+            if len(structures) == 0:
+                raise Exception("End structure with osisID %s not found" % end_osis_id)
+            end_structure = structures[0]
         else:
             end_structure = start_structure
         

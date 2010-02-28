@@ -44,6 +44,7 @@ td,th {
 				<th>end_token</th>
 				<th>end_marker_token</th>
 				<th>shadow?</th>
+				<th>variant_bits</th>
 			</tr>
 		</thead>
 		{% for struct in concurrent_structures %}
@@ -66,6 +67,9 @@ td,th {
 				</td>
 				<td>
 					{{ struct.shadow }}
+				</td>
+				<td>
+					{{ struct.variant_bits }}
 				</td>
 			</tr>
 		{% endfor %}
