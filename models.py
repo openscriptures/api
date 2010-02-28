@@ -117,7 +117,7 @@ class Work(models.Model):
         if variant_bits is None:
             variant_bits = self.variant_bit
         
-        # Get the structure for the start and end
+        # Get the structure for the start
         structures = TokenStructure.objects.select_related(depth=1).filter(
             work = main_work,
             start_token__isnull = False,
@@ -127,6 +127,7 @@ class Work(models.Model):
             raise Exception("Start structure with osisID %s not found" % start_osis_id)
         start_structure = structures[0]
         
+        # Get the structure for the end
         if start_osis_id != end_osis_id:
             structures = TokenStructure.objects.select_related(depth=1).filter(
                 work = main_work,
@@ -176,7 +177,8 @@ class Work(models.Model):
                 end_token__position__lte = end_structure.end_token.position
             )
             # TODO: What about markers?
-        )#.extra(where="variant_bits & %s != 0", params=[self.variant_bit])
+        ).extra(where=["api_tokenstructure.variant_bits & %s != 0"], params=[variant_bits])
+        #           TODO /\  
         
         for struct in concurrent_structures:
             if struct.start_token.position < start_structure.start_token.position:
@@ -209,7 +211,7 @@ class Work(models.Model):
             work = main_work,
             position__gte = start_pos,
             position__lte = end_pos
-        ).extra(where=['variant_bits & %s != 0'], params=[self.variant_bit])
+        ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
         #if variant_bits is not None:
         #    tokens = tokens.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
         
