@@ -6,8 +6,7 @@ work1_variant_bit = 0b00000001
 work2_id = 2 # Tischendorf Qere
 work2_variant_bit = 0b00000010
 
-import sys, string, os, re, unicodedata, urllib, zipfile, StringIO
-from datetime import date
+import sys, string, os, re, unicodedata, urllib, zipfile, StringIO, datetime
 from django.core.management import setup_environ
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../')) #There's probably a better way of doing this
 from openscriptures import settings
@@ -34,7 +33,8 @@ work1 = Work(
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
-    publish_date = date(2009, 1, 1),
+    publish_date = datetime.date(2009, 5, 29),
+    import_date  = datetime.datetime.now(),
     variant_bit  = work1_variant_bit,
     creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
     source_url   = source_url,
@@ -51,7 +51,8 @@ work2 = Work(
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
-    publish_date = date(2009, 1, 1),
+    publish_date = datetime.date(2009, 5, 29),
+    import_date  = datetime.datetime.now(),
     variant_bit  = work2_variant_bit,
     variants_for_work = work1,
     creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",

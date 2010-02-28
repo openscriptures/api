@@ -44,6 +44,7 @@ class License(models.Model):
         return self.name
 
 
+
 class Work(models.Model):
     "Represents an OSIS work, such as the Bible or a non-biblical work such as the Qur'an or the Mishnah."
     
@@ -56,6 +57,7 @@ class Work(models.Model):
     variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and TokenStructure.variant_bits to query only those which belong to the work.")
     
     #Bible.en.Publisher.ABC.2010
+    #TODO: this should be pulled from osis.TYPES
     TYPES = (
         ('Bible', 'Bible'),
     )
@@ -71,6 +73,7 @@ class Work(models.Model):
     publisher = models.CharField(blank=True, max_length=128, db_index=True)
     osis_slug = models.SlugField(max_length=16, db_index=True, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
     publish_date = models.DateField(null=True, db_index=True, help_text="When the work was published")
+    #pub_date instead?
     #edition
     #version
     
@@ -103,10 +106,16 @@ class Work(models.Model):
         if not end_osis_id:
             end_osis_id = start_osis_id
         
+        # Token and TokenStructure objects are only associated with non-diff
+        #   works, that is where variants_for_work is None
         main_work = self
         if self.variants_for_work is not None:
             main_work = self.variants_for_work
-        # TODO: Take into account variant_bit
+        
+        # Allow the variant_bits to be customized to include structures and
+        #   tokens from other variants of this work
+        if variant_bits is None:
+            variant_bits = self.variant_bit
         
         # Get the structure for the start and end
         start_structure = TokenStructure.objects.select_related(depth=1).get(
