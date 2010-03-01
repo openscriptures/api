@@ -127,6 +127,12 @@ class Work(models.Model):
             raise Exception("Start structure with osisID %s not found" % start_osis_id)
         start_structure = structures[0]
         
+        # Get start position, including token, marker, and absolute
+        start_pos = marker_start_pos = token_start_pos = start_structure.start_token.position
+        if start_structure.start_marker_token is not None:
+            start_pos = marker_start_pos = start_structure.start_marker_token.position
+            assert(marker_start_pos <= token_start_pos)
+        
         # Get the structure for the end
         if start_osis_id != end_osis_id:
             structures = TokenStructure.objects.select_related(depth=1).filter(
@@ -140,88 +146,73 @@ class Work(models.Model):
         else:
             end_structure = start_structure
         
+        # Get end position, including token, marker, and absolute
+        end_pos = marker_end_pos = token_end_pos = end_structure.end_token.position
+        if end_structure.end_marker_token is not None:
+            end_pos = marker_end_pos = end_structure.end_marker_token.position
+            assert(marker_end_pos >= token_end_pos)
+        
         # Now grab all structures from the work which have start/end_token or
         #  start/end_marker_token whose positions are less 
-        
         concurrent_structures = TokenStructure.objects.select_related(depth=1).filter(work = main_work).filter(
-            # Structures that are contained within the start_structure-end_structure span
-            (
-                (
-                    Q(start_token__position__lte = start_structure.start_token.position)
+            ( # Structures that are contained within start_structure and end_structure (including markers)
+                ( # At or after start token or marker
+                    Q(start_token__position__lte = start_pos)  # start_structure.start_marker_token.position || start_structure.start_token.position
                     |
                     Q(
                         start_marker_token__isnull = False,
-                        start_marker_token__position__lte = start_structure.start_token.position
+                        start_marker_token__position__lte = start_pos  # start_structure.start_marker_token.position || start_structure.start_token.position
                     )
                 )
                 &
-                ( # is this right???
-                    Q(end_token__position__gte = end_structure.end_token.position)
+                ( # At or before end token or marker
+                    Q(end_token__position__gte = end_pos)  # end_structure.end_marker_token.position || end_structure.end_token.position
                     |
                     Q(
                         end_marker_token__isnull = False,
-                        end_marker_token__position__gte = end_structure.end_token.position
+                        end_marker_token__position__gte = end_pos  # end_structure.end_marker_token.position || end_structure.end_token.position
                     )
                 )
             )
             |
-            # Structures that start inside of the selected range
+            # Structures that only start inside of the selected range (excluding markers)
             Q(
-                start_token__position__gte = start_structure.start_token.position,
-                start_token__position__lte = end_structure.end_token.position
+                start_token__position__gte = token_start_pos, # start_structure.start_token.position
+                start_token__position__lte = token_end_pos    # end_structure.end_token.position
             )
             |
-            # Structures that end inside of the selected range
+            # Structures that only end inside of the selected range (excluding markers)
             Q(
-                end_token__position__gte = start_structure.start_token.position,
-                end_token__position__lte = end_structure.end_token.position
+                end_token__position__gte = token_start_pos, # start_structure.start_token.position
+                end_token__position__lte = token_end_pos    # end_structure.end_token.position
             )
-            # TODO: What about markers?
         ).extra(where=["api_tokenstructure.variant_bits & %s != 0"], params=[variant_bits])
-        #           TODO /\  
         
+        # Now indicate if the structures are shadowed (virtual)
         for struct in concurrent_structures:
-            if struct.start_token.position < start_structure.start_token.position:
+            if struct.start_token.position < start_pos:  # start_structure.start_marker_token.position || start_structure.start_token.position
                 struct.shadow = struct.shadow | TokenStructure.SHADOW_START
-            if struct.end_token.position > end_structure.end_token.position:
+            if struct.end_token.position > end_pos:  # end_structure.end_marker_token.position || end_structure.end_token.position
                 struct.shadow = struct.shadow | TokenStructure.SHADOW_END
         
         # Now get all tokens that exist between the beginning of start_structure
         # and the end of end_structure
-    
-        # Get start and end positions for the tokens
-        start_pos = token_start_pos = start_structure.start_token.position
-        end_pos   = token_end_pos   = end_structure.end_token.position
-        
-        # Get start position for marker
-        marker_start_pos = token_start_pos
-        if start_structure.start_marker_token is not None:
-            start_pos = marker_start_pos = start_structure.start_marker_token.position
-            assert(marker_start_pos <= token_start_pos)
-        
-        # Get end position for the marker
-        marker_end_pos = token_end_pos
-        if end_structure.end_marker_token is not None:
-            end_pos = marker_end_pos = end_structure.end_marker_token.position
-            assert(marker_end_pos >= token_end_pos)
         
         # Get all of the tokens between the marker start and marker end
         # and who have variant bits that match the requested variant bits
         tokens = Token.objects.filter(
             work = main_work,
-            position__gte = start_pos,
-            position__lte = end_pos
+            position__gte = start_pos, # start_structure.start_marker_token.position || start_structure.start_token.position
+            position__lte = end_pos    # end_structure.end_marker_token.position || end_structure.end_token.position
         ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
-        #if variant_bits is not None:
-        #    tokens = tokens.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
         
-        # Indicate which of the beginning queried tokens are markers
+        # Indicate which of the beginning queried tokens are markers (should be none since verse)
         for token in tokens:
             if token.position >= token_start_pos:
                 break
             token.is_structure_marker = True
         
-        # Indicate which of the ending queried tokens are markers
+        # Indicate which of the ending queried tokens are markers (should be none since verse)
         for token in reversed(tokens):
             if token.position <= token_end_pos:
                 break
