@@ -45,6 +45,7 @@ td,th {
 				<th>end_marker_token</th>
 				<th>shadow?</th>
 				<th>variant_bits</th>
+				<th>source_url</th>
 			</tr>
 		</thead>
 		{% for struct in concurrent_structures %}
@@ -65,12 +66,9 @@ td,th {
 						<pre><a href="#{{ struct.end_marker_token.id }}">{{ struct.end_marker_token.id }} {{ struct.end_marker_token}}</a></pre>
 					{% endif %}
 				</td>
-				<td>
-					{{ struct.shadow }}
-				</td>
-				<td>
-					{{ struct.variant_bits }}
-				</td>
+				<td>{{ struct.shadow }}</td>
+				<td>{{ struct.variant_bits }}</td>
+				<td>{{ struct.source_url }}</td>
 			</tr>
 		{% endfor %}
 	</table>
@@ -82,6 +80,7 @@ td,th {
 			<th>type</th>
 			<th>data</th>
 			<th>variant_bits</th>
+			<th>source_url</th>
 		</thead>
 		<tbody>
 		{% for token in tokens %}
@@ -90,6 +89,7 @@ td,th {
 				<td>{{ token.type }}</td>
 				<td>{{ token.data }}</td>
 				<td>{{ token.variant_bits }}</td>
+				<td>{{ token.source_url }}</td>
 			</tr>
 		{% endfor %}
 		</tbody>

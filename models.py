@@ -56,11 +56,17 @@ class Work(models.Model):
     variants_for_work = models.ForeignKey('self', null=True, default=None, verbose_name="Parent work that this work provides variants for")
     variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and TokenStructure.variant_bits to query only those which belong to the work.")
     
+    #TODO: Important to allow mutliple kinds of identifiers for the work!
+    #      Including ISBN, URL, URN, in addition to OSIS. OSIS needs to be unique,
+    #      and its parts should be deconstructable.
+    
     #Bible.en.Publisher.ABC.2010
     #TODO: this should be pulled from osis.TYPES
     TYPES = (
         ('Bible', 'Bible'),
     )
+    #TODO: use short_name?
+    osis_slug = models.SlugField(max_length=16, db_index=True, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
     type = models.CharField(max_length=16, choices=TYPES, null=False, db_index=True)
     language = models.ForeignKey(Language, null=True, db_index=True)
     #Note: In the case of Daniel, both Hebrew and Aramaic in the book, though
@@ -70,10 +76,18 @@ class Work(models.Model):
     #      associated with a Token as there may be different opinions about what
     #      language it is!
     
+    
+    #TODO: Better way to do attribution for various roles like creator, contributor, publisher in ManyToMany relation
+    #      (Also need slugs for the URL)
     publisher = models.CharField(blank=True, max_length=128, db_index=True)
-    osis_slug = models.SlugField(max_length=16, db_index=True, help_text="OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV")
+    creator = models.TextField(blank=True)
+    
+    #TODO: Better system for storing multiple dates for a work, e.g. OSIS
+    #      date tlements: edition, eversion, imprint, original
     publish_date = models.DateField(null=True, db_index=True, help_text="When the work was published")
-    #pub_date instead?
+    import_date = models.DateField(null=True, help_text="When the work was imported into the models.")
+    
+    #TODO: pub_date instead?
     #edition
     #version
     
@@ -92,14 +106,11 @@ class Work(models.Model):
     #    return ".".join(_osis_id)
     #osis_id = property(get_osis_id)
     
-    creator = models.TextField(blank=True)
     copyright = models.TextField(blank=True)
     license = models.ForeignKey(License, null=True)
     
-    import_date = models.DateField(null=True, help_text="When the work was imported into the models.")
     
     #unified_work = models.ForeignKey('self', null=True, verbose_name="Work which this work has been merged into")
-    
     
     
     def lookup_osis_ref(self, start_osis_id, end_osis_id = None, variant_bits = None):
@@ -251,16 +262,48 @@ class Token(models.Model):
     is_structure_marker = None #This boolean is set when querying via TokenStructure.get_tokens
     
     #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
-    src_href = models.CharField(max_length=255, blank=True, help_text="XPointer to where this token came from; base URL is work.src_url")
+    #TODO: How do you query for isblank=False? Whe not say null=True?
+    relative_source_url = models.CharField(max_length=255, blank=True, help_text="Relative URL for where this token came from (e.g. including XPointer); %base% refers to work.src_url")
     
-    #Note: Token metadata (e.g. parsings) would be stored in a separate location, e.g. TokenMeta model
+    def get_source_url(self):
+        if not self.relative_source_url:
+            return None
+        
+        structures = TokenStructure.objects.filter(
+            Q(start_token__position__lte = self.position)
+            |
+            Q(
+                start_marker_token__isnull = False,
+                start_marker_token__position__lte = self.position
+            ),
+            Q(end_token__position__gte = self.position)
+            |
+            Q(
+                end_marker_token__isnull = False,
+                end_marker_token__position__gte = self.position
+            ),
+            source_url__isnull = False,
+            #source_url__ne = "",
+            #source_url__isblank = False,
+            work = self.work
+        ).extra(where=["api_tokenstructure.variant_bits & %s != 0"], params=[self.variant_bits])
+        
+        
+        if not len(structures):
+            base = self.work.source_url
+        else:
+            base = structures[0].source_url
+        
+        return base + self.relative_source_url
+    
+    source_url = property(get_source_url)
+    
     
     class Meta:
-        ordering = ['position'] #, 'variant_number'
-        #Note: This unique constraint is removed due to the fact that in MySQL, the default utf8 collation means "Και" and "καὶ" are equivalent
-        #unique_together = (
-        #    ('data', 'position', 'work'),
-        #)
+        ordering = ['position']
+        unique_together = (
+            ('position', 'work'),
+        )
     
     def __unicode__(self):
         return self.data
@@ -311,6 +354,10 @@ class TokenStructure(models.Model):
     )
     type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
     osis_id = models.CharField(max_length=32, blank=True, db_index=True)
+    work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it")
+    variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
+    
+    source_url = models.CharField(max_length=255, blank=True, help_text="URL for where this structure came from; used for base to Token.relative_source_url")
     
     # title?
     # parent?
@@ -318,9 +365,6 @@ class TokenStructure(models.Model):
     
     numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
-    
-    work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it")
-    variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     
     start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text="Used to demarcate the exclusive start point for the structure; excludes any typographical marker that marks up the structure in the text, such as quotation marks. If null, then tokens should be discovered via TokenStructureItem.")
     end_token   = models.ForeignKey(Token, null=True, related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
@@ -418,6 +462,7 @@ class TokenStructure(models.Model):
             return self.type
 
 
+
 # This is an alternative to the above and it allows non-consecutive tokens to be
 # included in a structure. But it incurs a huge amount of overhead. If
 # start_token is null, then it could be assumed that a structure's tokens should
@@ -427,6 +472,11 @@ class TokenStructureItem(models.Model):
     structure = models.ForeignKey(TokenStructure)
     token = models.ForeignKey(Token)
     is_marker = models.BooleanField(default=False, help_text="Whether the token is any such typographical feature which marks up the structure in the text, such as a quotation mark.")
+
+
+
+
+
 
 
 
@@ -552,8 +602,8 @@ class TokenParsing_hbo(models.Model):
 # TODO: This can also be used to associate words with a note; otherwise, start_token/end_token would be used
 class TokenLinkage(models.Model):
     "Anchor point to link together multiple TokenLinkageItems"
-    #work1 = models.ForeignKey(Work)
-    #work2 = models.ForeignKey(Work)
+    #TODO: We need to have a type field, e.g. translation
+    #      And it would be good to have a strength field from 0.0 to 1.0
     pass
 
 

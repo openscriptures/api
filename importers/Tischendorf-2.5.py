@@ -26,10 +26,13 @@ import_helpers.download_resource(source_url)
 import_helpers.delete_work(work2_id)
 import_helpers.delete_work(work1_id)
 
+#TODO: Get better title?
+#TODO: source_url should be base
+
 # Work for Kethiv edition (base text for qere)
 work1 = Work(
     id           = work1_id,
-    title        = "Tischendorf 8th ed. v2.5 (Kethiv)",
+    title        = "Tischendorf 8th ed. v2.5",
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
@@ -42,12 +45,13 @@ work1 = Work(
 )
 work1.save()
 
+#TODO: Do we even need another separate work?
 
 # Work for Qere edition (Kethiv is base text)
 import_helpers.delete_work(work2_id)
 work2 = Work(
     id           = work2_id,
-    title        = "Tischendorf 8th ed. v2.5 (Qere)",
+    title        = "Tischendorf 8th ed. v2.5 (Corrected)",
     language     = Language('grc'),
     type         = 'Bible',
     osis_slug    = 'Tischendorf',
@@ -185,7 +189,8 @@ for book_code in book_codes:
         osis_id = book_code,
         position = structCount,
         numerical_start = book_codes.index(book_code),
-        variant_bits = work2_variant_bit | work1_variant_bit
+        variant_bits = work2_variant_bit | work1_variant_bit,
+        source_url = "zip:" + source_url + "!/Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code]
         #title = osis.BIBLE_BOOK_NAMES[book_code]
     )
     structCount += 1
@@ -203,7 +208,9 @@ for book_code in book_codes:
             structs[type].save()
             del structs[type]
     
+    lineNumber = -1
     for line in StringIO.StringIO(zip.read("Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code])):
+        lineNumber += 1
         lineMatches = lineParser.match(unicodedata.normalize("NFC", unicode(line, 'utf-8')))
         if lineMatches is None:
             print " -- Warning: Unable to parse line: " + line 
@@ -335,7 +342,8 @@ for book_code in book_codes:
             type     = Token.WORD,
             work     = work1,
             position = tokenCount,
-            variant_bits = work1_variant_bit | work2_variant_bit
+            variant_bits = work1_variant_bit | work2_variant_bit,
+            relative_source_url = "#line(%d)" % lineNumber
         )
         if lineMatches.group('kethiv') == lineMatches.group('qere'):
             token_work1.variant_bits = work1_variant_bit | work2_variant_bit
@@ -357,7 +365,8 @@ for book_code in book_codes:
                 type     = Token.WORD,
                 work     = work1, # yes, this should be work1
                 position = tokenCount,   #token_work1.position #should this be the same!?
-                variant_bits = work2_variant_bit
+                variant_bits = work2_variant_bit,
+                relative_source_url = "#line(%d)" % lineNumber
                 # What will happen with range?? end_token = work1, but then work2?
                 # Having two tokens at the same position could mean that they are
                 #  co-variants at that one spot. But then we can't reliably get
