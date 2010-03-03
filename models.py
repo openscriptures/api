@@ -257,12 +257,12 @@ class Token(models.Model):
     position = models.PositiveIntegerField(db_index=True)
     work = models.ForeignKey(Work)
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
-    unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
+    #unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
     
     is_structure_marker = None #This boolean is set when querying via TokenStructure.get_tokens
     
     #TODO: Make type an array?
-    def get_structures(self, types = [VERSE], including_markers = False):
+    def get_structures(self, types = [], including_markers = False): #types = [TokenStructure.VERSE]
         "Get the structures that this token is a part of."
         raise Exception("Not implemented yet")
     
@@ -344,7 +344,7 @@ class TokenStructure(models.Model):
     UNCERTAIN1 = 10
     UNCERTAIN2 = 11
     PAGE = 12
-    TYPES = (
+    TYPES_CHOICES = (
         (BOOK_GROUP, "bookGroup"),
         (BOOK, "book"),
         (CHAPTER, "chapter"),
@@ -359,7 +359,7 @@ class TokenStructure(models.Model):
         (PAGE, "page"),
         #...
     )
-    type = models.PositiveSmallIntegerField(choices=TYPES, db_index=True)
+    type = models.PositiveSmallIntegerField(choices=TYPES_CHOICES, db_index=True)
     osis_id = models.CharField(max_length=32, blank=True, db_index=True)
     work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it")
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
@@ -494,11 +494,55 @@ class TokenStructureItem(models.Model):
     is_marker = models.BooleanField(default=False, help_text="Whether the token is any such typographical feature which marks up the structure in the text, such as a quotation mark.")
 
 
+################################################################################
+# Linked Token Data
+################################################################################
+
+
+# These relate to interlinearization; these could also be used for unification
+# instead of relying on Token.unified_token
+# TODO: This can also be used to associate words with a note; otherwise, start_token/end_token would be used
+class TokenLinkage(models.Model):
+    "Anchor point to link together multiple TokenLinkageItems"
+    #TODO: We need to have a type field, e.g. translation
+    #      And it would be good to have a strength field from 0.0 to 1.0
+    UNIFICATION = 1
+    TRANSLATION = 2
+    CROSS_REFERENCE = 3
+    TYPE_CHOICES = (
+        (UNIFICATION, "Link the result of unification/merging algorithm"),
+        (TRANSLATION, "Incoming token is translation of outgoing token"),
+        (CROSS_REFERENCE, "Related passage"),
+    )
+    type = models.PositiveIntegerField(null=True, choices=TYPE_CHOICES, help_text="The kind of linkage")
+
+
+
+class TokenLinkageItem(models.Model):
+    """
+    Tokens from different works can be linked together by instantiating
+    TokenLinkageItems and associating them with the same TokenLinkage.
+    """
+    linkage = models.ForeignKey(TokenLinkage)
+    token = models.ForeignKey(Token)
+    weight = models.DecimalField(null=True, help_text="The strength of the linkage; value between 0.0 and 1.0.", max_digits=3, decimal_places=2)
+    
+    INCOMING = 0b01
+    OUTGOING = 0b10
+    BIDIRECTIONAL = 0b11
+    DIRECTIONALITY_CHOICES = (
+        (INCOMING, "Incoming unidirectional link"),
+        (OUTGOING, "Outgoing unidirectional link"),
+        (BIDIRECTIONAL, "Bidirectional link"),
+    )
+    directionality = models.PositiveIntegerField(default=BIDIRECTIONAL, choices=DIRECTIONALITY_CHOICES, help_text="Whether the link")
 
 
 
 
-
+################################################################################
+# Token Metadata
+################################################################################
 
 class TokenMeta(models.Model):
     "Metadata about each token, including language, parsing information, etc."
@@ -617,20 +661,6 @@ class TokenParsing_hbo(models.Model):
 
 
 
-# These relate to interlinearization; these could also be used for unification
-# instead of relying on Token.unified_token
-# TODO: This can also be used to associate words with a note; otherwise, start_token/end_token would be used
-class TokenLinkage(models.Model):
-    "Anchor point to link together multiple TokenLinkageItems"
-    #TODO: We need to have a type field, e.g. translation
-    #      And it would be good to have a strength field from 0.0 to 1.0
-    pass
 
-
-
-class TokenLinkageItem(models.Model):
-    "Tokens from different works can be linked together by instantiating TokenLinkageItems and associating them with the same TokenLinkage."
-    linkage = models.ForeignKey(TokenLinkage)
-    token = models.ForeignKey(Token)
     
 
