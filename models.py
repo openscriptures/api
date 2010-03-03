@@ -248,12 +248,12 @@ class Token(models.Model):
     WORD = 1
     PUNCTUATION = 2
     WHITESPACE = 3
-    TYPES = (
+    TYPE_CHOICES = (
         (WORD,        'Word'),
         (PUNCTUATION, 'Punctuation'),
         (WHITESPACE,  'Whitespace'),
     )
-    type = models.PositiveSmallIntegerField(choices=TYPES, default=WORD, db_index=True, help_text="A general hint as to what the token data represents")
+    type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, default=WORD, db_index=True, help_text="A general hint as to what the token data represents")
     position = models.PositiveIntegerField(db_index=True)
     work = models.ForeignKey(Work)
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
