@@ -258,8 +258,14 @@ class Token(models.Model):
     work = models.ForeignKey(Work)
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
-        
+    
     is_structure_marker = None #This boolean is set when querying via TokenStructure.get_tokens
+    
+    #TODO: Make type an array?
+    def get_structures(self, types = [VERSE], including_markers = False):
+        "Get the structures that this token is a part of."
+        raise Exception("Not implemented yet")
+    
     
     #TODO: This is where internal linked data connects with the data out in the world through hyperlinks
     #TODO: How do you query for isblank=False? Whe not say null=True?
@@ -292,10 +298,11 @@ class Token(models.Model):
         if not len(structures):
             base = self.work.source_url
         else:
+            #TODO: If multiple structures have source_urls?
             base = structures[0].source_url
+        #TODO: What if the base isn't desired?
         
         return base + self.relative_source_url
-    
     source_url = property(get_source_url)
     
     
@@ -443,6 +450,19 @@ class TokenStructure(models.Model):
         (SHADOW_END, "End"),
         (SHADOW_BOTH, "Both")
     )
+    
+    #TODO: Include a type filter?
+    def get_related_structures(self, types = [], shadow = SHADOW_NONE):
+        """
+        Get the structures that are related to this structure.
+        types is a list of TYPE that should be returned. Empty means all.
+        If shadow = SHADOW_NONE, then only sub-structures are returned;
+        If shadow = SHADOW_BOTH, then only super-structures are returned.
+        If shadow = SHADOW_START, then only structures that start before
+        If shadow = SHADOW_END, then only structures that end after
+        """
+        raise Exception("Not built yet")
+    
     
     class Meta:
         ordering = ['position'] #, 'variant_number'
