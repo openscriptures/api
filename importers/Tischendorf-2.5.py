@@ -172,8 +172,8 @@ if len(book_codes) == 0:
     book_codes = osis.BIBLE_BOOK_CODES
 
 # Read each of the Book files
-structCount = 0
-tokenCount = 0
+structCount = 1
+tokenCount = 1
 zip = zipfile.ZipFile(os.path.basename(source_url))
 for book_code in book_codes:
     if not bookFilenameLookup.has_key(book_code):

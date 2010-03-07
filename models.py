@@ -340,10 +340,11 @@ class TokenStructure(models.Model):
     SUBSECTION = 6
     TITLE = 7
     PARAGRAPH = 8
-    QUOTATION = 9
-    UNCERTAIN1 = 10
-    UNCERTAIN2 = 11
-    PAGE = 12
+    LINE = 9
+    QUOTATION = 10
+    UNCERTAIN1 = 11
+    UNCERTAIN2 = 12
+    PAGE = 13
     TYPES_CHOICES = (
         (BOOK_GROUP, "bookGroup"),
         (BOOK, "book"),
@@ -445,11 +446,13 @@ class TokenStructure(models.Model):
     SHADOW_BOTH  = 0b0011
     shadow = SHADOW_NONE
     SHADOW_CHOICES = (
-        (SHADOW_NONE, "None"),
-        (SHADOW_START, "Start"),
-        (SHADOW_END, "End"),
-        (SHADOW_BOTH, "Both")
+        (SHADOW_NONE, "none"),
+        (SHADOW_START, "start"),
+        (SHADOW_END, "end"),
+        (SHADOW_BOTH, "both")
     )
+    
+    is_milestoned = False
     
     #TODO: Include a type filter?
     def get_related_structures(self, types = [], shadow = SHADOW_NONE):
