@@ -51,31 +51,7 @@ def get_osis(request, osis_ref):
                 structureTypeHierarchy.append(structType)
     else: #default order
         structureTypeHierarchy = structureTypes
-    
-    #print structureTypeHierarchy
-    
-    # 1 A
-    # 2 B
-    # 3 ¶
-    # 4 C
-    # 5 D
-    
-    # hierarchy=book,chapter,verse,paragraph
-    # <b>
-    #   <c>
-    #     <v>
-    #        <p sID />
-    #        a
-    #        b
-    #     </v>
-    #     <v>
-    #        c
-    #        d
-    #        <p eID />
-    #     </v>
-    #   </c>
-    # </b>
-    
+        
     
     # Gather the positions of each structure's bounding tokens
     initialShadowStructures = []
@@ -100,6 +76,22 @@ def get_osis(request, osis_ref):
             structuresByTokenEndPosition[struct.end_token.position] = []
         structuresByTokenEndPosition[struct.end_token.position].append(struct)
     
+    # Stick initialShadowStructures and finalShadowStructures onto the first
+    # token and last token's respective structure lists
+    if len(initialShadowStructures):
+        pos = data['tokens'][0].position
+        if not structuresByTokenStartPosition.has_key(pos):
+            structuresByTokenStartPosition[pos] = []
+        for struct in initialShadowStructures:
+            structuresByTokenStartPosition[pos].append(struct)
+    if len(finalShadowStructures):
+        pos = data['tokens'][len(data['tokens'])-1].position
+        if not structuresByTokenEndPosition.has_key(pos):
+            structuresByTokenEndPosition[pos] = []
+        for struct in finalShadowStructures:
+            structuresByTokenEndPosition[pos].append(struct)
+    
+    
     # Now sort each array in structuresByTokenStartPosition and
     # structuresByTokenEndPosition by GET['hierarchy'] and indicate for each
     # whether it is_milestoned
@@ -109,47 +101,26 @@ def get_osis(request, osis_ref):
             structureTypeHierarchy.index(b.type)
         )
     
-    initialShadowStructures.sort(sorter)
-    finalShadowStructures.sort(sorter)
     for structureGroup in (structuresByTokenStartPosition, structuresByTokenEndPosition):
-        print
         for structs in structureGroup.values():
-            print "group at: " + structs[0].start_token.data
             if len(structs):
                 structs.sort(sorter)
                 # Detect overlapping hierarchies (and need for milestones)
                 structs[0].is_milestoned |= False
                 max_start_position = structs[0].start_token.position
                 min_end_position = structs[0].end_token.position
-                print " - " + str(structs[0]) + " " + str(structs[0].is_milestoned) + " " + str(structs[0].shadow)
                 for i in range(1, len(structs)):
+                    # Start
                     if structs[i].start_token.position < max_start_position:
                        structs[i].is_milestoned = True
                     else:
                        max_start_position = structs[i].start_token.position
                     
+                    # End
                     if structs[i].end_token.position > min_end_position:
                        structs[i].is_milestoned = True
                     else:
                        min_end_position = structs[i].end_token.position
-                    print " - " + str(structs[i]) + " " + str(structs[i].is_milestoned) + " " + str(structs[i].shadow)
-        
-    #for structs in structuresByTokenEndPosition.values():
-    #    if len(structs):
-    #        structs.sort(sorter)
-    #        # Detect overlapping hierarchies (and need for milestones)
-    #        structs[0].is_milestoned = False
-    #        min_start_position = structs[0].start_token.position
-    #        max_end_position = structs[0].end_token.position
-    #        for i in range(1, len(structs)):
-    #            print str(structs[i]) + " " + str(structs[i].is_milestoned)
-    #            if structs[i].start_token.position < min_start_position:
-    #               structs[i].is_milestoned = True
-    #               min_start_position = structs[i].start_token.position
-    #            if structs[i].end_token.position > max_end_position:
-    #               structs[i].is_milestoned = True
-    #               max_end_position = structs[i].end_token.position
-    
     
     
     # TODO: It is important that the structures be sorted either by their
@@ -161,35 +132,45 @@ def get_osis(request, osis_ref):
     
     #TODO: This should instead return an object for the view to process, including whether it is milestone
     def handleStructure(struct, isStart):
-        text = "["
-        if not isStart:
-            text += "/"
         if struct.type == TokenStructure.BOOK:
-            text += "BOOK"
-        if struct.type == TokenStructure.CHAPTER:
-            text += "CHAPTER"
+            elName = "book"
+        elif struct.type == TokenStructure.CHAPTER:
+            elName = "chapter"
         if struct.type == TokenStructure.VERSE:
-            text += "VERSE"
+            elName = "verse"
         if struct.type == TokenStructure.PARAGRAPH:
-            text += "P"
+            elName = "p"
+        
+        shadow = ""
         if struct.shadow:
-            text += " shadow='"
             if struct.shadow == TokenStructure.SHADOW_START:
-                text += "start"
+                shadow = "start"
             elif struct.shadow == TokenStructure.SHADOW_END:
-                text += "end"
+                shadow = "end"
             elif struct.shadow == TokenStructure.SHADOW_BOTH:
-                text += "both"
+                shadow = "both"
             else:
-                text += "none"
-            text += "'"
-        text += "]"
-        text += str(isStart)
-        return text
-    
-    # TODO: initialShadowStructures needs to be merged into the start token
-    for struct in initialShadowStructures:
-        passage += handleStructure(struct, 'blast')
+                shadow = "none"
+        
+        ret = ""
+        if struct.is_milestoned:
+            ret += "<" + elName
+            if isStart:
+                if shadow:
+                    ret += " shadow='" + shadow + "'"
+                ret += " sID='" + str(struct.id) + "'"
+            else:
+                ret += " eID='" + str(struct.id) + "'"
+            ret += " />"
+        else:
+            if isStart:
+                ret += "<" + elName
+                if shadow:
+                    ret += " shadow='" + shadow + "'"
+                ret += ">"
+            else:
+                ret += "</" + elName + ">"
+        return ret
     
     
     
@@ -206,15 +187,6 @@ def get_osis(request, osis_ref):
             #assert(not structuresByTokenStartPosition.has_key(token.position)) #Ensure no overlap?
             for struct in reversed(structuresByTokenEndPosition[token.position]):
                 passage += handleStructure(struct, False)
-    
-    for struct in reversed(finalShadowStructures):
-        passage += handleStructure(struct, False)
-    
-    #data['concurrent_structures']
-    
-    
-    # data['tokens']
-    # data['concurrent_structures']
     
     
     
