@@ -2,7 +2,7 @@
 
 from django.http import HttpResponse
 from django.shortcuts import render_to_response
-from django.http import Http404
+from django.http import *
 from api.models import *
 from django.db.models import Q
 from api import osis
@@ -30,10 +30,29 @@ def get_osis(request, osis_ref):
         osis_ref_parsed['groups']['end_osis_id']
     )
     
+    
+    # Get the desired hierarchy (serialization order) for TokenStructures
+    structureTypes = []
+    structureTypeLookup = {}
+    structureTypeHierarchy = []
+    for choice_tuple in TokenStructure.TYPES_CHOICES:
+        structureTypeLookup[choice_tuple[1]] = choice_tuple[0]
+        structureTypes.append(choice_tuple[0])
     if request.GET.has_key("hierarchy"):
-        print request.GET["hierarchy"]
-    else:
-        print "FOOD"    
+        # Gather the structures specified in the qeury
+        for structType in request.GET["hierarchy"].split(","):
+            if not structureTypeLookup.has_key(structType):
+                return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % structType) #TODO: This needs to be escaped
+            structureTypeHierarchy.append(structureTypeLookup[structType])
+        
+        # Append any remaining
+        for structType in structureTypes:
+            if structType not in structureTypeHierarchy:
+                structureTypeHierarchy.append(structType)
+    else: #default order
+        structureTypeHierarchy = structureTypes
+    
+    #print structureTypeHierarchy
     
     # 1 A
     # 2 B
@@ -62,11 +81,16 @@ def get_osis(request, osis_ref):
     initialShadowStructures = []
     structuresByTokenStartPosition = {}
     structuresByTokenEndPosition = {}
-    terminalShadowStructures = []
+    finalShadowStructures = []
     
     for struct in data['concurrent_structures']:
         if struct.start_token.position < data['start_structure'].start_token.position:
+            struct.shadow = struct.shadow | TokenStructure.SHADOW_START
             initialShadowStructures.append(struct)
+        
+        if struct.end_token.position > data['end_structure'].end_token.position:
+            struct.shadow = struct.shadow | TokenStructure.SHADOW_END
+            finalShadowStructures.append(struct)
         
         if not structuresByTokenStartPosition.has_key(struct.start_token.position):
             structuresByTokenStartPosition[struct.start_token.position] = []
@@ -75,18 +99,57 @@ def get_osis(request, osis_ref):
         if not structuresByTokenEndPosition.has_key(struct.end_token.position):
             structuresByTokenEndPosition[struct.end_token.position] = []
         structuresByTokenEndPosition[struct.end_token.position].append(struct)
-        
-        if struct.end_token.position > data['end_structure'].end_token.position:
-            terminalShadowStructures.append(struct)
     
     # Now sort each array in structuresByTokenStartPosition and
     # structuresByTokenEndPosition by GET['hierarchy'] and indicate for each
     # whether it is_milestoned
-    # QUESTION: The objects are stored by reference, so if is_milestoned is set
-    #           in one it will be set in the other, correct?
+    def sorter(a, b):
+        return cmp(
+            structureTypeHierarchy.index(a.type),
+            structureTypeHierarchy.index(b.type)
+        )
     
-    print initialShadowStructures
-    print terminalShadowStructures
+    initialShadowStructures.sort(sorter)
+    finalShadowStructures.sort(sorter)
+    for structureGroup in (structuresByTokenStartPosition, structuresByTokenEndPosition):
+        print
+        for structs in structureGroup.values():
+            print "group at: " + structs[0].start_token.data
+            if len(structs):
+                structs.sort(sorter)
+                # Detect overlapping hierarchies (and need for milestones)
+                structs[0].is_milestoned |= False
+                max_start_position = structs[0].start_token.position
+                min_end_position = structs[0].end_token.position
+                print " - " + str(structs[0]) + " " + str(structs[0].is_milestoned) + " " + str(structs[0].shadow)
+                for i in range(1, len(structs)):
+                    if structs[i].start_token.position < max_start_position:
+                       structs[i].is_milestoned = True
+                    else:
+                       max_start_position = structs[i].start_token.position
+                    
+                    if structs[i].end_token.position > min_end_position:
+                       structs[i].is_milestoned = True
+                    else:
+                       min_end_position = structs[i].end_token.position
+                    print " - " + str(structs[i]) + " " + str(structs[i].is_milestoned) + " " + str(structs[i].shadow)
+        
+    #for structs in structuresByTokenEndPosition.values():
+    #    if len(structs):
+    #        structs.sort(sorter)
+    #        # Detect overlapping hierarchies (and need for milestones)
+    #        structs[0].is_milestoned = False
+    #        min_start_position = structs[0].start_token.position
+    #        max_end_position = structs[0].end_token.position
+    #        for i in range(1, len(structs)):
+    #            print str(structs[i]) + " " + str(structs[i].is_milestoned)
+    #            if structs[i].start_token.position < min_start_position:
+    #               structs[i].is_milestoned = True
+    #               min_start_position = structs[i].start_token.position
+    #            if structs[i].end_token.position > max_end_position:
+    #               structs[i].is_milestoned = True
+    #               max_end_position = structs[i].end_token.position
+    
     
     
     # TODO: It is important that the structures be sorted either by their
@@ -96,7 +159,8 @@ def get_osis(request, osis_ref):
     
     passage = ""
     
-    def handleStructure(struct, isShadow, isStart):
+    #TODO: This should instead return an object for the view to process, including whether it is milestone
+    def handleStructure(struct, isStart):
         text = "["
         if not isStart:
             text += "/"
@@ -108,30 +172,43 @@ def get_osis(request, osis_ref):
             text += "VERSE"
         if struct.type == TokenStructure.PARAGRAPH:
             text += "P"
-        if isShadow:
-            text += " shadow"
+        if struct.shadow:
+            text += " shadow='"
+            if struct.shadow == TokenStructure.SHADOW_START:
+                text += "start"
+            elif struct.shadow == TokenStructure.SHADOW_END:
+                text += "end"
+            elif struct.shadow == TokenStructure.SHADOW_BOTH:
+                text += "both"
+            else:
+                text += "none"
+            text += "'"
         text += "]"
+        text += str(isStart)
         return text
     
+    # TODO: initialShadowStructures needs to be merged into the start token
     for struct in initialShadowStructures:
-        passage += handleStructure(struct, True, True)
+        passage += handleStructure(struct, 'blast')
     
     
     
     for token in data['tokens']:
-        #TODO: Should we close the end tokens and then open the start?
-        if structuresByTokenEndPosition.has_key(token.position):
-            for struct in reversed(structuresByTokenEndPosition[token.position]):
-                passage += handleStructure(struct, False, False)
-        
         if structuresByTokenStartPosition.has_key(token.position):
             for struct in structuresByTokenStartPosition[token.position]:
-                passage += handleStructure(struct, False, True)
+                passage += handleStructure(struct, True)
         
         passage += token.data
+        
+        #TODO: Should we close the end tokens and then open the start?
+        #      NO: Because there must be no overlap
+        if structuresByTokenEndPosition.has_key(token.position):
+            #assert(not structuresByTokenStartPosition.has_key(token.position)) #Ensure no overlap?
+            for struct in reversed(structuresByTokenEndPosition[token.position]):
+                passage += handleStructure(struct, False)
     
-    for struct in reversed(terminalShadowStructures):
-        passage += handleStructure(struct, True, False)
+    for struct in reversed(finalShadowStructures):
+        passage += handleStructure(struct, False)
     
     #data['concurrent_structures']
     

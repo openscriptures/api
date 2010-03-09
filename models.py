@@ -224,9 +224,9 @@ class Token(models.Model):
     PUNCTUATION = 2
     WHITESPACE = 3
     TYPE_CHOICES = (
-        (WORD,        'Word'),
-        (PUNCTUATION, 'Punctuation'),
-        (WHITESPACE,  'Whitespace'),
+        (WORD,        'word'),
+        (PUNCTUATION, 'punctuation'),
+        (WHITESPACE,  'whitespace'),
     )
     type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, default=WORD, db_index=True, help_text="A general hint as to what the token data represents")
     position = models.PositiveIntegerField(db_index=True)
@@ -394,13 +394,13 @@ class TokenStructure(models.Model):
     SHADOW_START = 0b0001
     SHADOW_END   = 0b0010
     SHADOW_BOTH  = 0b0011
-    shadow = SHADOW_NONE
     SHADOW_CHOICES = (
         (SHADOW_NONE, "none"),
         (SHADOW_START, "start"),
         (SHADOW_END, "end"),
         (SHADOW_BOTH, "both")
     )
+    shadow = SHADOW_NONE
     
     is_milestoned = False
     
@@ -428,7 +428,7 @@ class TokenStructure(models.Model):
         if self.osis_id:
             return self.osis_id
         elif self.type == self.PARAGRAPH:
-            return u"¶" + self.start_token.data + "…" + self.end_token.data
+            return u"¶" + self.start_token.data + u" … " + self.end_token.data
         elif self.type == self.UNCERTAIN1:
             return u"[]"
         else:
