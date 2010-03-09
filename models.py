@@ -354,6 +354,7 @@ class TokenStructure(models.Model):
         (SUBSECTION, "subSection"),
         (TITLE, "title"),
         (PARAGRAPH, "paragraph"),
+        (LINE, "line"),
         (QUOTATION, "quotation"),
         (UNCERTAIN1, "uncertain-1"), #single square brackets around tokens
         (UNCERTAIN2, "uncertain-2"), #double square brackets around tokens
@@ -478,7 +479,7 @@ class TokenStructure(models.Model):
         if self.osis_id:
             return self.osis_id
         elif self.type == self.PARAGRAPH:
-            return u"¶" + self.start_token.data + "-" + self.end_token.data
+            return u"¶" + self.start_token.data + "…" + self.end_token.data
         elif self.type == self.UNCERTAIN1:
             return u"[]"
         else:
