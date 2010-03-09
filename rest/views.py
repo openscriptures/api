@@ -156,6 +156,8 @@ def get_osis(request, osis_ref):
         if struct.is_milestoned:
             ret += "<" + elName
             if isStart:
+                if struct.osis_id:
+                    ret += " osisID='" + struct.osis_id + "'"
                 if shadow:
                     ret += " shadow='" + shadow + "'"
                 ret += " sID='" + str(struct.id) + "'"
@@ -165,6 +167,7 @@ def get_osis(request, osis_ref):
         else:
             if isStart:
                 ret += "<" + elName
+                ret += " osisID='" + struct.osis_id + "'"
                 if shadow:
                     ret += " shadow='" + shadow + "'"
                 ret += ">"
