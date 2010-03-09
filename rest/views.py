@@ -8,7 +8,7 @@ from django.db.models import Q
 from api import osis
 import json
 
-def get_osis(request, osis_ref):
+def get_passage(request, osis_ref):
     osis_ref_parsed = osis.parse_osis_ref(osis_ref)
     
     #TODO: We should be able to query non-main works as well (i.e. where variants_for_work != None)
@@ -33,6 +33,7 @@ def get_osis(request, osis_ref):
     
     # Get the desired hierarchy (serialization order) for TokenStructures
     structureTypes = []
+    structureTypesAlwaysMilestoned = {}
     structureTypeLookup = {}
     structureTypeHierarchy = []
     for choice_tuple in TokenStructure.TYPES_CHOICES:
@@ -41,6 +42,11 @@ def get_osis(request, osis_ref):
     if request.GET.has_key("hierarchy"):
         # Gather the structures specified in the qeury
         for structType in request.GET["hierarchy"].split(","):
+            always_milestone = structType.startswith('~')
+            if always_milestone:
+                structType = structType[1:]
+                structureTypesAlwaysMilestoned[structureTypeLookup[structType]] = True
+            
             if not structureTypeLookup.has_key(structType):
                 return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % structType) #TODO: This needs to be escaped
             structureTypeHierarchy.append(structureTypeLookup[structType])
@@ -78,23 +84,22 @@ def get_osis(request, osis_ref):
     
     # Stick initialShadowStructures and finalShadowStructures onto the first
     # token and last token's respective structure lists
+    passage_start_token_position = data['tokens'][0].position
     if len(initialShadowStructures):
-        pos = data['tokens'][0].position
-        if not structuresByTokenStartPosition.has_key(pos):
-            structuresByTokenStartPosition[pos] = []
+        if not structuresByTokenStartPosition.has_key(passage_start_token_position):
+            structuresByTokenStartPosition[passage_start_token_position] = []
         for struct in initialShadowStructures:
-            structuresByTokenStartPosition[pos].append(struct)
+            structuresByTokenStartPosition[passage_start_token_position].append(struct)
+    passage_end_token_position = data['tokens'][len(data['tokens'])-1].position
     if len(finalShadowStructures):
-        pos = data['tokens'][len(data['tokens'])-1].position
-        if not structuresByTokenEndPosition.has_key(pos):
-            structuresByTokenEndPosition[pos] = []
+        if not structuresByTokenEndPosition.has_key(passage_end_token_position):
+            structuresByTokenEndPosition[passage_end_token_position] = []
         for struct in finalShadowStructures:
-            structuresByTokenEndPosition[pos].append(struct)
-    
+            structuresByTokenEndPosition[passage_end_token_position].append(struct)
     
     # Now sort each array in structuresByTokenStartPosition and
-    # structuresByTokenEndPosition by GET['hierarchy'] and indicate for each
-    # whether it is_milestoned
+    # structuresByTokenEndPosition by the requested hierarchy and indicate for
+    # each whether it is_milestoned
     def sorter(a, b):
         return cmp(
             structureTypeHierarchy.index(a.type),
@@ -106,27 +111,30 @@ def get_osis(request, osis_ref):
             if len(structs):
                 structs.sort(sorter)
                 # Detect overlapping hierarchies (and need for milestones)
+                # TODO: What if the first struct is desired to be milestoned?
                 structs[0].is_milestoned |= False
-                max_start_position = structs[0].start_token.position
-                min_end_position = structs[0].end_token.position
+                max_start_position = max(structs[0].start_token.position, passage_start_token_position)
+                min_end_position = min(structs[0].end_token.position, passage_end_token_position)
                 for i in range(1, len(structs)):
-                    # Start
-                    if structs[i].start_token.position < max_start_position:
-                       structs[i].is_milestoned = True
-                    else:
-                       max_start_position = structs[i].start_token.position
+                    # Always milestone
+                    if structureTypesAlwaysMilestoned.has_key(structs[i].type):
+                        structs[i].is_milestoned = True
+                        continue
                     
-                    # End
-                    if structs[i].end_token.position > min_end_position:
-                       structs[i].is_milestoned = True
+                    start_position = max(structs[i].start_token.position, max_start_position)
+                    end_position = min(structs[i].end_token.position, min_end_position)
+                    
+                    # Check for needing start milestone
+                    if max(structs[i].start_token.position, passage_start_token_position) < start_position:
+                        structs[i].is_milestoned = True
                     else:
-                       min_end_position = structs[i].end_token.position
-    
-    
-    # TODO: It is important that the structures be sorted either by their
-    #       inherent size, or by their actual size, so that structures that span
-    #       more tokens will wrap structures that contain fewer
-    #       We need to sort the structures by the order that we want them to appear in
+                        max_start_position = start_position
+                    
+                    # Check for needing end milestone
+                    if min(structs[i].end_token.position, passage_end_token_position) > end_position:
+                        structs[i].is_milestoned = True
+                    else:
+                        min_end_position = end_position
     
     passage = ""
     
@@ -176,7 +184,7 @@ def get_osis(request, osis_ref):
         return ret
     
     
-    
+    # TODO: Output here should be streamed to the template
     for token in data['tokens']:
         if structuresByTokenStartPosition.has_key(token.position):
             for struct in structuresByTokenStartPosition[token.position]:
