@@ -267,7 +267,7 @@ for book_code in book_codes:
             )
             tokenCount += 1
             paragraph_marker.save()
-            structs[TokenStructure.PARAGRAPH].end_marker_token = paragraph_marker
+            structs[TokenStructure.PARAGRAPH].end_marker = paragraph_marker
             closeStructure(TokenStructure.PARAGRAPH)
             bookTokens.append(paragraph_marker)
         
@@ -282,7 +282,7 @@ for book_code in book_codes:
                 variant_bits = work2_variant_bit | work1_variant_bit
             )
             if paragraph_marker:
-                structs[TokenStructure.PARAGRAPH].start_marker_token = paragraph_marker
+                structs[TokenStructure.PARAGRAPH].start_marker = paragraph_marker
             structCount += 1
         
         # Insert whitespace
@@ -315,7 +315,7 @@ for book_code in book_codes:
             assert(not structs.has_key(TokenStructure.UNCERTAIN1))
             print "### OPEN BRACKET"
             
-            # Make start_marker_token for UNCERTAIN1
+            # Make start_marker for UNCERTAIN1
             open_bracket_token = Token(
                 data     = '[',
                 type     = Token.PUNCTUATION,
@@ -332,7 +332,7 @@ for book_code in book_codes:
                 type = TokenStructure.UNCERTAIN1,
                 position = structCount,
                 variant_bits = work2_variant_bit | work1_variant_bit,
-                start_marker_token = open_bracket_token
+                start_marker = open_bracket_token
             )
             structCount += 1
         
@@ -398,7 +398,7 @@ for book_code in book_codes:
             
             structs[TokenStructure.UNCERTAIN1].end_token = lineTokens[-1]
             
-            # Make end_marker_token for UNCERTAIN1
+            # Make end_marker for UNCERTAIN1
             close_bracket_token = Token(
                 data     = ']',
                 type     = Token.PUNCTUATION,
@@ -410,7 +410,7 @@ for book_code in book_codes:
             close_bracket_token.save()
             
             # Close the UNCERTAIN1 structure
-            structs[TokenStructure.UNCERTAIN1].end_marker_token = close_bracket_token
+            structs[TokenStructure.UNCERTAIN1].end_marker = close_bracket_token
             closeStructure(TokenStructure.UNCERTAIN1)
             lineTokens.append(open_bracket_token)
         

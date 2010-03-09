@@ -138,12 +138,6 @@ class Work(models.Model):
             raise Exception("Start structure with osisID %s not found" % start_osis_id)
         start_structure = structures[0]
         
-        # Get start position, including token, marker, and absolute
-        start_pos = marker_start_pos = token_start_pos = start_structure.start_token.position
-        if start_structure.start_marker_token is not None:
-            start_pos = marker_start_pos = start_structure.start_marker_token.position
-            assert(marker_start_pos <= token_start_pos)
-        
         # Get the structure for the end
         if start_osis_id != end_osis_id:
             structures = TokenStructure.objects.select_related(depth=1).filter(
@@ -157,75 +151,56 @@ class Work(models.Model):
         else:
             end_structure = start_structure
         
-        # Get end position, including token, marker, and absolute
-        end_pos = marker_end_pos = token_end_pos = end_structure.end_token.position
-        if end_structure.end_marker_token is not None:
-            end_pos = marker_end_pos = end_structure.end_marker_token.position
-            assert(marker_end_pos >= token_end_pos)
-        
         # Now grab all structures from the work which have start/end_token or
-        #  start/end_marker_token whose positions are less 
+        #  start/end_marker whose positions are less 
         concurrent_structures = TokenStructure.objects.select_related(depth=1).filter(work = main_work).filter(
-            ( # Structures that are contained within start_structure and end_structure (including markers)
-                ( # At or after start token or marker
-                    Q(start_token__position__lte = start_pos)  # start_structure.start_marker_token.position || start_structure.start_token.position
-                    |
-                    Q(
-                        start_marker_token__isnull = False,
-                        start_marker_token__position__lte = start_pos  # start_structure.start_marker_token.position || start_structure.start_token.position
-                    )
-                )
+            # Structures that are contained within start_structure and end_structure
+            (
+                Q(start_token__position__lte = start_structure.start_token.position)
                 &
-                ( # At or before end token or marker
-                    Q(end_token__position__gte = end_pos)  # end_structure.end_marker_token.position || end_structure.end_token.position
-                    |
-                    Q(
-                        end_marker_token__isnull = False,
-                        end_marker_token__position__gte = end_pos  # end_structure.end_marker_token.position || end_structure.end_token.position
-                    )
-                )
+                Q(end_token__position__gte = end_structure.end_token.position)
             )
             |
-            # Structures that only start inside of the selected range (excluding markers)
+            # Structures that only start inside of the selected range
             Q(
-                start_token__position__gte = token_start_pos, # start_structure.start_token.position
-                start_token__position__lte = token_end_pos    # end_structure.end_token.position
+                start_token__position__gte = start_structure.start_token.position,
+                start_token__position__lte = end_structure.end_token.position
             )
             |
             # Structures that only end inside of the selected range (excluding markers)
             Q(
-                end_token__position__gte = token_start_pos, # start_structure.start_token.position
-                end_token__position__lte = token_end_pos    # end_structure.end_token.position
+                end_token__position__gte = start_structure.start_token.position,
+                end_token__position__lte = end_structure.end_token.position
             )
         ).extra(where=["api_tokenstructure.variant_bits & %s != 0"], params=[variant_bits])
         
         # Now indicate if the structures are shadowed (virtual)
         for struct in concurrent_structures:
-            if struct.start_token.position < start_pos:  # start_structure.start_marker_token.position || start_structure.start_token.position
+            if struct.start_token.position < start_structure.start_token.position:
                 struct.shadow = struct.shadow | TokenStructure.SHADOW_START
-            if struct.end_token.position > end_pos:  # end_structure.end_marker_token.position || end_structure.end_token.position
+            if struct.end_token.position > end_structure.end_token.position:
                 struct.shadow = struct.shadow | TokenStructure.SHADOW_END
         
         # Now get all tokens that exist between the beginning of start_structure
         # and the end of end_structure
         
-        # Get all of the tokens between the marker start and marker end
-        # and who have variant bits that match the requested variant bits
+        # Get all of the tokens between the start and end and who have variant
+        # bits that match the requested variant bits
         tokens = Token.objects.filter(
             work = main_work,
-            position__gte = start_pos, # start_structure.start_marker_token.position || start_structure.start_token.position
-            position__lte = end_pos    # end_structure.end_marker_token.position || end_structure.end_token.position
+            position__gte = start_structure.start_token.position,
+            position__lte = end_structure.end_token.position
         ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
         
         # Indicate which of the beginning queried tokens are markers (should be none since verse)
         for token in tokens:
-            if token.position >= token_start_pos:
+            if token.position >= start_structure.start_token.position:
                 break
             token.is_structure_marker = True
         
         # Indicate which of the ending queried tokens are markers (should be none since verse)
         for token in reversed(tokens):
-            if token.position <= token_end_pos:
+            if token.position <= end_structure.end_token.position:
                 break
             token.is_structure_marker = True
         
@@ -276,18 +251,8 @@ class Token(models.Model):
             return None
         
         structures = TokenStructure.objects.filter(
-            Q(start_token__position__lte = self.position)
-            |
-            Q(
-                start_marker_token__isnull = False,
-                start_marker_token__position__lte = self.position
-            ),
-            Q(end_token__position__gte = self.position)
-            |
-            Q(
-                end_marker_token__isnull = False,
-                end_marker_token__position__gte = self.position
-            ),
+            Q(start_token__position__lte = self.position),
+            Q(end_token__position__gte = self.position),
             source_url__isnull = False,
             #source_url__ne = "",
             #source_url__isblank = False,
@@ -375,58 +340,42 @@ class TokenStructure(models.Model):
     numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
     
-    start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text="Used to demarcate the exclusive start point for the structure; excludes any typographical marker that marks up the structure in the text, such as quotation marks. If null, then tokens should be discovered via TokenStructureItem.")
+    start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text="The token that starts the structure's content; this may or may not include the start_marker, like quotation marks. If null, then tokens should be discovered via TokenStructureItem.")
     end_token   = models.ForeignKey(Token, null=True, related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
     
-    start_marker_token = models.ForeignKey(Token, null=True, related_name='start_marker_token_structure_set', help_text="Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).")
-    end_marker_token   = models.ForeignKey(Token, null=True, related_name='end_marker_token_structure_set',   help_text="Same as start_marker_token, but for the end.")
+    #Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).
+    start_marker = models.ForeignKey(Token, null=True, related_name='start_marker_structure_set', help_text="The optional token that marks the start of the structure; this marker may be included (inside) in the start_token/end_token range as in the example of quotation marks, or it may excluded (outside) as in the case of paragraph markers which are double linebreaks. Outside markers may overlap (be shared) among multiple paragraphs' start/end_markers, whereas inside markers may not.")
+    end_marker   = models.ForeignKey(Token, null=True, related_name='end_marker_structure_set',   help_text="Same as start_marker, but for the end.")
     
-    def get_tokens(self, include_markers = True, variant_bits = None):
+    def get_tokens(self, include_outside_markers = False, variant_bits = None):
+        if include_outside_markers:
+            raise Exception("include_outside_markers not implemented yet")
         if variant_bits is None:
             variant_bits = self.variant_bits
         
         # Get the tokens from a range
-        if self.start_token:
-            # Get start and end positions for the tokens
-            start_pos = token_start_pos = self.start_token.position
-            end_pos = token_end_pos = token_start_pos
-            if self.end_token is not None:
-                end_pos = token_end_pos = self.end_token.position
-            
-            # Get start position for marker
-            if include_markers:
-                marker_start_pos = token_start_pos
-                if self.start_marker_token is not None:
-                    start_pos = marker_start_pos = self.start_marker_token.position
-                    assert(marker_start_pos <= token_start_pos)
-                
-                # Get end position for the marker
-                marker_end_pos = token_end_pos
-                if self.start_marker_token is not None:
-                    end_pos = marker_end_pos = self.end_marker_token.position
-                    assert(token_end_pos >= marker_end_pos)
+        if self.start_token is not None:
+            assert(self.end_marker is not None)
             
             # Get all of the tokens between the marker start and marker end
             # and who have variant bits that match the requested variant bits
             tokens = Token.objects.filter(
                 work = self.work,
-                position__gte = start_pos,
-                position__lte = end_pos
+                position__gte = self.start_token.position,
+                position__lte = self.end_token.position
             ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
-            #if variant_bits is not None:
-            #    tokens = tokens.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
             
             # Indicate which of the beginning queried tokens are markers
-            for token in tokens:
-                if token.position >= token_start_pos:
-                    break
-                token.is_structure_marker = True
-            
-            # Indicate which of the ending queried tokens are markers
-            for token in reversed(tokens):
-                if token.position <= token_end_pos:
-                    break
-                token.is_structure_marker = True
+            #for token in tokens:
+            #    if token.position >= start_structure.start_token.position:
+            #        break
+            #    token.is_structure_marker = True
+            #
+            ## Indicate which of the ending queried tokens are markers
+            #for token in reversed(tokens):
+            #    if token.position <= end_structure.end_token.position:
+            #        break
+            #    token.is_structure_marker = True
             
             return tokens
         

@@ -41,10 +41,10 @@ td,th {
 				<th>type</th>
 				<th>numerical_start</th>
 				<th>osis_id</th>
-				<th>start_marker_token</th>
+				<th>start_marker</th>
 				<th>start_token</th>
 				<th>end_token</th>
-				<th>end_marker_token</th>
+				<th>end_marker</th>
 				<th>shadow?</th>
 				<th>variant_bits</th>
 				<th>source_url</th>
@@ -57,15 +57,15 @@ td,th {
 				<td>{{ struct.numerical_start }}</td>
 				<td>{{ struct.osis_id }}</td>
 				<td>
-					{% if struct.start_marker_token %}
-						<pre><a href="#{{ struct.start_marker_token.id }}">{{ struct.start_marker_token.id }} {{ struct.start_marker_token }}</a></pre>
+					{% if struct.start_marker %}
+						<pre><a href="#{{ struct.start_marker.id }}">{{ struct.start_marker.id }} {{ struct.start_marker }}</a></pre>
 					{% endif %}
 				</td>
 				<td><pre><a href="#{{ struct.start_token.id }}">{{ struct.start_token.id }} {{ struct.start_token }}</a></pre></td>
 				<td><pre><a href="#{{ struct.end_token.id }}">{{ struct.end_token.id }} {{ struct.end_token }}</a></pre></td>
 				<td>
-					{% if struct.end_marker_token %}
-						<pre><a href="#{{ struct.end_marker_token.id }}">{{ struct.end_marker_token.id }} {{ struct.end_marker_token}}</a></pre>
+					{% if struct.end_marker %}
+						<pre><a href="#{{ struct.end_marker.id }}">{{ struct.end_marker.id }} {{ struct.end_marker}}</a></pre>
 					{% endif %}
 				</td>
 				<td>{{ struct.shadow }}</td>
