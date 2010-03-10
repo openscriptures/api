@@ -31,19 +31,30 @@ def passage(request, osis_ref):
         osis_ref_parsed['groups']['end_osis_id']
     )
     
-    # Get the output format
+    # Define the output formats and their templates
     output_formats = {
-        'debug':{
-            'template_name':'passage_debug.html',
-            'mimetype': 'text/html'
-        },
+        #'debug':{
+        #    'template_name':'passage_debug.html',
+        #    'mimetype': 'text/html'
+        #},
         'xml':{
             'template_name':'passage.xml',
-            'mimetype': 'application/xml'
+            'mimetype': 'application/xml',
+            'standoff_allowed': True
+        },
+        'xhtml':{
+            'template_name':'passage.xhtml',
+            'mimetype': 'application/xhtml+xml',
+            'standoff_allowed': False
         }
     }
-    output_format = "xml"
     
+    # Get the output format
+    output_format = "xml" #default
+    if request.GET.has_key("output"):
+        if not output_formats.has_key(request.GET["output"]):
+            return HttpResponseBadRequest("Unexpected output type '%s' provided for hierarchy" % request.GET["output"], mimetype = "text/plain")
+        output_format = request.GET["output"]
     
     # Get the desired hierarchy (serialization order) for TokenStructures
     structure_types = []
@@ -58,16 +69,29 @@ def passage(request, osis_ref):
     if request.GET.has_key("hierarchy"):
         if request.GET["hierarchy"] == 'standoff':
             is_standoff = True
+            assert(output_formats[output_format]['standoff_allowed'])
         else:
             is_standoff = False
             
             # Predefined hierarchy: Book-Chapter-Verse
             if request.GET["hierarchy"] == 'bcv':
-                structure_type_hierarchy = ["bookGroup", "book", "chapter", "verse"]
+                structure_type_hierarchy = [
+                    TokenStructure.BOOK_GROUP,
+                    TokenStructure.BOOK,
+                    TokenStructure.CHAPTER,
+                    TokenStructure.VERSE,
+                ]
+                structure_types_always_milestoned[TokenStructure.PARAGRAPH] = True
             
             # Predefined hierarchy: Book-Section-Paragraph
             elif request.GET["hierarchy"] == 'bsp':
-                structure_type_hierarchy = ["bookGroup", "book", "section", "paragraph", "line"]
+                structure_type_hierarchy = [
+                    TokenStructure.BOOK_GROUP,
+                    TokenStructure.BOOK,
+                    TokenStructure.SECTION,
+                    TokenStructure.PARAGRAPH,
+                    TokenStructure.LINE
+                ]
                 structure_types_always_milestoned[TokenStructure.VERSE] = True
                 structure_types_always_milestoned[TokenStructure.CHAPTER] = True
             
@@ -80,7 +104,7 @@ def passage(request, osis_ref):
                         structure_types_always_milestoned[STRUCTURE_TYPE_CODES[struct_type]] = True
                     
                     if not STRUCTURE_TYPE_CODES.has_key(struct_type):
-                        return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_type) #TODO: This needs to be escaped
+                        return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_type, mimetype = "text/plain")
                     structure_type_hierarchy.append(STRUCTURE_TYPE_CODES[struct_type])
             
             # Append any remaining in the order they are defined
@@ -133,7 +157,7 @@ def passage(request, osis_ref):
         for struct in final_shadow_structures:
             structures_by_token_end_position[passage_end_token_position].append(struct)
     
-        
+    
     passage_chunks = []
     
     if not is_standoff:
@@ -203,6 +227,7 @@ def passage(request, osis_ref):
         'passages':[]
     }
     
+    #TODO: Allow multiple passages to be queried at once
     passage = {
         'is_standoff':is_standoff,
         'osis_ref': osis_ref,

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace">
+	<head>
+		<meta charset="utf-8" />
+		<title>Passage Lookup</title><!-- put the parsed passages here -->
+	</head>
+	<body>
+		<h1>Passage Lookup</h1>
+		<em>THIS IS NOT YET FINISHED; there is not enough formatting abilities
+		in Django templates; we need to write custom views for preparing the content for output.</em> 
+	
+	{% for passage in passages %}
+	<article osis:scope="{{ passage.osis_ref }}">
+		<h2>{{ passage.osis_ref }}</h2>
+		{% spaceless %}
+			{% for chunk in passage.chunks %}
+				{% if chunk.token %}
+					<span id="t{{ chunk.token.position }}">
+						<![CDATA[{{ chunk.token.data }}]]>
+					</span>
+				{% else %}
+
+					{% if chunk.is_start %}
+					
+						{% ifequal chunk.structure.type_name 'paragraph' %}
+							{% if chunk.structure.is_milestoned %}
+								<br />
+							{% else %}
+								<p>
+							{% endif %}
+						{% endifequal %}
+						{% ifequal chunk.structure.type_name 'chapter' %}
+							<big class='chapter'>{{ chunk.structure.numerical_start }}</big>
+						{% endifequal %}
+						{% ifequal chunk.structure.type_name 'verse' %}
+							<sup class='verse'>{{ chunk.structure.numerical_start }}</sup>
+						{% endifequal %}
+					{% else %}
+						{% ifequal chunk.structure.type_name 'paragraph' %}
+							{% if chunk.structure.is_milestoned %}
+								<br />
+							{% else %}
+								</p>
+							{% endif %}
+						{% endifequal %}
+						
+						<!-- end: {{ chunk.structure.type_name }} -->
+					{% endif %}
+
+				{% endif %}
+			{% endfor %}
+		{% endspaceless %}
+	</article>
+	{% endfor %}
+
+		<hr />
+		<footer>
+			<address><a href="http://openscriptures.org/" rel="author">Open Scriptures</a></address>
+		</footer>
+	</body>
+</html>
