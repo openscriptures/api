@@ -1,27 +1,59 @@
 <?xml version="1.0"?>
 <passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xlink="http://www.w3.org/1999/xlink">
 	{% for passage in passages %}
-	<passage osis:osisRef="{{ passage.osis_ref }}">
+	<passage osis:scope="{{ passage.osis_ref }}">
 		{% spaceless %}
-			{% for chunk in passage.chunks %}
-				{% if chunk.token %}
-					<token xml:id="t{{ chunk.token.position }}"><![CDATA[{{ chunk.token.data }}]]></token>
-				{% else %}
-					{% if chunk.structure.is_milestoned %}
-						{% if chunk.is_start %}
-							<structure-start type="{{ chunk.type }}" {% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %} xml:id="s{{ chunk.structure.position }}" />
-						{% else %}
-							<structure-end xlink:href="#s{{ chunk.structure.position }}" />
-						{% endif %}
+			{% if passage.is_standoff %}
+				<structures>
+					{% for structure in passage.structures %}
+						<structure
+							type="{{ structure.type_name }}"
+							xml:id="s{{ structure.position }}"
+							target="range(#t{% if structure.shadow_start_token_position %}{{structure.shadow_start_token_position}}{% else %}{{structure.start_token.position}}{% endif %}, #t{% if structure.shadow_end_token_position %}{{structure.shadow_end_token_position}}{% else %}{{structure.end_token.position}}{% endif %})"
+							shadow="{{ structure.shadow_name }}"
+						/>
+					{% endfor %}
+				</structures>
+				<tokens>
+					{% for token in passage.tokens %}
+						<token xml:id="t{{ token.position }}">
+							<![CDATA[{{ token.data }}]]>
+						</token>
+					{% endfor %}
+				</tokens>
+			{% else %}
+				{% for chunk in passage.chunks %}
+					{% if chunk.token %}
+						<token xml:id="t{{ chunk.token.position }}">
+							<![CDATA[{{ chunk.token.data }}]]>
+						</token>
 					{% else %}
-						{% if chunk.is_start %}
-							<structure type="{{ chunk.type }}" {% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %} xml:id="s{{ chunk.structure.position }}">
+						{% if chunk.structure.is_milestoned %}
+							{% if chunk.is_start %}
+								<structure-start
+									type="{{ chunk.structure.type_name }}"
+									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
+									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
+									xml:id="s{{ chunk.structure.position }}"
+								/>
+							{% else %}
+								<structure-end xlink:href="#s{{ chunk.structure.position }}" />
+							{% endif %}
 						{% else %}
-							</structure>
+							{% if chunk.is_start %}
+								<structure
+									type="{{ chunk.structure.type_name }}"
+									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
+									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
+									xml:id="s{{ chunk.structure.position }}"
+								>
+							{% else %}
+								</structure>
+							{% endif %}
 						{% endif %}
 					{% endif %}
-				{% endif %}
-			{% endfor %}
+				{% endfor %}
+			{% endif %}
 		{% endspaceless %}
 	</passage>
 	{% endfor %}

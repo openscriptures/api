@@ -48,43 +48,50 @@ def passage(request, osis_ref):
     # Get the desired hierarchy (serialization order) for TokenStructures
     structure_types = []
     structure_types_always_milestoned = {}
-    structure_type_name2code = {}
-    structure_type_code2name = {}
+    STRUCTURE_TYPE_CODES = {}
     structure_type_hierarchy = []
-    for choice_tuple in TokenStructure.TYPES_CHOICES: #TODO: There's gotta be a better way to do reverse lookup of choices tuples
-        structure_type_name2code[choice_tuple[1]] = choice_tuple[0]
-        structure_type_code2name[choice_tuple[0]] = choice_tuple[1]
+    for choice_tuple in TokenStructure.TYPE_CHOICES: #TODO: There's gotta be a better way to do reverse lookup of choices tuples
+        STRUCTURE_TYPE_CODES[choice_tuple[1]] = choice_tuple[0]
         structure_types.append(choice_tuple[0])
+    
+    
     if request.GET.has_key("hierarchy"):
-        # Predefined hierarchy: Book-Chapter-Verse
-        if request.GET["hierarchy"] == 'bcv':
-            structure_type_hierarchy = ["bookGroup", "book", "chapter", "verse"]
-        
-        # Predefined hierarchy: Book-Section-Paragraph
-        elif request.GET["hierarchy"] == 'bsp':
-            structure_type_hierarchy = ["bookGroup", "book", "section", "paragraph", "line"]
-            structure_types_always_milestoned[TokenStructure.VERSE] = True
-            structure_types_always_milestoned[TokenStructure.CHAPTER] = True
-        
-        # Custom hierarchy specified in request
+        if request.GET["hierarchy"] == 'standoff':
+            is_standoff = True
         else:
-            for struct_type in request.GET["hierarchy"].split(","):
-                always_milestone = struct_type.startswith('~')
-                if always_milestone:
-                    struct_type = struct_type[1:]
-                    structure_types_always_milestoned[structure_type_name2code[struct_type]] = True
-                
-                if not structure_type_name2code.has_key(struct_type):
-                    return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_type) #TODO: This needs to be escaped
-                structure_type_hierarchy.append(structure_type_name2code[struct_type])
-        
-        # Append any remaining in the order they are defined
-        for struct_type in structure_types:
-            if struct_type not in structure_type_hierarchy:
-                structure_type_hierarchy.append(struct_type)
+            is_standoff = False
+            
+            # Predefined hierarchy: Book-Chapter-Verse
+            if request.GET["hierarchy"] == 'bcv':
+                structure_type_hierarchy = ["bookGroup", "book", "chapter", "verse"]
+            
+            # Predefined hierarchy: Book-Section-Paragraph
+            elif request.GET["hierarchy"] == 'bsp':
+                structure_type_hierarchy = ["bookGroup", "book", "section", "paragraph", "line"]
+                structure_types_always_milestoned[TokenStructure.VERSE] = True
+                structure_types_always_milestoned[TokenStructure.CHAPTER] = True
+            
+            # Custom hierarchy specified in request
+            else:
+                for struct_type in request.GET["hierarchy"].split(","):
+                    always_milestone = struct_type.startswith('~')
+                    if always_milestone:
+                        struct_type = struct_type[1:]
+                        structure_types_always_milestoned[STRUCTURE_TYPE_CODES[struct_type]] = True
+                    
+                    if not STRUCTURE_TYPE_CODES.has_key(struct_type):
+                        return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_type) #TODO: This needs to be escaped
+                    structure_type_hierarchy.append(STRUCTURE_TYPE_CODES[struct_type])
+            
+            # Append any remaining in the order they are defined
+            for struct_type in structure_types:
+                if struct_type not in structure_type_hierarchy:
+                    structure_type_hierarchy.append(struct_type)
     else: #default order
         structure_type_hierarchy = structure_types
-        
+    
+    passage_start_token_position = data['tokens'][0].position
+    passage_end_token_position = data['tokens'][len(data['tokens'])-1].position
     
     # Gather the positions of each structure's bounding tokens and the
     # structures that start and end at each token
@@ -93,17 +100,21 @@ def passage(request, osis_ref):
     structures_by_token_end_position = {}
     final_shadow_structures = []
     for struct in data['concurrent_structures']:
+        # Structure is start shadow
         if struct.start_token.position < data['start_structure'].start_token.position:
             struct.shadow = struct.shadow | TokenStructure.SHADOW_START
             initial_shadow_structures.append(struct)
-        
-        if struct.end_token.position > data['end_structure'].end_token.position:
-            struct.shadow = struct.shadow | TokenStructure.SHADOW_END
-            final_shadow_structures.append(struct)
+            struct.shadow_start_token_position = passage_start_token_position
         
         if not structures_by_token_start_position.has_key(struct.start_token.position):
             structures_by_token_start_position[struct.start_token.position] = []
         structures_by_token_start_position[struct.start_token.position].append(struct)
+        
+        # Structure is end shadow
+        if struct.end_token.position > data['end_structure'].end_token.position:
+            struct.shadow = struct.shadow | TokenStructure.SHADOW_END
+            final_shadow_structures.append(struct)
+            struct.shadow_end_token_position = passage_end_token_position
         
         if not structures_by_token_end_position.has_key(struct.end_token.position):
             structures_by_token_end_position[struct.end_token.position] = []
@@ -111,157 +122,99 @@ def passage(request, osis_ref):
     
     # Stick initial_shadow_structures and final_shadow_structures onto the first
     # token and last token's respective structure lists
-    passage_start_token_position = data['tokens'][0].position
     if len(initial_shadow_structures):
         if not structures_by_token_start_position.has_key(passage_start_token_position):
             structures_by_token_start_position[passage_start_token_position] = []
         for struct in initial_shadow_structures:
             structures_by_token_start_position[passage_start_token_position].append(struct)
-    passage_end_token_position = data['tokens'][len(data['tokens'])-1].position
     if len(final_shadow_structures):
         if not structures_by_token_end_position.has_key(passage_end_token_position):
             structures_by_token_end_position[passage_end_token_position] = []
         for struct in final_shadow_structures:
             structures_by_token_end_position[passage_end_token_position].append(struct)
     
-    # Now sort each array in structures_by_token_start_position and
-    # structures_by_token_end_position by the requested hierarchy and indicate for
-    # each whether it is_milestoned
-    def sorter(a, b):
-        return cmp(
-            structure_type_hierarchy.index(a.type),
-            structure_type_hierarchy.index(b.type)
-        )
-    
-    for structure_group in (structures_by_token_start_position, structures_by_token_end_position):
-        for structs in structure_group.values():
-            if len(structs):
-                structs.sort(sorter)
-                # Detect overlapping hierarchies (and need for milestones)
-                # TODO: What if the first struct is desired to be milestoned?
-                structs[0].is_milestoned |= False
-                max_start_position = max(structs[0].start_token.position, passage_start_token_position)
-                min_end_position = min(structs[0].end_token.position, passage_end_token_position)
-                for i in range(1, len(structs)):
-                    # Always milestone
-                    if structure_types_always_milestoned.has_key(structs[i].type):
-                        structs[i].is_milestoned = True
-                        continue
-                    
-                    start_position = max(structs[i].start_token.position, max_start_position)
-                    end_position = min(structs[i].end_token.position, min_end_position)
-                    
-                    # Check for needing start milestone
-                    if max(structs[i].start_token.position, passage_start_token_position) < start_position:
-                        structs[i].is_milestoned = True
-                    else:
-                        max_start_position = start_position
-                    
-                    # Check for needing end milestone
-                    if min(structs[i].end_token.position, passage_end_token_position) > end_position:
-                        structs[i].is_milestoned = True
-                    else:
-                        min_end_position = end_position
-    
-    passage = ""
-    
-    #TODO: This should instead return an object for the view to process, including whether it is milestone
-    def temp_handle_structure(struct, isStart):
-        if struct.type == TokenStructure.BOOK:
-            elName = "book"
-        elif struct.type == TokenStructure.CHAPTER:
-            elName = "chapter"
-        if struct.type == TokenStructure.VERSE:
-            elName = "verse"
-        if struct.type == TokenStructure.PARAGRAPH:
-            elName = "p"
-        
-        shadow = ""
-        if struct.shadow:
-            if struct.shadow == TokenStructure.SHADOW_START:
-                shadow = "start"
-            elif struct.shadow == TokenStructure.SHADOW_END:
-                shadow = "end"
-            elif struct.shadow == TokenStructure.SHADOW_BOTH:
-                shadow = "both"
-            else:
-                shadow = "none"
-        
-        ret = ""
-        if struct.is_milestoned:
-            ret += "<" + elName
-            if isStart:
-                if struct.osis_id:
-                    ret += " osisID='" + struct.osis_id + "'"
-                if shadow:
-                    ret += " shadow='" + shadow + "'"
-                ret += " sID='" + str(struct.id) + "'"
-            else:
-                ret += " eID='" + str(struct.id) + "'"
-            ret += " />"
-        else:
-            if isStart:
-                ret += "<" + elName
-                if struct.osis_id:
-                    ret += " osisID='" + struct.osis_id + "'"
-                if shadow:
-                    ret += " shadow='" + shadow + "'"
-                ret += ">"
-            else:
-                ret += "</" + elName + ">"
-        return ret
-    
-    # How do I pass in constructor arguments?
-    #class PassageChunk():
-    #    is_structure = None
-    #    is_token = None
-    #    shadow = None
-    #    object = None
         
     passage_chunks = []
     
-    # TODO: Output here should be streamed to the template
-    for token in data['tokens']:
-        if structures_by_token_start_position.has_key(token.position):
-            for struct in structures_by_token_start_position[token.position]:
-                passage_chunks.append({
-                    'is_structure': True,
-                    'is_start': True,
-                    'structure': struct,
-                    'type': structure_type_code2name[struct.type]
-                })
-                #passage += temp_handle_structure(struct, True)
+    if not is_standoff:
+
+        # Now sort each array in structures_by_token_start_position and
+        # structures_by_token_end_position by the requested hierarchy and indicate for
+        # each whether it is_milestoned
+        def sorter(a, b):
+            return cmp(
+                structure_type_hierarchy.index(a.type),
+                structure_type_hierarchy.index(b.type)
+            )
         
-        #passage += token.data
-        passage_chunks.append({
-            'is_token': True,
-            'token': token
-        })
+        for structure_group in (structures_by_token_start_position, structures_by_token_end_position):
+            for structs in structure_group.values():
+                if len(structs):
+                    structs.sort(sorter)
+                    # Detect overlapping hierarchies (and need for milestones)
+                    # TODO: What if the first struct is desired to be milestoned?
+                    structs[0].is_milestoned |= False
+                    max_start_position = max(structs[0].start_token.position, passage_start_token_position)
+                    min_end_position = min(structs[0].end_token.position, passage_end_token_position)
+                    for i in range(1, len(structs)):
+                        # Always milestone
+                        if structure_types_always_milestoned.has_key(structs[i].type):
+                            structs[i].is_milestoned = True
+                            continue
+                        
+                        start_position = max(structs[i].start_token.position, max_start_position)
+                        end_position = min(structs[i].end_token.position, min_end_position)
+                        
+                        # Check for needing start milestone
+                        if max(structs[i].start_token.position, passage_start_token_position) < start_position:
+                            structs[i].is_milestoned = True
+                        else:
+                            max_start_position = start_position
+                        
+                        # Check for needing end milestone
+                        if min(structs[i].end_token.position, passage_end_token_position) > end_position:
+                            structs[i].is_milestoned = True
+                        else:
+                            min_end_position = end_position
         
-        if structures_by_token_end_position.has_key(token.position):
-            for struct in reversed(structures_by_token_end_position[token.position]):
-                passage_chunks.append({
-                    'is_structure': True,
-                    'is_end': True,
-                    'structure': struct,
-                    'type': structure_type_code2name[struct.type]
-                })
-                #passage += temp_handle_structure(struct, False)
+        # Iterate over all of the tokens and turn them and the structures associated
+        # with them into “chunks” for the template to render
+        for token in data['tokens']:
+            if structures_by_token_start_position.has_key(token.position):
+                for struct in structures_by_token_start_position[token.position]:
+                    passage_chunks.append({
+                        'is_start': True,
+                        'structure': struct
+                    })
+            
+            passage_chunks.append({
+                'token': token
+            })
+            
+            if structures_by_token_end_position.has_key(token.position):
+                for struct in reversed(structures_by_token_end_position[token.position]):
+                    passage_chunks.append({
+                        'is_end': True,
+                        'structure': struct
+                    })
     
     
     template_vars = {
         'passages':[]
     }
     
-    template_vars['passages'].append({
+    passage = {
+        'is_standoff':is_standoff,
         'osis_ref': osis_ref,
         #'osis_ref_parsed': osis_ref_parsed,
         'start_structure': data['start_structure'],
         'end_structure': data['end_structure'],
         'tokens': data['tokens'],
-        'concurrent_structures': data['concurrent_structures'],
+        'structures': data['concurrent_structures'],
         'chunks':passage_chunks
-    })
+    }
+    
+    template_vars['passages'].append(passage)
     
     
     # TODO: We need to select the template based on the requested outout

@@ -223,12 +223,19 @@ class Token(models.Model):
     WORD = 1
     PUNCTUATION = 2
     WHITESPACE = 3
+    TYPE_NAMES = {
+        WORD: 'word',
+        PUNCTUATION: 'punctuation',
+        WHITESPACE: 'whitespace'
+    }
     TYPE_CHOICES = (
-        (WORD,        'word'),
-        (PUNCTUATION, 'punctuation'),
-        (WHITESPACE,  'whitespace'),
+        (WORD, TYPE_NAMES[WORD]),
+        (PUNCTUATION, TYPE_NAMES[PUNCTUATION]),
+        (WHITESPACE, TYPE_NAMES[WHITESPACE]),
     )
     type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, default=WORD, db_index=True, help_text="A general hint as to what the token data represents")
+    type_name = property(lambda self: self.TYPE_NAMES[self.type])
+    
     position = models.PositiveIntegerField(db_index=True)
     work = models.ForeignKey(Work)
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
@@ -310,23 +317,40 @@ class TokenStructure(models.Model):
     UNCERTAIN1 = 11
     UNCERTAIN2 = 12
     PAGE = 13
-    TYPES_CHOICES = (
-        (BOOK_GROUP, "bookGroup"),
-        (BOOK, "book"),
-        (CHAPTER, "chapter"),
-        (VERSE, "verse"),
-        (SECTION, "section"),
-        (SUBSECTION, "subSection"),
-        (TITLE, "title"),
-        (PARAGRAPH, "paragraph"),
-        (LINE, "line"),
-        (QUOTATION, "quotation"),
-        (UNCERTAIN1, "uncertain-1"), #single square brackets around tokens
-        (UNCERTAIN2, "uncertain-2"), #double square brackets around tokens
-        (PAGE, "page"),
+    TYPE_NAMES = {
+        BOOK_GROUP: "bookGroup",
+        BOOK: "book",
+        CHAPTER: "chapter",
+        VERSE: "verse",
+        SECTION: "section",
+        SUBSECTION: "subSection",
+        TITLE: "title",
+        PARAGRAPH: "paragraph",
+        LINE: "line",
+        QUOTATION: "quotation",
+        UNCERTAIN1: "uncertain-1", #single square brackets around tokens
+        UNCERTAIN2: "uncertain-2", #double square brackets around tokens
+        PAGE: "page",
+    }
+    TYPE_CHOICES = (
+        (BOOK_GROUP, TYPE_NAMES[BOOK_GROUP]),
+        (BOOK, TYPE_NAMES[BOOK]),
+        (CHAPTER, TYPE_NAMES[CHAPTER]),
+        (VERSE, TYPE_NAMES[VERSE]),
+        (SECTION, TYPE_NAMES[SECTION]),
+        (SUBSECTION, TYPE_NAMES[SUBSECTION]),
+        (TITLE, TYPE_NAMES[TITLE]),
+        (PARAGRAPH, TYPE_NAMES[PARAGRAPH]),
+        (LINE, TYPE_NAMES[LINE]),
+        (QUOTATION, TYPE_NAMES[QUOTATION]),
+        (UNCERTAIN1, TYPE_NAMES[UNCERTAIN1]), #single square brackets around tokens
+        (UNCERTAIN2, TYPE_NAMES[UNCERTAIN2]), #double square brackets around tokens
+        (PAGE, TYPE_NAMES[PAGE]),
         #...
     )
-    type = models.PositiveSmallIntegerField(choices=TYPES_CHOICES, db_index=True)
+    type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, db_index=True)
+    type_name = property(lambda self: self.TYPE_NAMES[self.type])
+    
     osis_id = models.CharField(max_length=32, blank=True, db_index=True)
     work = models.ForeignKey(Work, help_text="Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it")
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
@@ -394,13 +418,20 @@ class TokenStructure(models.Model):
     SHADOW_START = 0b0001
     SHADOW_END   = 0b0010
     SHADOW_BOTH  = 0b0011
+    SHADOW_NAMES = {
+        SHADOW_NONE:'none',
+        SHADOW_START:'start',
+        SHADOW_END:'end',
+        SHADOW_BOTH:'both'
+    }
     SHADOW_CHOICES = (
-        (SHADOW_NONE, "none"),
-        (SHADOW_START, "start"),
-        (SHADOW_END, "end"),
-        (SHADOW_BOTH, "both")
+        (SHADOW_NONE,  SHADOW_NAMES[SHADOW_NONE]),
+        (SHADOW_START, SHADOW_NAMES[SHADOW_START]),
+        (SHADOW_END,   SHADOW_NAMES[SHADOW_END]),
+        (SHADOW_BOTH,  SHADOW_NAMES[SHADOW_BOTH])
     )
     shadow = SHADOW_NONE
+    shadow_name = property(lambda self: self.SHADOW_NAMES[self.shadow])
     
     is_milestoned = False
     
