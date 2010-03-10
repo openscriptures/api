@@ -6,7 +6,7 @@ import string
 
 
 urlpatterns = patterns('',
-    (r'^rest/passage/(?P<osis_ref>.+)$', 'api.rest.views.get_passage'),
+    (r'^rest/passage/(?P<osis_ref>.+)$', 'api.rest.views.passage'),
 )
 
 

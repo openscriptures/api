@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xlink="http://www.w3.org/1999/xlink">
+	{% for passage in passages %}
+	<passage osis:osisRef="{{ passage.osis_ref }}">
+		{% spaceless %}
+			{% for chunk in passage.chunks %}
+				{% if chunk.token %}
+					<token xml:id="t{{ chunk.token.position }}"><![CDATA[{{ chunk.token.data }}]]></token>
+				{% else %}
+					{% if chunk.structure.is_milestoned %}
+						{% if chunk.is_start %}
+							<structure-start type="{{ chunk.type }}" {% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %} xml:id="s{{ chunk.structure.position }}" />
+						{% else %}
+							<structure-end xlink:href="#s{{ chunk.structure.position }}" />
+						{% endif %}
+					{% else %}
+						{% if chunk.is_start %}
+							<structure type="{{ chunk.type }}" {% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %} xml:id="s{{ chunk.structure.position }}">
+						{% else %}
+							</structure>
+						{% endif %}
+					{% endif %}
+				{% endif %}
+			{% endfor %}
+		{% endspaceless %}
+	</passage>
+	{% endfor %}
+</passages>
