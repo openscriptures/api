@@ -95,6 +95,11 @@ def passage(request, osis_ref):
                 structure_types_always_milestoned[TokenStructure.VERSE] = True
                 structure_types_always_milestoned[TokenStructure.CHAPTER] = True
             
+            # Predefined hierarchy: Book-Section-Paragraph
+            elif request.GET["hierarchy"] == 'milestone':
+                for struct_type in structure_types:
+                    structure_types_always_milestoned[struct_type] = True
+            
             # Custom hierarchy specified in request
             else:
                 for struct_type in request.GET["hierarchy"].split(","):
@@ -175,12 +180,11 @@ def passage(request, osis_ref):
             for structs in structure_group.values():
                 if len(structs):
                     structs.sort(sorter)
+                    
                     # Detect overlapping hierarchies (and need for milestones)
-                    # TODO: What if the first struct is desired to be milestoned?
-                    structs[0].is_milestoned |= False
                     max_start_position = max(structs[0].start_token.position, passage_start_token_position)
                     min_end_position = min(structs[0].end_token.position, passage_end_token_position)
-                    for i in range(1, len(structs)):
+                    for i in range(0, len(structs)):
                         # Always milestone
                         if structure_types_always_milestoned.has_key(structs[i].type):
                             structs[i].is_milestoned = True
