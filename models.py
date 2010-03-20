@@ -44,6 +44,24 @@ class License(models.Model):
         return self.name
 
 
+class Server(models.Model):
+    """
+    A server that hosts the Open Scriptures API
+    """
+    is_self = models.BooleanField(help_text="Whether the server refers to itself")
+    base_url = models.URLField(help_text="The base URL that the API URIs can be appended to.")
+    version = models.CharField(max_length=5, default="1")
+    #Idea: adapters for URL rewriting and response transformation so that servers need not be compatible with Open Scriptures API
+
+
+class WorkServer(models.Model):
+    """
+    Intermediary table for ManyToMany relationship between Work and Server
+    """
+    is_primary = models.BooleanField(help_text="Whether the server is canonical (primary) or not (mirror)")
+    work = models.ForeignKey('Work')
+    server = models.ForeignKey('Server')
+
 
 class Work(models.Model):
     "Represents an OSIS work, such as the Bible or a non-biblical work such as the Qur'an or the Mishnah."
@@ -109,6 +127,7 @@ class Work(models.Model):
     copyright = models.TextField(blank=True)
     license = models.ForeignKey(License, null=True)
     
+    servers = models.ManyToManyField(Server, through=WorkServer)
     
     #unified_work = models.ForeignKey('self', null=True, verbose_name="Work which this work has been merged into")
     
@@ -213,7 +232,11 @@ class Work(models.Model):
     
     def __unicode__(self):
         return self.title
-
+    
+    class Meta:
+        unique_together = (
+            ('type', 'language', 'publisher', 'osis_slug', 'publish_date'),
+        )
 
 
 class Token(models.Model):
@@ -331,6 +354,7 @@ class TokenStructure(models.Model):
         UNCERTAIN1: "uncertain-1", #single square brackets around tokens
         UNCERTAIN2: "uncertain-2", #double square brackets around tokens
         PAGE: "page",
+        #TODO: KJV “supplied” phrase
     }
     TYPE_CHOICES = (
         (BOOK_GROUP, TYPE_NAMES[BOOK_GROUP]),
@@ -450,10 +474,9 @@ class TokenStructure(models.Model):
     
     class Meta:
         ordering = ['position'] #, 'variant_number'
-        #Note: This unique constraint is removed due to the fact that in MySQL, the default utf8 collation means "Και" and "καὶ" are equivalent
-        #unique_together = (
-        #    ('data', 'position', 'work'),
-        #)
+        unique_together = (
+            ('type', 'position', 'start_token'), #???
+        )
     
     def __unicode__(self):
         if self.osis_id:
@@ -499,18 +522,35 @@ class TokenLinkage(models.Model):
         (CROSS_REFERENCE, "Related passage"),
     )
     type = models.PositiveIntegerField(null=True, choices=TYPE_CHOICES, help_text="The kind of linkage")
-
+    key = models.CharField(db_index=True, max_length=100, help_text="Key (hash) of each item's token's unambiguous work osisID and position sorted, utilizing ranges whenever possible. Must be updated whenever an item is added or removed. Examples: ESV.2001:4-8;KJV.1611:3-6;NIV:2,4,6-9. Note how contiguous tokens are indicated with a hyphen range, how non-contiguous tokens are separated by commas, and how tokens from different works are separated by semicolons. All are sorted; the token items of a TokenLinkage do not have position. There is only one key for one collection of tokens.")
+    #TODO: The type is not factored in here.
 
 
 class TokenLinkageItem(models.Model):
     """
     Tokens from different works can be linked together by instantiating
     TokenLinkageItems and associating them with the same TokenLinkage.
+    If the token being linked is not local, then the `token_work` and `token_position`
+    must be defined and `token` must be null. Otherwise, if `token` is not null
+    then `token_work`
     """
     linkage = models.ForeignKey(TokenLinkage)
-    token = models.ForeignKey(Token)
-    weight = models.DecimalField(null=True, help_text="The strength of the linkage; value between 0.0 and 1.0.", max_digits=3, decimal_places=2)
     
+    #Note: token.Meta.unique_together == ('position', 'work') so it can be used
+    #      as a composite key. This can be employed instead of token =
+    #      models.ForeignKey(Token) so that the actual token referenced may
+    #      exist on another system whose internal ID is unknown.
+    #      Constraint for Django 1.2:
+    #        token.position == token_position &&
+    #        token.work     == token_work
+    token_position = models.PositiveIntegerField(db_index=True)
+    token_work = models.ForeignKey(Work)
+    #token = models.ForeignKey(Token, null=True)
+    #UPDATE: Remove `token` completely? Otherwise, if not removed
+    #        we could have an ON UPDATE trigger for token that updates
+    #        all TokenLinkageItems that point to it
+    
+    weight = models.DecimalField(null=True, help_text="The strength of the linkage; value between 0.0 and 1.0.", max_digits=3, decimal_places=2)
     INCOMING = 0b01
     OUTGOING = 0b10
     BIDIRECTIONAL = 0b11
