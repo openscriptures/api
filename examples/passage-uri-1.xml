@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+http://api.openscriptures.org/v1/passage/KJV:Psalm.3.1
+
+Getting a single verse: note lack of title and shadow attrbiutes
+-->
+<passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace">
+	<passage osis:scope="KJV:Psalm.3.1">
+		<structure type="book" osis:osisID="Psalm" shadow="both">
+			<structure type="chapter" osis:osisID="Psalm.3" shadow="both">
+				<!--
+				Title returned when querying entire chapter since KJV verse #1 doesn't contain it:
+				“A Psalm of David when he fled from Absalom his son.”
+				-->
+				<structure type="verse" osis:osisID="Psalm.3.1" shadow="none">
+					<!--
+					Important: XML IDs here are only internal identifiers
+					and are NOT STABLE and NOT CONSISTENT across systems.
+					-->
+					<structure type="line" end-marker="t783231"><!-- attribute is IDREF -->
+						<token xml:id="t783213" position="38900">LORD</token>
+						<token xml:id="t783214" position="38901">,</token>
+						<token xml:id="t783215" position="38902"> </token>
+						<token xml:id="t783216" position="38903">how</token>
+						<token xml:id="t783217" position="38904"> </token>
+						<token xml:id="t783218" position="38905">they</token>
+						<token xml:id="t783219" position="38906"> </token>
+						<token xml:id="t783220" position="38907">have</token>
+						<token xml:id="t783221" position="38908"> </token>
+						<token xml:id="t783222" position="38909">increased</token>
+						<token xml:id="t783224" position="38910"> </token>
+						<token xml:id="t783225" position="38911">who</token>
+						<token xml:id="t783226" position="38912"> </token>
+						<token xml:id="t783227" position="38913">trouble</token>
+						<token xml:id="t783228" position="38914"> </token>
+						<token xml:id="t783229" position="38915">me</token>
+						<token xml:id="t783230" position="38916">!</token>
+					</structure>
+					<token xml:id="t783231" position="38917">&#x0A;</token>
+					<structure type="line" start-marker="t38917">
+						<token xml:id="t783231" position="38918">Many</token>
+						<token xml:id="t783232" position="38919"> </token>
+						<token xml:id="t783233" position="38920">are</token><!-- todo: KJV “supplied” word -->
+						<token xml:id="t783234" position="38921"> </token>
+						<token xml:id="t783235" position="38922">they</token>
+						<token xml:id="t783236" position="38923"> </token>
+						<token xml:id="t783237" position="38924">who</token>
+						<token xml:id="t783238" position="38925"> </token>
+						<token xml:id="t783239" position="38926">rise</token>
+						<token xml:id="t783240" position="38927"> </token>
+						<token xml:id="t783241" position="38928">up</token>
+						<token xml:id="t783242" position="38929"> </token>
+						<token xml:id="t783243" position="38930">against</token>
+						<token xml:id="t783244" position="38931"> </token>
+						<token xml:id="t783245" position="38932">me</token>
+						<token xml:id="t783246" position="38933">.</token>
+					</structure>
+				</structure>
+			</structure>
+		</structure>
+	</passage>
+</passages>

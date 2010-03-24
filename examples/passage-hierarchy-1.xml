@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+http://api.openscriptures.org/v1/passage/Tischendorf:Jude.1.2-Jude.1.3?hierarchy=bsp
+http://api.openscriptures.org/v1/passage/Tischendorf:Jude.1.2-Jude.1.3?hierarchy=bcv
+http://api.openscriptures.org/v1/passage/Tischendorf:Jude.1.2-Jude.1.3?hierarchy=standoff
+
+Get one passage, the KJV's equivalent to Psalm 3:1 in LXX. Note slash in URI.
+The KJV does not have a verse reference equivalent to the Psalm 3:1 LXX, so the
+tokens are referenced.
+-->
+<passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace">
+	
+	<passage osis:scope="KJV:Psalm.3@token(1)-Psalm.3@token(?)">
+		<structure type="book" osis:osisID="Psalm" shadow="both">
+			<structure type="chapter" osis:osisID="Psalm.3" shadow="end">
+				<token>…</token><!-- the title -->
+			</structure>
+		</structure>
+	</passage>
+
+</passages>

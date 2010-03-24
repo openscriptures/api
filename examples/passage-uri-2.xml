@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+http://api.openscriptures.org/v1/passage/KJV:Psalm.3-Psalm.3.2,Psalm.3.5
+http://api.openscriptures.org/v1/passage/KJV:Psalm.3-Psalm.3.2;KJV:Psalm.3.5
+
+Get two disjoint passages from same work; one a span of verses, the second follows
+-->
+<passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace">
+	
+	<passage osis:scope="KJV:Psalm.3-Psalm.3.3">
+		<structure type="book" osis:osisID="Psalm" shadow="both">
+			<structure type="chapter" osis:osisID="Psalm.3" shadow="end">
+				<structure type="title">
+					<token xml:id="t7983" position="36411">a</token>
+					<token xml:id="t7984" position="36412">b</token>
+					<token xml:id="t7985" position="36413">c</token>
+					<!-- i.e. A Psalm of David when he fled from Absalom his son. -->
+				</structure>
+				<structure type="verse" osis:osisID="Psalm.3.1" shadow="none">
+					<token xml:id="t7986" position="36414">l</token>
+					<token xml:id="t7987" position="36415">m</token>
+					<token xml:id="t7988" position="36416">n</token>
+					<!-- i.e. LORD, how they have increased who trouble me! Many are they who rise up against me. -->
+				</structure>
+				<structure type="verse" osis:osisID="Psalm.3.2" shadow="none">
+					<token xml:id="t7989" position="36417">p</token>
+					<token xml:id="t7990" position="36418">o</token>
+					<token xml:id="t7991" position="36419">q</token>
+					<!-- i.e. Many are they who say of me, “There is no help for him in God.”  Selah -->
+				</structure>
+			</structure>
+		</structure>
+	</passage>
+	
+	<passage osis:scope="KJV:Psalm.3.8">
+		<structure type="book" osis:osisID="Psalm" shadow="both">
+			<structure type="chapter" osis:osisID="Psalm.3" shadow="start">
+				<structure type="verse" osis:osisID="Psalm.3.8" shadow="none">
+					<token xml:id="t8181" position="36420">x</token>
+					<token xml:id="t8182" position="36421">y</token>
+					<token xml:id="t8183" position="36422">z</token>
+					<!-- i.e. Salvation belongs to the LORD. Your blessing is upon Your people.  Selah  -->
+				</structure>
+			</structure>
+		</structure>
+	</passage>
+	
+</passages>

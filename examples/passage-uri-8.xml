@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+http://api.openscriptures.org/v1/passage/KJV:1John.5.7-1John.5.8|NET
+
+If rights to directly serve NET Bible content
+
+-->
+<passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace"
+          xmlns:xi="http://www.w3.org/2001/XInclude">
+	
+	<passage osis:scope="KJV:1John.5.7-1John.5.8" xml:base="">
+		<structure type="book" osis:osisID="1John" shadow="both">
+			<structure type="chapter" osis:osisID="1John.5" shadow="both">
+				<structure type="verse" osis:osisID="1John.5.7" shadow="none">
+					<token xml:id="t12323236" position="82383">q</token>
+					<token xml:id="t12323237" position="82384">r</token>
+					<token xml:id="t12323238" position="82385">s</token>
+				</structure>
+				<structure type="verse" osis:osisID="1John.5.8" shadow="none">
+					<token xml:id="t12323239" position="82386">t</token>
+					<token xml:id="t12323240" position="82387">u</token>
+					<token xml:id="t12323241" position="82388">v</token>
+				</structure>
+			</structure>
+		</structure>
+	</passage>
+	
+	<!-- If rights to directly serve NET Bible content: -->
+	<passage osis:scope="NET:1John.5.7-1John.5.8">
+		<passage osis:scope="NET:1John.5.7-1John.5.8">
+			<structure type="book" osis:osisID="1John" shadow="both">
+				<structure type="chapter" osis:osisID="1John.5" shadow="both">
+					<structure type="verse" osis:osisID="1John.5.7" shadow="none">
+						<token xml:id="t9830123" position="84315">S</token>
+					</structure>
+					<structure type="verse" osis:osisID="1John.5.8" shadow="none">
+						<token xml:id="t9830124" position="84316">T</token>
+						<token xml:id="t9830125" position="84317">V</token>
+					</structure>
+				</structure>
+			</structure>
+		</passage>
+	</passage>
+	
+	<links>
+		<link><!-- s S -->
+			<item xpointer="element(t12323238)" />
+			<item xpointer="element(t9830123)" />
+		</link>
+		<link><!-- t T -->
+			<item xpointer="element(t12323239)" />
+			<item xpointer="element(t9830124)" />
+		</link>
+		<link><!-- v V -->
+			<item xpointer="element(t12323241)" />
+			<item xpointer="element(t9830125)" />
+		</link>
+	</links>
+</passages>

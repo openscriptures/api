@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+http://api.openscriptures.org/v1/passage/KJV:Psalm.3.1|LXX
+
+Get two passages, one is Psalm 3:1 KJV and the second is the corresponding
+passage in the LXX; this turns out to be the same as the previous example.
+
+-->
+<passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace">
+	
+	<passage osis:scope="KJV:Psalm.3.1">
+		<structure type="book" osis:osisID="Psalm" shadow="both">
+			<structure type="chapter" osis:osisID="Psalm.3" shadow="both">
+				<!-- no title included since not in verse 1 -->
+				<structure type="verse" osis:osisID="Psalm.3.1" shadow="none">
+					<token xml:id="t7986" position="36414">l</token>
+					<token xml:id="t7987" position="36415">m</token>
+					<token xml:id="t7988" position="36416">n</token>
+					<!-- i.e. LORD, how they have increased who trouble me! Many are they who rise up against me. -->
+				</structure>
+			</structure>
+		</structure>
+	</passage>
+	
+	<passage osis:scope="LXX:Psalm.3.2">
+		<structure type="book" osis:osisID="Psalm" shadow="both">
+			<structure type="chapter" osis:osisID="Psalm.3" shadow="both">
+				<structure type="verse" osis:osisID="Psalm.3.2" shadow="none">
+					<token xml:id="t871236" position="35414">λ</token>
+					<token xml:id="t871237" position="35415">μ</token>
+					<token xml:id="t871238" position="35416">ν</token>
+					<!-- i.e. κυριε τι επληθυνθησαν οι θλιβοντες με πολλοι επανιστανται επ' εμε -->
+				</structure>
+			</structure>
+		</structure>
+	</passage>
+	
+	<links>
+		<link><!-- l λ -->
+			<item xpointer="xpath1(//passage[position()=1]//token[@position=36414])" />
+			<item xpointer="xpath1(//passage[position()=2]//token[@position=35414])" />
+		</link>
+		<link><!-- m μ -->
+			<item xpointer="xpath1(//passage[position()=1]//token[@position=36415])" />
+			<item xpointer="xpath1(//passage[position()=2]//token[@position=35415])" />
+		</link>
+		<link><!-- n ν -->
+			<item xpointer="xpath1(//passage[position()=1]//token[@position=36416])" />
+			<item xpointer="xpath1(//passage[position()=2]//token[@position=35416])" />
+		</link>
+	</links>
+	
+</passages>

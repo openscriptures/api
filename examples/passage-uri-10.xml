@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+http://api.openscriptures.org/v1/passage/KJV:Psalm.3.1
+
+Positions are used to canonically refer to structures and tokens.
+
+-->
+<passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace"
+          xmlns:xlink="http://www.w3.org/1999/xlink">
+	
+	<passage osis:scope="KJV:Psalm.3.1"
+	         xml:base="http://api.openscriptures.org/v1/work/KJV/">
+		
+		<structure type="book" osis:osisID="Psalm" shadow="both"
+				   position="7234" xlink:href="structure/7234">
+			
+			<structure type="chapter" osis:osisID="Psalm.3" shadow="both"
+			           position="7235" xlink:href="structure/7235">
+				
+				<structure type="verse" osis:osisID="Psalm.3.1" shadow="none"
+				           position="7236" xlink:href="structure/7236">
+					
+					<token xml:id="t7986" position="36414" xlink:href="token/36414">l</token>
+					<token xml:id="t7987" position="36415" xlink:href="token/36415">m</token>
+					<token xml:id="t7988" position="36416" xlink:href="token/36416">n</token>
+				
+				</structure>
+			
+			</structure>
+		
+		</structure>
+	
+	</passage>
+	
+</passages>
