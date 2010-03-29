@@ -66,6 +66,7 @@ def passage(request, osis_ref):
         structure_types.append(choice_tuple[0])
     
     
+    is_standoff = False
     if request.GET.has_key("hierarchy"):
         if request.GET["hierarchy"] == 'standoff':
             is_standoff = True
