@@ -167,9 +167,23 @@ lineParser = re.compile(ur"""^
 
 
 # Get the subset of OSIS book codes provided on command line
-book_codes = import_helpers.get_book_code_args()
-if len(book_codes) == 0:
+limited_book_codes = []
+limited_osis_ids = []
+for arg in sys.argv:
+    id_parts = arg.split(".")
+    if id_parts[0] in osis.BIBLE_BOOK_CODES:
+        limited_book_codes.append(id_parts[0])
+        limited_osis_ids.append(arg)
+
+if len(limited_book_codes):
+    book_codes = limited_book_codes
+else:
     book_codes = osis.BIBLE_BOOK_CODES
+
+
+#book_codes = import_helpers.get_book_code_args()
+#if len(book_codes) == 0:
+#    book_codes = osis.BIBLE_BOOK_CODES
 
 # Read each of the Book files
 structCount = 1
@@ -214,6 +228,11 @@ for book_code in book_codes:
         lineMatches = lineParser.match(unicodedata.normalize("NFC", unicode(line, 'utf-8')))
         if lineMatches is None:
             print " -- Warning: Unable to parse line: " + line 
+            continue
+        
+        # Skip verses we're not importing right now
+        verse_osisid = book_code + "." + lineMatches.group('chapter') + "." + lineMatches.group('verse')
+        if len(limited_osis_ids) and verse_osisid not in limited_osis_ids:
             continue
         
         # New Chapter start
