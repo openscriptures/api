@@ -126,12 +126,12 @@ BOOK_NAMES = {
 
 
 class OSISRef():
+    """
+    An osisRef which can contain a single passage from a work or a passage range from a work
+    """
+    def __init__(self):
+        raise Exception("Not implemented")
     
-    def __constructor__(self):
-        print "hello world"
-        pass
-    
-    pass
 
 
 
