@@ -10,7 +10,9 @@ from django.db.models import Q
 
 
 class Language(models.Model):
-    "A human language, either ancient or modern."
+    """
+    A human language, either ancient or modern.
+    """
     
     code = models.CharField("ISO 639-3 language code", max_length=10, primary_key=True)
     name = models.CharField(max_length=32)
@@ -37,31 +39,37 @@ class License(models.Model):
     # - attribution
     # - noncommercial
     # - share_alike
-    # - nonderivative
+    # - no_derivatives
     isolatable = models.BooleanField(default=True, help_text="If this is true, then this work can be displayed independently. Otherwise, it must only be displayed in conjunction with other works. Important condition for fair use license.")
     
     def __unicode__(self):
         return self.name
 
 
+
 class Server(models.Model):
     """
     A server that hosts the Open Scriptures API
     """
+    
     is_self = models.BooleanField(help_text="Whether the server refers to itself")
     base_url = models.URLField(help_text="The base URL that the API URIs can be appended to.")
-    version = models.CharField(max_length=5, default="1")
+    #version = models.CharField(max_length=5, default="1")
     #Idea: adapters for URL rewriting and response transformation so that servers need not be compatible with Open Scriptures API
+
 
 
 class WorkServer(models.Model):
     """
     Intermediary table for ManyToMany relationship between Work and Server
     """
+    
     is_primary = models.BooleanField(help_text="Whether the server is canonical (primary) or not (mirror)")
     work = models.ForeignKey('Work')
     server = models.ForeignKey('Server')
 
+
+#TODO: Should we have a WorkProperty model which allows arbitrary key/value pairs?
 
 class Work(models.Model):
     "Represents an OSIS work, such as the Bible or a non-biblical work such as the Qur'an or the Mishnah."
@@ -72,9 +80,9 @@ class Work(models.Model):
     source_url = models.URLField(blank=True, help_text="URL where this resource was originally obtained")
     
     variants_for_work = models.ForeignKey('self', null=True, default=None, verbose_name="Parent work that this work provides variants for")
-    variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and TokenStructure.variant_bits to query only those which belong to the work.")
+    variant_bit = models.PositiveSmallIntegerField(default=0b00000001, help_text="The bit mask that is anded with Token.variant_bits and Structure.variant_bits to query only those which belong to the work.")
     
-    #TODO: Important to allow mutliple kinds of identifiers for the work!
+    #TODO: Allow multiple kinds of identifiers for the work:
     #      Including ISBN, URL, URN, in addition to OSIS. OSIS needs to be unique,
     #      and its parts should be deconstructable.
     
@@ -129,14 +137,12 @@ class Work(models.Model):
     
     servers = models.ManyToManyField(Server, through=WorkServer)
     
-    #unified_work = models.ForeignKey('self', null=True, verbose_name="Work which this work has been merged into")
-    
     
     def lookup_osis_ref(self, start_osis_id, end_osis_id = None, variant_bits = None):
         if not end_osis_id:
             end_osis_id = start_osis_id
         
-        # Token and TokenStructure objects are only associated with non-diff
+        # Token and Structure objects are only associated with non-diff
         #   works, that is where variants_for_work is None
         main_work = self
         if self.variants_for_work is not None:
@@ -148,7 +154,7 @@ class Work(models.Model):
             variant_bits = self.variant_bit
         
         # Get the structure for the start
-        structures = TokenStructure.objects.select_related(depth=1).filter(
+        structures = Structure.objects.select_related(depth=1).filter(
             work = main_work,
             start_token__isnull = False,
             osis_id = start_osis_id
@@ -159,7 +165,7 @@ class Work(models.Model):
         
         # Get the structure for the end
         if start_osis_id != end_osis_id:
-            structures = TokenStructure.objects.select_related(depth=1).filter(
+            structures = Structure.objects.select_related(depth=1).filter(
                 work = main_work,
                 end_token__isnull = False,
                 osis_id = end_osis_id
@@ -172,7 +178,7 @@ class Work(models.Model):
         
         # Now grab all structures from the work which have start/end_token or
         #  start/end_marker whose positions are less 
-        concurrent_structures = TokenStructure.objects.select_related(depth=1).filter(work = main_work).filter(
+        concurrent_structures = Structure.objects.select_related(depth=1).filter(work = main_work).filter(
             # Structures that are contained within start_structure and end_structure
             (
                 Q(start_token__position__lte = start_structure.start_token.position)
@@ -191,14 +197,14 @@ class Work(models.Model):
                 end_token__position__gte = start_structure.start_token.position,
                 end_token__position__lte = end_structure.end_token.position
             )
-        ).extra(where=["api_tokenstructure.variant_bits & %s != 0"], params=[variant_bits])
+        ).extra(where=["api_structure.variant_bits & %s != 0"], params=[variant_bits])
         
         # Now indicate if the structures are shadowed (virtual)
         for struct in concurrent_structures:
             if struct.start_token.position < start_structure.start_token.position:
-                struct.shadow = struct.shadow | TokenStructure.SHADOW_START
+                struct.shadow = struct.shadow | Structure.SHADOW_START
             if struct.end_token.position > end_structure.end_token.position:
-                struct.shadow = struct.shadow | TokenStructure.SHADOW_END
+                struct.shadow = struct.shadow | Structure.SHADOW_END
         
         # Now get all tokens that exist between the beginning of start_structure
         # and the end of end_structure
@@ -239,8 +245,14 @@ class Work(models.Model):
         )
 
 
+
+
 class Token(models.Model):
-    "An atomic unit of text, such as a word, punctuation mark, or whitespace line break. Corresponds to OSIS w elements."
+    """
+    An atomic unit of text, such as a word, punctuation mark, or whitespace
+    line break. Corresponds to OSIS w elements.
+    """
+    
     data = models.CharField(max_length=255, db_index=True, help_text="Unicode data in Normalization Form C (NFC)")
     
     WORD = 1
@@ -264,10 +276,10 @@ class Token(models.Model):
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text="Bitwise anded with Work.variant_bit to determine if belongs to work.")
     #unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
     
-    is_structure_marker = None #This boolean is set when querying via TokenStructure.get_tokens
+    is_structure_marker = None #This boolean is set when querying via Structure.get_tokens
     
     #TODO: Make type an array?
-    def get_structures(self, types = [], including_markers = False): #types = [TokenStructure.VERSE]
+    def get_structures(self, types = [], including_markers = False): #types = [Structure.VERSE]
         "Get the structures that this token is a part of."
         raise Exception("Not implemented yet")
     
@@ -280,14 +292,14 @@ class Token(models.Model):
         if not self.relative_source_url:
             return None
         
-        structures = TokenStructure.objects.filter(
+        structures = Structure.objects.filter(
             Q(start_token__position__lte = self.position),
             Q(end_token__position__gte = self.position),
             source_url__isnull = False,
             #source_url__ne = "",
             #source_url__isblank = False,
             work = self.work
-        ).extra(where=["api_tokenstructure.variant_bits & %s != 0"], params=[self.variant_bits])
+        ).extra(where=["api_structure.variant_bits & %s != 0"], params=[self.variant_bits])
         
         
         if not len(structures):
@@ -311,9 +323,15 @@ class Token(models.Model):
         return self.data
 
 
+#class StructureType(models.Model):
+#    pass
 
-class TokenStructure(models.Model):
-    "Represent supra-segmental structures in the text, various markup; really what this needs to do is represent every non-w element in OSIS."
+
+class Structure(models.Model):
+    """
+    Represent supra-segmental structures in the text, various markup; really
+    what this needs to do is represent every non-w element in OSIS.
+    """
     
     #Todo: Is there a better way of doing these enumerations? Integers chosen
     #      instead of a CharField to save space.
@@ -326,6 +344,8 @@ class TokenStructure(models.Model):
     #      overlapping hierarchies, so then whichever structure is desired could
     #      then be presented.
     
+    #IDEA: Instead of making constants, typenames, and choices: why not make
+    #      another model called StructureType which is a ForeignKey?
     
     BOOK_GROUP = 1
     BOOK = 2
@@ -388,8 +408,8 @@ class TokenStructure(models.Model):
     numerical_start = models.PositiveIntegerField(null=True, help_text="A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute.")
     numerical_end   = models.PositiveIntegerField(null=True, help_text="If the structure spans multiple numerical designations, this is used")
     
-    start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text="The token that starts the structure's content; this may or may not include the start_marker, like quotation marks. If null, then tokens should be discovered via TokenStructureItem.")
-    end_token   = models.ForeignKey(Token, null=True, related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
+    start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text="The token that starts the structure's content; this may or may not include the start_marker, like quotation marks. <del>If null, then tokens should be discovered via StructureToken.</del>")
+    end_token   = models.ForeignKey(Token, null=True,  related_name='end_token_structure_set',   help_text="Same as start_token, but for the end.")
     
     #Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).
     start_marker = models.ForeignKey(Token, null=True, related_name='start_marker_structure_set', help_text="The optional token that marks the start of the structure; this marker may be included (inside) in the start_token/end_token range as in the example of quotation marks, or it may excluded (outside) as in the case of paragraph markers which are double linebreaks. Outside markers may overlap (be shared) among multiple paragraphs' start/end_markers, whereas inside markers may not.")
@@ -402,39 +422,39 @@ class TokenStructure(models.Model):
             variant_bits = self.variant_bits
         
         # Get the tokens from a range
-        if self.start_token is not None:
-            assert(self.end_marker is not None)
-            
-            # Get all of the tokens between the marker start and marker end
-            # and who have variant bits that match the requested variant bits
-            tokens = Token.objects.filter(
-                work = self.work,
-                position__gte = self.start_token.position,
-                position__lte = self.end_token.position
-            ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
-            
-            # Indicate which of the beginning queried tokens are markers
-            #for token in tokens:
-            #    if token.position >= start_structure.start_token.position:
-            #        break
-            #    token.is_structure_marker = True
-            #
-            ## Indicate which of the ending queried tokens are markers
-            #for token in reversed(tokens):
-            #    if token.position <= end_structure.end_token.position:
-            #        break
-            #    token.is_structure_marker = True
-            
-            return tokens
+        #if self.start_token is not None:
+        assert(self.end_marker is not None)
         
-        # Get the tokens which are not consecutive
-        else:
-            items = TokenStructureItem.objects.extra(where=["token__variant_bits & %s != 0"], params=[variant_bits])
-            tokens = []
-            for item in items:
-                items.token.is_structure_marker = item.is_marker
-                tokens.append(items.token)
-            return tokens
+        # Get all of the tokens between the marker start and marker end
+        # and who have variant bits that match the requested variant bits
+        tokens = Token.objects.filter(
+            work = self.work,
+            position__gte = self.start_token.position,
+            position__lte = self.end_token.position
+        ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
+        
+        # Indicate which of the beginning queried tokens are markers
+        #for token in tokens:
+        #    if token.position >= start_structure.start_token.position:
+        #        break
+        #    token.is_structure_marker = True
+        #
+        ## Indicate which of the ending queried tokens are markers
+        #for token in reversed(tokens):
+        #    if token.position <= end_structure.end_token.position:
+        #        break
+        #    token.is_structure_marker = True
+        
+        return tokens
+        
+        # Get the tokens which are not consecutive (Feature is disabled until deemed necessary)
+        #else:
+        #    items = StructureToken.objects.extra(where=["token__variant_bits & %s != 0"], params=[variant_bits])
+        #    tokens = []
+        #    for item in items:
+        #        items.token.is_structure_marker = item.is_marker
+        #        tokens.append(items.token)
+        #    return tokens
     
     tokens = property(get_tokens)
     
@@ -463,7 +483,9 @@ class TokenStructure(models.Model):
     def get_related_structures(self, types = [], shadow = SHADOW_NONE):
         """
         Get the structures that are related to this structure.
+        
         types is a list of TYPE that should be returned. Empty means all.
+        
         If shadow = SHADOW_NONE, then only sub-structures are returned;
         If shadow = SHADOW_BOTH, then only super-structures are returned.
         If shadow = SHADOW_START, then only structures that start before
@@ -493,10 +515,10 @@ class TokenStructure(models.Model):
 # This is an alternative to the above and it allows non-consecutive tokens to be
 # included in a structure. But it incurs a huge amount of overhead. If
 # start_token is null, then it could be assumed that a structure's tokens should
-# be found via TokenStructureItem
-class TokenStructureItem(models.Model):
-    "Non-consecutive tokens can be assigned to a TokenStructure via this model."
-    structure = models.ForeignKey(TokenStructure)
+# be found via StructureToken
+class StructureToken(models.Model):
+    "Non-consecutive tokens can be assigned to a Structure via this model."
+    structure = models.ForeignKey(Structure)
     token = models.ForeignKey(Token)
     is_marker = models.BooleanField(default=False, help_text="Whether the token is any such typographical feature which marks up the structure in the text, such as a quotation mark.")
 

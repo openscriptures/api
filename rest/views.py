@@ -56,12 +56,12 @@ def passage(request, osis_ref):
             return HttpResponseBadRequest("Unexpected output type '%s' provided for hierarchy" % request.GET["output"], mimetype = "text/plain")
         output_format = request.GET["output"]
     
-    # Get the desired hierarchy (serialization order) for TokenStructures
+    # Get the desired hierarchy (serialization order) for Structures
     structure_types = []
     structure_types_always_milestoned = {}
     STRUCTURE_TYPE_CODES = {}
     structure_type_hierarchy = []
-    for choice_tuple in TokenStructure.TYPE_CHOICES: #TODO: There's gotta be a better way to do reverse lookup of choices tuples
+    for choice_tuple in Structure.TYPE_CHOICES: #TODO: There's gotta be a better way to do reverse lookup of choices tuples
         STRUCTURE_TYPE_CODES[choice_tuple[1]] = choice_tuple[0]
         structure_types.append(choice_tuple[0])
     
@@ -77,24 +77,24 @@ def passage(request, osis_ref):
             # Predefined hierarchy: Book-Chapter-Verse
             if request.GET["hierarchy"] == 'bcv':
                 structure_type_hierarchy = [
-                    TokenStructure.BOOK_GROUP,
-                    TokenStructure.BOOK,
-                    TokenStructure.CHAPTER,
-                    TokenStructure.VERSE,
+                    Structure.BOOK_GROUP,
+                    Structure.BOOK,
+                    Structure.CHAPTER,
+                    Structure.VERSE,
                 ]
-                structure_types_always_milestoned[TokenStructure.PARAGRAPH] = True
+                structure_types_always_milestoned[Structure.PARAGRAPH] = True
             
             # Predefined hierarchy: Book-Section-Paragraph
             elif request.GET["hierarchy"] == 'bsp':
                 structure_type_hierarchy = [
-                    TokenStructure.BOOK_GROUP,
-                    TokenStructure.BOOK,
-                    TokenStructure.SECTION,
-                    TokenStructure.PARAGRAPH,
-                    TokenStructure.LINE
+                    Structure.BOOK_GROUP,
+                    Structure.BOOK,
+                    Structure.SECTION,
+                    Structure.PARAGRAPH,
+                    Structure.LINE
                 ]
-                structure_types_always_milestoned[TokenStructure.VERSE] = True
-                structure_types_always_milestoned[TokenStructure.CHAPTER] = True
+                structure_types_always_milestoned[Structure.VERSE] = True
+                structure_types_always_milestoned[Structure.CHAPTER] = True
             
             # Predefined hierarchy: Book-Section-Paragraph
             elif request.GET["hierarchy"] == 'milestone':
@@ -132,7 +132,7 @@ def passage(request, osis_ref):
     for struct in data['concurrent_structures']:
         # Structure is start shadow
         if struct.start_token.position < data['start_structure'].start_token.position:
-            struct.shadow = struct.shadow | TokenStructure.SHADOW_START
+            struct.shadow = struct.shadow | Structure.SHADOW_START
             initial_shadow_structures.append(struct)
             struct.shadow_start_token_position = passage_start_token_position
         
@@ -142,7 +142,7 @@ def passage(request, osis_ref):
         
         # Structure is end shadow
         if struct.end_token.position > data['end_structure'].end_token.position:
-            struct.shadow = struct.shadow | TokenStructure.SHADOW_END
+            struct.shadow = struct.shadow | Structure.SHADOW_END
             final_shadow_structures.append(struct)
             struct.shadow_end_token_position = passage_end_token_position
         

@@ -1,5 +1,15 @@
 [
   {
+    "model": "api.server",
+    "pk": 1,
+    "fields": {
+		"is_self": true,
+		"base_url": "/"
+    }
+  },	
+	
+	
+  {
     "model": "api.language",
     "pk": "eng",
     "fields": {

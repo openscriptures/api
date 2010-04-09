@@ -44,6 +44,11 @@ work1 = Work(
     license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
 )
 work1.save()
+WorkServer.objects.create(
+    work = work1,
+    server = Server.objects.get(is_self = True)
+)
+
 
 #TODO: Do we even need another separate work?
 
@@ -64,7 +69,10 @@ work2 = Work(
     license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
 )
 work2.save()
-
+WorkServer.objects.create(
+    work = work2,
+    server = Server.objects.get(is_self = True)
+)
 
 
 bookFilenameLookup = {
@@ -168,22 +176,34 @@ lineParser = re.compile(ur"""^
 
 # Get the subset of OSIS book codes provided on command line
 limited_book_codes = []
-limited_osis_ids = []
+#limited_osis_ids = []
 for arg in sys.argv:
     id_parts = arg.split(".")
-    if id_parts[0] in osis.BIBLE_BOOK_CODES:
+    if id_parts[0] in osis.BOOK_ORDERS["Bible"]["KJV"]:
         limited_book_codes.append(id_parts[0])
-        limited_osis_ids.append(arg)
+        #limited_osis_ids.append(arg)
+
+# I cannot believe Python doesn't have this built in
+#def grep(regexp,list):
+#    "Grep from http://casa.colorado.edu/~ginsbura/pygrep.htm"
+#    expr = re.compile(regexp)
+#    results = []
+#    for text in list:
+#        match = expr.search(text)
+#        if match != None:
+#            results.append(match.string)
+#    return results
+
 
 if len(limited_book_codes):
     book_codes = limited_book_codes
 else:
-    book_codes = osis.BIBLE_BOOK_CODES
+    book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
 
 
 #book_codes = import_helpers.get_book_code_args()
 #if len(book_codes) == 0:
-#    book_codes = osis.BIBLE_BOOK_CODES
+#    book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
 
 # Read each of the Book files
 structCount = 1
@@ -193,19 +213,19 @@ for book_code in book_codes:
     if not bookFilenameLookup.has_key(book_code):
         continue
     
-    print osis.BIBLE_BOOK_NAMES[book_code]
+    print "Book:", osis.BOOK_NAMES["Bible"][book_code]
     
     # Set up the book ref
     structs = {}
-    structs[TokenStructure.BOOK] = TokenStructure(
+    structs[Structure.BOOK] = Structure(
         work = work1,
-        type = TokenStructure.BOOK,
+        type = Structure.BOOK,
         osis_id = book_code,
         position = structCount,
         numerical_start = book_codes.index(book_code),
         variant_bits = work2_variant_bit | work1_variant_bit,
         source_url = "zip:" + source_url + "!/Tischendorf-2.5/Unicode/" + bookFilenameLookup[book_code]
-        #title = osis.BIBLE_BOOK_NAMES[book_code]
+        #title = osis.BOOK_NAMES["Bible"][book_code]
     )
     structCount += 1
     
@@ -231,50 +251,50 @@ for book_code in book_codes:
             continue
         
         # Skip verses we're not importing right now
-        verse_osisid = book_code + "." + lineMatches.group('chapter') + "." + lineMatches.group('verse')
-        if len(limited_osis_ids) and verse_osisid not in limited_osis_ids:
-            continue
+        #verse_osisid = book_code + "." + lineMatches.group('chapter') + "." + lineMatches.group('verse')
+        #if len(limited_osis_ids) and len(grep(verse_osisid, limited_osis_ids)) != 0:
+        #    continue
         
         # New Chapter start
         if lineMatches.group('chapter') != current_chapter:
             # End the previous chapter
-            closeStructure(TokenStructure.CHAPTER)
+            closeStructure(Structure.CHAPTER)
             
             # Start the next chapter
             current_chapter = lineMatches.group('chapter')
-            structs[TokenStructure.CHAPTER] = TokenStructure(
+            structs[Structure.CHAPTER] = Structure(
                 work = work1, # remember work2 is subsumed by work1
-                type = TokenStructure.CHAPTER,
+                type = Structure.CHAPTER,
                 position = structCount,
                 osis_id = book_code + "." + current_chapter,
                 numerical_start = current_chapter,
                 variant_bits = work2_variant_bit | work1_variant_bit
             )
-            print structs[TokenStructure.CHAPTER].osis_id
+            print structs[Structure.CHAPTER].osis_id
             structCount += 1
         
         # New Verse start
         if lineMatches.group('verse') != current_verse:
             # End the previous verse
-            closeStructure(TokenStructure.VERSE)
+            closeStructure(Structure.VERSE)
             
             # Start the next verse
             current_verse = lineMatches.group('verse')
-            structs[TokenStructure.VERSE] = TokenStructure(
+            structs[Structure.VERSE] = Structure(
                 work = work1, # remember work2 is subsumed by work1
-                type = TokenStructure.VERSE,
+                type = Structure.VERSE,
                 position = structCount,
                 osis_id = book_code + "." + current_chapter + "." + current_verse,
                 numerical_start = current_verse,
                 variant_bits = work2_variant_bit | work1_variant_bit
             )
-            print structs[TokenStructure.VERSE].osis_id
+            print structs[Structure.VERSE].osis_id
             structCount += 1
         
         
         # End paragraph
         paragraph_marker = None
-        if lineMatches.group('break') == 'P' and structs.has_key(TokenStructure.PARAGRAPH):
+        if lineMatches.group('break') == 'P' and structs.has_key(Structure.PARAGRAPH):
             assert(len(bookTokens) > 0)
             
             paragraph_marker = Token(
@@ -286,22 +306,22 @@ for book_code in book_codes:
             )
             tokenCount += 1
             paragraph_marker.save()
-            structs[TokenStructure.PARAGRAPH].end_marker = paragraph_marker
-            closeStructure(TokenStructure.PARAGRAPH)
+            structs[Structure.PARAGRAPH].end_marker = paragraph_marker
+            closeStructure(Structure.PARAGRAPH)
             bookTokens.append(paragraph_marker)
         
         # Start paragraph
         if len(bookTokens) == 0 or lineMatches.group('break') == 'P':
-            assert(not structs.has_key(TokenStructure.PARAGRAPH))
+            assert(not structs.has_key(Structure.PARAGRAPH))
             print "¶"
-            structs[TokenStructure.PARAGRAPH] = TokenStructure(
+            structs[Structure.PARAGRAPH] = Structure(
                 work = work1, # remember work2 is subsumed by work1
-                type = TokenStructure.PARAGRAPH,
+                type = Structure.PARAGRAPH,
                 position = structCount,
                 variant_bits = work2_variant_bit | work1_variant_bit
             )
             if paragraph_marker:
-                structs[TokenStructure.PARAGRAPH].start_marker = paragraph_marker
+                structs[Structure.PARAGRAPH].start_marker = paragraph_marker
             structCount += 1
         
         # Insert whitespace
@@ -331,7 +351,7 @@ for book_code in book_codes:
         # Open UNCERTAIN1 bracket
         assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
         if lineMatches.group('kethivStartBracket'):
-            assert(not structs.has_key(TokenStructure.UNCERTAIN1))
+            assert(not structs.has_key(Structure.UNCERTAIN1))
             print "### OPEN BRACKET"
             
             # Make start_marker for UNCERTAIN1
@@ -346,9 +366,9 @@ for book_code in book_codes:
             lineTokens.append(open_bracket_token)
             
             # Create the UNCERTAIN1 structure
-            structs[TokenStructure.UNCERTAIN1] = TokenStructure(
+            structs[Structure.UNCERTAIN1] = Structure(
                 work = work1, # remember work2 is subsumed by work1
-                type = TokenStructure.UNCERTAIN1,
+                type = Structure.UNCERTAIN1,
                 position = structCount,
                 variant_bits = work2_variant_bit | work1_variant_bit,
                 start_marker = open_bracket_token
@@ -374,7 +394,7 @@ for book_code in book_codes:
         
         # Make this token the start of the UNCERTAIN structure
         if lineMatches.group('kethivStartBracket'):
-            structs[TokenStructure.UNCERTAIN1].start_token = token_work1
+            structs[Structure.UNCERTAIN1].start_token = token_work1
         
         # Qere token
         if lineMatches.group('kethiv') != lineMatches.group('qere'):
@@ -412,10 +432,10 @@ for book_code in book_codes:
         # Close UNCERTAIN1 bracket
         assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
         if lineMatches.group('kethivEndBracket'):
-            assert(structs.has_key(TokenStructure.UNCERTAIN1))
+            assert(structs.has_key(Structure.UNCERTAIN1))
             print "### CLOSE BRACKET"
             
-            structs[TokenStructure.UNCERTAIN1].end_token = lineTokens[-1]
+            structs[Structure.UNCERTAIN1].end_token = lineTokens[-1]
             
             # Make end_marker for UNCERTAIN1
             close_bracket_token = Token(
@@ -429,8 +449,8 @@ for book_code in book_codes:
             close_bracket_token.save()
             
             # Close the UNCERTAIN1 structure
-            structs[TokenStructure.UNCERTAIN1].end_marker = close_bracket_token
-            closeStructure(TokenStructure.UNCERTAIN1)
+            structs[Structure.UNCERTAIN1].end_marker = close_bracket_token
+            closeStructure(Structure.UNCERTAIN1)
             lineTokens.append(open_bracket_token)
         
         
