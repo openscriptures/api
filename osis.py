@@ -304,18 +304,36 @@ def parse_osis_ref(osis_ref_string):
 
 # Tests
 if __name__ == "__main__":
-    osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
     
-    ok_ids = [
+    # Test workID
+    workIDRegExp = re.compile(OSIS_WORK_ID_REGEX, re.VERBOSE | re.UNICODE)
+    ok_workIDs = [
+        "Bible",
+        "Bible.KJV",
+        "Bible.KJV.1611",
+        "Bible.ChurchOfEngland.KJV.1611"
+    ]
+    for id in ok_workIDs:
+        matches = workIDRegExp.match(id)
+        assert(matches)
+        #print id, matches.groups()
+    
+    # Test full osisID
+    osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
+    ok_osisIDs = [
         "John.1",
         "John.1.13",
         "John.A.13",
-        "John.A.UYKG",
-        "John.A.UY\.KGasd",
-        "Bible:John.1"
+        "John.A.B.C.D",
+        "John.A.B\.C\.D",
+        "Bible:John.1",
+        "Bible.KJV:John.1",
+        "Bible.KJV.1611:John.1",
+        "Bible.ChurchOfEngland.KJV.1611:John.1"
     ]
-    for id in ok_ids:
+    for id in ok_osisIDs:
         matches = osisIDRegExp.match(id)
         assert(matches)
-        print id, matches.groups()
+        #print id, matches.groups()
     
+    # Test osisRef (extended)
