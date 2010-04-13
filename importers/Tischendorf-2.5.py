@@ -298,7 +298,7 @@ for book_code in book_codes:
             assert(len(bookTokens) > 0)
             
             paragraph_marker = Token(
-                data     = "\n\n", #¶
+                data     = u"\u2029", #¶ "\n\n"
                 type     = Token.WHITESPACE, #i.e. PARAGRAPH
                 work     = work1,
                 position = tokenCount,

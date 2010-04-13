@@ -2,6 +2,51 @@
 import re
 from datetime import date
 
+#((((\p{L}|\p{N}|_)+)(\.(\p{L}|\p{N}|_))*:)?([^:\s])+)
+#OSIS_GEN_REGEX = ur"(((\w+)(?:\.(\w+))*:)?([^:\s])+)"
+#OSIS_SCRIPTS = ur"([A-Z][a-z]{3}|x-[A-Za-z0-9]+)"
+
+
+# (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+# ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
+# (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+
+OSIS_WORK_ID_REGEX = ur"\w+(?:\.\w+)*"
+OSIS_SEGMENT_REGEX = ur"(?:\w|(?:\\[^\s]))+"
+
+OSIS_ID_REGEX = ur"""
+    ^
+    (?:
+        (?P<work>{work})
+    :)?
+    (?P<passage>
+        ({segment})
+        (?:\.({segment}))*
+    )
+    $
+""".format(
+    work = OSIS_WORK_ID_REGEX,
+    segment = OSIS_SEGMENT_REGEX
+)
+    
+#r"((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?"
+OSIS_REF_REGEX = ur"(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?"
+
+
+
+#OSIS_WORK_PREFIX = ur"((//((\p{L}|\p{N}|_|-|\.|:)+))(/(\p{L}|\p{N}|_|-|\.|:)+)?(/@(\p{L}|\p{N}|_|-|\.|:)+))"
+
+# ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
+OSIS_WORK_TYPE = ur"(\w+)(?:\.(\w+))*"
+
+#L, N, Nd
+
+#(\p{L}|\p{N}|_) = \w
+
+
+#re.compile(r"\d", re.UNICODE) == /\p{N}/
+#re.compile(r"\w", re.UNICODE) == /\p{N}|\p{L}|_/
+
 TYPES = (
     "Bible",
     #"Quran",
@@ -124,11 +169,26 @@ BOOK_NAMES = {
 }
 
 
+class OsisID():
+    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+    
+    
+    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+    #((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
+    #(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+    pass
 
-class OSISRef():
+class OsisRef():
     """
     An osisRef which can contain a single passage from a work or a passage range from a work
     """
+    
+    start = None
+    end = None
+    
+    
+    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
+    
     def __init__(self):
         raise Exception("Not implemented")
     
@@ -240,3 +300,22 @@ def parse_osis_ref(osis_ref_string):
         result['end_osis_id']['original'] = match.group('end_osis_id')
     
     return result
+
+
+# Tests
+if __name__ == "__main__":
+    osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
+    
+    ok_ids = [
+        "John.1",
+        "John.1.13",
+        "John.A.13",
+        "John.A.UYKG",
+        "John.A.UY\.KGasd",
+        "Bible:John.1"
+    ]
+    for id in ok_ids:
+        matches = osisIDRegExp.match(id)
+        assert(matches)
+        print id, matches.groups()
+    
