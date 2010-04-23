@@ -11,33 +11,49 @@ from datetime import date
 # ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
 # (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
 
-OSIS_WORK_ID_REGEX = ur"\w+(?:\.\w+)*"
-OSIS_SEGMENT_REGEX = ur"(?:\w|(?:\\[^\s]))+"
+#OSIS_WORK_ID_REGEX = ur"(\w+)(?:\.(\w+))*"
+#OSIS_SEGMENT_REGEX = ur"((?:\w|(?:\\[^\s]))+)" #Question: Do we really need these escape?
+#OSIS_SEGMENT_REGEX = ur"((?: \w | \\ \S )+)" #Question: Do we really need these escape?
 
-OSIS_ID_REGEX = ur"""
-    ^
-    (?:
-        (?P<work>{work})
-    :)?
-    (?P<passage>
-        ({segment})
-        (?:\.({segment}))*
-    )
-    $
-""".format(
-    work = OSIS_WORK_ID_REGEX,
-    segment = OSIS_SEGMENT_REGEX
-)
-    
-#r"((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?"
-OSIS_REF_REGEX = ur"(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?"
+#OSIS_ID_REGEX = ur"""
+#    ^
+#    (?:
+#        (?P<work>{work})
+#    (:))?
+#    (?P<passage>
+#        ({segment})
+#        (?:\.({segment}))*
+#    )
+#    $
+#""".format(
+#    work = OSIS_WORK_ID_REGEX,
+#    segment = OSIS_SEGMENT_REGEX
+#)
+
+# (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+
+# ((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*
+# (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+# (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
+# (\-
+#       ((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)
+#       (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+#       (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
+# )?"
+#OSIS_REF_REGEX = ur"""
+#(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+#((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*
+#(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+#(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
+#(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
+#"""
 
 
 
 #OSIS_WORK_PREFIX = ur"((//((\p{L}|\p{N}|_|-|\.|:)+))(/(\p{L}|\p{N}|_|-|\.|:)+)?(/@(\p{L}|\p{N}|_|-|\.|:)+))"
 
 # ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
-OSIS_WORK_TYPE = ur"(\w+)(?:\.(\w+))*"
+#OSIS_WORK_TYPE = ur"(\w+)(?:\.(\w+))*"
 
 #L, N, Nd
 
@@ -47,14 +63,7 @@ OSIS_WORK_TYPE = ur"(\w+)(?:\.(\w+))*"
 #re.compile(r"\d", re.UNICODE) == /\p{N}/
 #re.compile(r"\w", re.UNICODE) == /\p{N}|\p{L}|_/
 
-TYPES = (
-    "Bible",
-    #"Quran",
-    #"Mishnah",
-    #"Talmud",
-    #"BookOfMormon",
-    # ...
-)
+
 
 #TODO: We need a way of creating/storing arbitrary canonical book orders
 #TODO: Include facility for converting natural language references into osisRefs?
@@ -65,17 +74,21 @@ TYPES = (
 #    "Bar", "AddDan", "PrAzar", "Bel", "SgThree", "Sus", "1Esd", "2Esd", "AddEsth", "EpJer", "Jdt", "1Macc", "2Macc", "3Macc", "4Macc", "PrMan", "Sir", "Tob", "Wis"
 #)
 
+#QUESTION: Do these even need to be defined here? Can an exhaustive list of orders be made?
 BOOK_ORDERS = {
     "Bible": {
         "KJV": [
+            # Old Testament
             "Gen", "Exod", "Lev", "Num", "Deut", "Josh", "Judg", "Ruth", "1Sam", "2Sam", "1Kgs", "2Kgs", "1Chr", "2Chr", "Ezra", "Neh", "Esth", "Job", "Ps", "Prov", "Eccl", "Song", "Isa", "Jer", "Lam", "Ezek", "Dan", "Hos", "Joel", "Amos", "Obad", "Jonah", "Mic", "Nah", "Hab", "Zeph", "Hag", "Zech", "Mal",
+            # New Testament
             "Matt", "Mark", "Luke", "John", "Acts", "Rom", "1Cor", "2Cor", "Gal", "Eph", "Phil", "Col", "1Thess", "2Thess", "1Tim", "2Tim", "Titus", "Phlm", "Heb", "Jas", "1Pet", "2Pet", "1John", "2John", "3John", "Jude", "Rev",
+            # Deuterocanonical
             "Bar", "AddDan", "PrAzar", "Bel", "SgThree", "Sus", "1Esd", "2Esd", "AddEsth", "EpJer", "Jdt", "1Macc", "2Macc", "3Macc", "4Macc", "PrMan", "Sir", "Tob", "Wis"
         ]
     }
 }
 
-#PROBLEM: Osis Book Names are biased toward the KJV tradition
+#PROBLEM: Osis Book Names are biased toward the KJV tradition?
 BOOK_NAMES = {
     "Bible": {
         "Gen": "Genesis",
@@ -168,28 +181,168 @@ BOOK_NAMES = {
     }
 }
 
+class OsisWork():
+    """
+    OSIS work such as Bible.Crossway.ESV.2001 (the part of an osisID before ‘:’)
+    
+    Organized into period-delimited segments increasingly narrowing in scope.
+    
+    #TODO: Is this the way to do docstring tests?
+    >> work = OsisWork("Bible")
+    >> work = OsisWork("ESV")
+    >> work = OsisWork("Bible.Crossway.ESV.2001")
+    >> work = OsisWork("Bible.BibleOrg.NET.2004.04.01.r123")
+    """
+    REGEX = re.compile(ur"""
+        ( \w+ )(?: \. ( \w+ ))*
+    """, re.VERBOSE | re.UNICODE)
+    
+    # This list can be modified as needed to add support for other types
+    TYPES = [
+        "Bible",
+        #"Quran",
+        #"Mishnah",
+        #"Talmud",
+        #"BookOfMormon",
+        # ...
+    ]
+    
+    def __init__(self, osis_work_str):
+        self.type = None
+        self.publisher = None
+        self.short_name = None
+        self.year = None
+        
+        matches = self.REGEX.match(osis_work_str)
+        if not matches:
+            raise Exception("Unable to parse string as a osisWork: %s" % osis_work_str)
+        
+        #TODO: We must make sure that len(osis_work_str) == matches.length(?)
+        
+        segments = matches.groups()
+        if segments[0] in self.TYPES:
+            self.type = segments
+        
+        
+        
+        print matches
+        
+        return
+        
+        
+        # Get the TYPE
+        if parts[0] in self.TYPES:
+            work_prefix['type'] = parts.pop(0)
+        
+        slugs = []
+        for part in parts:
+            # Get the year
+            if not work_prefix.has_key('publish_date') and re.match(r'^\d\d\d\d$', part):
+                work_prefix['publish_date'] = part  #date(int(part), 1, 1)
+            
+            # Get the language
+            elif not work_prefix.has_key('language') and re.match(r'^[a-z]{2,3}\b', part):
+                work_prefix['language'] = part
+            
+            # Get the slugs
+            elif re.match(r'^\w+$', part):
+                slugs.append(part)
+            
+            # Unrecognized 
+            else:
+                raise Exception("Unexpected OSIS work prefix component: " + part)
+        
+        # Get the osis_slug and publisher
+        if len(slugs) == 1:
+            work_prefix['osis_slug'] = slugs[0]
+        elif len(slugs) == 2:
+            work_prefix['publisher'] = slugs[0]
+            work_prefix['osis_slug'] = slugs[1]
+        elif len(slugs) != 0:
+            raise Exception("Unexpected slug count in OSIS work prefix: " + str(work_prefix))
+        
+        result['work_prefix'] = work_prefix
+    
+
+class OsisPassage():
+    """
+    OSIS passage such as Exodus.3.8 (i.e. without the work prefix)
+    
+    Organized into period-delimited segments increasingly narrowing in scope,
+    followed by an optional sub-identifier which is work-specific.
+    """
+    REGEX = re.compile(ur"""
+        ({segment})(?:\.({segment}))*
+        
+        # OSIS Manual: “Translations also often split verses into parts,
+        # provided labels such as ‘a’ and ‘b’ for the separate parts. Encoders
+        # may freely add sub-identifiers below the lowest standardized level.
+        # They are set off from the standardized portion by the character ‘!’.”
+        (?:!
+            (?P<subidentifier>
+                ({segment})(?:\.({segment}))*
+            )
+        )?
+    """.format(
+        segment=ur"((?:\w|\\\S)+)"
+    ), re.VERBOSE | re.UNICODE)
+    
+    def __init__(self, osis_work_str):
+        pass
+
+
 
 class OsisID():
-    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+    """
+    An osisID which represents a passage within a single work like ESV:Exodus.1
+    Includes a work prefix (OsisWork) and/or a passage (OsisPassage).
+    """
+    REGEX = re.compile(
+        ur"""
+            #^
+            (?:
+                (?P<work>{work})
+                :
+            )?
+            
+            (?P<passage>{passage})?
+            
+            #$
+        """.format(
+            work = OsisWork.REGEX.pattern,
+            passage = OsisPassage.REGEX.pattern
+    ), re.VERBOSE | re.UNICODE)
     
-    
-    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
-    #((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
-    #(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
-    pass
+    def __init__(self, osis_id_str):
+        #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
+        
+        self.work = None
+        self.passage = None
+        
+        matches = self.REGEX.match(id)
+        if not matches:
+            raise Exception("Unable to parse osisID: " + osis_id_str)
+        
+        
+        
+        print matches.groups()
+        print matches.groupdict()
+        
+        #assert(matches)
+
 
 class OsisRef():
     """
     An osisRef which can contain a single passage from a work or a passage range from a work
     """
-    
+    #(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
     start = None
     end = None
     
     
     #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
     
-    def __init__(self):
+    def __init__(self, osis_ref_str):
         raise Exception("Not implemented")
     
 
@@ -302,25 +455,45 @@ def parse_osis_ref(osis_ref_string):
     return result
 
 
+
+
 # Tests
 if __name__ == "__main__":
+    import sys
+    #print OsisWork.REGEX.pattern
+    #print OsisPassage.REGEX.pattern
+    #print OsisID.REGEX.pattern
     
     # Test workID
-    workIDRegExp = re.compile(OSIS_WORK_ID_REGEX, re.VERBOSE | re.UNICODE)
-    ok_workIDs = [
+    #workIDRegExp = re.compile(OsisWORK, re.VERBOSE | re.UNICODE)
+    ok_works = [
         "Bible",
         "Bible.KJV",
         "Bible.KJV.1611",
         "Bible.ChurchOfEngland.KJV.1611"
     ]
-    for id in ok_workIDs:
-        matches = workIDRegExp.match(id)
-        assert(matches)
-        #print id, matches.groups()
+    
+    for work in ok_works:
+        print work
+        obj = OsisWork(work)
+        assert(obj)
+    bad_works = [
+        "@#$%^&",
+        "Bible.Hello World Bible Society.NonExistantTranslation"
+    ]
+    for work in bad_works:
+        try:
+            obj = OsisWork(work)
+            raise Exception(True)
+        except:
+            print sys.exc_value
+            assert(sys.exc_value is not True)
+    
+    exit()
     
     # Test full osisID
-    osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
-    ok_osisIDs = [
+    #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
+    ok_passages = [
         "John.1",
         "John.1.13",
         "John.A.13",
@@ -329,11 +502,19 @@ if __name__ == "__main__":
         "Bible:John.1",
         "Bible.KJV:John.1",
         "Bible.KJV.1611:John.1",
-        "Bible.ChurchOfEngland.KJV.1611:John.1"
+        "Bible.ChurchOfEngland.KJV.1611:John.1",
+        
+        "Esth.1.1!note.c",
+        "Esth.1.1!crossReference"
     ]
-    for id in ok_osisIDs:
-        matches = osisIDRegExp.match(id)
-        assert(matches)
+    for passage in ok_passages:
+        passage = OsisPassage(passage)
+        
+        #matches = osisIDRegExp.match(id)
+        #assert(matches)
         #print id, matches.groups()
+    
+    # Test OsisID object
+    
     
     # Test osisRef (extended)
