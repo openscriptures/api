@@ -194,8 +194,15 @@ class OsisWork():
     >> work = OsisWork("Bible.BibleOrg.NET.2004.04.01.r123")
     """
     REGEX = re.compile(ur"""
-        ( \w+ )(?: \. ( \w+ ))*
+        \w+ (?: \. \w+ )*
+        
+        #( \w+ )(?: \. ( \w+ ))*
+        #(?:
+        #    (?:(?<!^) \. )?
+        #    ( \w+ )
+        #)+
     """, re.VERBOSE | re.UNICODE)
+    # Note: repeating capture groups aren't used because only the last one is accessible
     
     # This list can be modified as needed to add support for other types
     TYPES = [
@@ -214,26 +221,42 @@ class OsisWork():
         self.year = None
         
         matches = self.REGEX.match(osis_work_str)
-        if not matches:
+        #print "osis_work_str = ", osis_work_str
+        #print matches.endpos-1 , len(osis_work_str)
+        if not matches or len(matches.group(0)) != len(osis_work_str):
             raise Exception("Unable to parse string as a osisWork: %s" % osis_work_str)
         
-        #TODO: We must make sure that len(osis_work_str) == matches.length(?)
+        # Now that we've verified the pattern, now split it into segments
+        # Is there a better way to tie this into the REGEX?
+        segments = re.split(r"\.", osis_work_str)
         
-        segments = matches.groups()
+        # Get the type
         if segments[0] in self.TYPES:
-            self.type = segments
+            self.type = segments.pop(0)
         
+        # Get the language
+        if len(segments) and re.match(r'^[a-z]{2,3}\b', segments[0]):
+            self.language = segments.pop(0)
         
+        # Get the slugs, publisher and/or shortname 
+        segment_slugs = []
+        for segment in segments:
+            # Find the slugs (e.g. Publisher or Name)
+            if re.match(ur"^(?!\d\d)\w+$", segment):
+                segment_slugs.append(segment)
+            
+            # The Year
+            elif self.year is None and re.match(r'^\d\d\d\d$', segment):
+                self.year = segment
+            
+            else:
+                raise Exception("Unexpected segment: %s" % segment)
         
-        print matches
+        #print "TYPE", self.type
+        #print "SEGMENT_SLUGS", segment_slugs
+        
         
         return
-        
-        
-        # Get the TYPE
-        if parts[0] in self.TYPES:
-            work_prefix['type'] = parts.pop(0)
-        
         slugs = []
         for part in parts:
             # Get the year
@@ -245,7 +268,7 @@ class OsisWork():
                 work_prefix['language'] = part
             
             # Get the slugs
-            elif re.match(r'^\w+$', part):
+            elif re.match(r'^(?!\d\d)\w+$', part):
                 slugs.append(part)
             
             # Unrecognized 
@@ -349,6 +372,9 @@ class OsisRef():
 
 
 def parse_osis_ref(osis_ref_string):
+    """
+    DEPRECATED. Use OsisRef object instead?
+    """
     #TODO: This should instead return a list of OsisRef objects
     
     
@@ -466,17 +492,17 @@ if __name__ == "__main__":
     
     # Test workID
     #workIDRegExp = re.compile(OsisWORK, re.VERBOSE | re.UNICODE)
-    ok_works = [
-        "Bible",
-        "Bible.KJV",
-        "Bible.KJV.1611",
-        "Bible.ChurchOfEngland.KJV.1611"
-    ]
     
-    for work in ok_works:
-        print work
-        obj = OsisWork(work)
-        assert(obj)
+    work = OsisWork("Bible")
+    assert(work.type == "Bible")
+    work = OsisWork("Bible.en")
+    assert(work.language == "en")
+    work = OsisWork("Bible.en.KJV")
+    work = OsisWork("Bible.en.KJV.1611")
+    assert(work.year == "1611")
+    work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
+    
+    exit()
     bad_works = [
         "@#$%^&",
         "Bible.Hello World Bible Society.NonExistantTranslation"
@@ -486,7 +512,6 @@ if __name__ == "__main__":
             obj = OsisWork(work)
             raise Exception(True)
         except:
-            print sys.exc_value
             assert(sys.exc_value is not True)
     
     exit()
