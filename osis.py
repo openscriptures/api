@@ -1,69 +1,6 @@
 # coding: utf8 #
 import re
-from datetime import date
-
-#((((\p{L}|\p{N}|_)+)(\.(\p{L}|\p{N}|_))*:)?([^:\s])+)
-#OSIS_GEN_REGEX = ur"(((\w+)(?:\.(\w+))*:)?([^:\s])+)"
-#OSIS_SCRIPTS = ur"([A-Z][a-z]{3}|x-[A-Za-z0-9]+)"
-
-
-# (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
-# ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
-# (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
-
-#OSIS_WORK_ID_REGEX = ur"(\w+)(?:\.(\w+))*"
-#OSIS_SEGMENT_REGEX = ur"((?:\w|(?:\\[^\s]))+)" #Question: Do we really need these escape?
-#OSIS_SEGMENT_REGEX = ur"((?: \w | \\ \S )+)" #Question: Do we really need these escape?
-
-#OSIS_ID_REGEX = ur"""
-#    ^
-#    (?:
-#        (?P<work>{work})
-#    (:))?
-#    (?P<passage>
-#        ({segment})
-#        (?:\.({segment}))*
-#    )
-#    $
-#""".format(
-#    work = OSIS_WORK_ID_REGEX,
-#    segment = OSIS_SEGMENT_REGEX
-#)
-
-# (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
-
-# ((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*
-# (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
-# (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
-# (\-
-#       ((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)
-#       (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
-#       (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
-# )?"
-#OSIS_REF_REGEX = ur"""
-#(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
-#((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*
-#(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
-#(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
-#(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
-#"""
-
-
-
-#OSIS_WORK_PREFIX = ur"((//((\p{L}|\p{N}|_|-|\.|:)+))(/(\p{L}|\p{N}|_|-|\.|:)+)?(/@(\p{L}|\p{N}|_|-|\.|:)+))"
-
-# ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
-#OSIS_WORK_TYPE = ur"(\w+)(?:\.(\w+))*"
-
-#L, N, Nd
-
-#(\p{L}|\p{N}|_) = \w
-
-
-#re.compile(r"\d", re.UNICODE) == /\p{N}/
-#re.compile(r"\w", re.UNICODE) == /\p{N}|\p{L}|_/
-
-
+from datetime import date, time
 
 #TODO: We need a way of creating/storing arbitrary canonical book orders
 #TODO: Include facility for converting natural language references into osisRefs?
@@ -204,7 +141,7 @@ class OsisWork():
     """, re.VERBOSE | re.UNICODE)
     # Note: repeating capture groups aren't used because only the last one is accessible
     
-    # This list can be modified as needed to add support for other types
+    # This list can be modified as needed to add support (recognition) for other types
     TYPES = [
         "Bible",
         #"Quran",
@@ -217,8 +154,15 @@ class OsisWork():
     def __init__(self, osis_work_str):
         self.type = None
         self.publisher = None
-        self.short_name = None
+        self.name = None
+        self.date = None
         self.year = None
+        self.month = None
+        self.day = None
+        self.time = None
+        
+        if __name__ == "__main__":
+            print "OsisWork(%s)" % osis_work_str
         
         matches = self.REGEX.match(osis_work_str)
         #print "osis_work_str = ", osis_work_str
@@ -238,53 +182,103 @@ class OsisWork():
         if len(segments) and re.match(r'^[a-z]{2,3}\b', segments[0]):
             self.language = segments.pop(0)
         
-        # Get the slugs, publisher and/or shortname 
+        # Get the rest of the Get the slugs, publisher and/or shortname 
         segment_slugs = []
-        for segment in segments:
+        has_remaining_segments = lambda: len(segments) > 0
+        while has_remaining_segments(): #for segment in segments:
+            #segment = segments.pop(0)
+            
             # Find the slugs (e.g. Publisher or Name)
-            if re.match(ur"^(?!\d\d)\w+$", segment):
-                segment_slugs.append(segment)
+            if re.match(ur"^(?!\d\d)\w+$", segments[0]):
+                segment_slugs.append(segments.pop(0))
             
-            # The Year
-            elif self.year is None and re.match(r'^\d\d\d\d$', segment):
-                self.year = segment
-            
+            # The Date/Time
+            elif self.year is None and re.match(r'^\d\d\d\d$', segments[0]):
+                datetime_segment_formats = (
+                    (
+                        'year',
+                        r'^\d\d\d\d$',
+                        lambda matches: int(matches.group(0))
+                    ),
+                    (
+                        'month',
+                        r'^\d\d$',
+                        lambda matches: int(matches.group(0))
+                    ),
+                    (
+                        'day',
+                        r'^\d\d$',
+                        lambda matches: int(matches.group(0))
+                    ),
+                    (
+                        'time',
+                        r'^(?P<hours>\d\d)(?P<minutes>\d\d)(?P<seconds>\d\d)?$',
+                        lambda matches: time(
+                            matches.group('hours'),
+                            matches.group('minutes'),
+                            matches.group('seconds')
+                        )
+                    ),
+                    #(
+                    #    'milliseconds',
+                    #    r'^\d+$',
+                    #    lambda matches: int(matches.group(0))
+                    #),
+                )
+                
+                for format in datetime_segment_formats:
+                    
+                    # See if the pattern matches but if not stop doing date/time
+                    matches = re.match(format[1], segments[0])
+                    if matches is None:
+                        break
+                    
+                    setattr(
+                        self,
+                        format[0],
+                        format[2](matches)
+                    )
+                    
+                    segments.pop(0)
+                    if not has_remaining_segments():
+                        break
+                    
+                    #segment = segments.pop(0)
+                    
+                    ## The month
+                    #if has_remaining_segments() and re.match(r'^\d\d$', segments[0]):
+                    #    self.month = segments.pop(0)
+                    #    
+                    #    # The day
+                    #    if has_remaining_segments() and re.match(r'^\d\d$', segments[0]):
+                    #        self.day = segments.pop(0)
+                    #    
+                    #        # The time
+                    #        if has_remaining_segments() and re.match(r'^\d\d$', segments[0]):
+                    #            self.day = segments.pop(0)
+                    #        
+                    #        # The time???
+                    #        # TODO
+                    #
+                
+                if self.year is not None:
+                    self.date = date(
+                        self.year,
+                        self.month or 1,
+                        self.day or 1
+                    )
+                
             else:
                 raise Exception("Unexpected segment: %s" % segment)
         
-        #print "TYPE", self.type
-        #print "SEGMENT_SLUGS", segment_slugs
-        
-        
-        return
-        slugs = []
-        for part in parts:
-            # Get the year
-            if not work_prefix.has_key('publish_date') and re.match(r'^\d\d\d\d$', part):
-                work_prefix['publish_date'] = part  #date(int(part), 1, 1)
-            
-            # Get the language
-            elif not work_prefix.has_key('language') and re.match(r'^[a-z]{2,3}\b', part):
-                work_prefix['language'] = part
-            
-            # Get the slugs
-            elif re.match(r'^(?!\d\d)\w+$', part):
-                slugs.append(part)
-            
-            # Unrecognized 
-            else:
-                raise Exception("Unexpected OSIS work prefix component: " + part)
-        
-        # Get the osis_slug and publisher
-        if len(slugs) == 1:
-            work_prefix['osis_slug'] = slugs[0]
-        elif len(slugs) == 2:
-            work_prefix['publisher'] = slugs[0]
-            work_prefix['osis_slug'] = slugs[1]
-        elif len(slugs) != 0:
-            raise Exception("Unexpected slug count in OSIS work prefix: " + str(work_prefix))
-        
-        result['work_prefix'] = work_prefix
+        # Assign the slugs to the publisher and name
+        if len(segment_slugs) == 1:
+            self.name = segment_slugs[0]
+        elif len(segment_slugs) == 2:
+            self.publisher = segment_slugs[0]
+            self.name = segment_slugs[1]
+        elif len(segment_slugs) != 0:
+            raise Exception("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
     
 
 class OsisPassage():
@@ -370,7 +364,7 @@ class OsisRef():
     
 
 
-
+#### DEPRECATED!!! #####
 def parse_osis_ref(osis_ref_string):
     """
     DEPRECATED. Use OsisRef object instead?
@@ -486,21 +480,45 @@ def parse_osis_ref(osis_ref_string):
 # Tests
 if __name__ == "__main__":
     import sys
-    #print OsisWork.REGEX.pattern
-    #print OsisPassage.REGEX.pattern
-    #print OsisID.REGEX.pattern
     
-    # Test workID
-    #workIDRegExp = re.compile(OsisWORK, re.VERBOSE | re.UNICODE)
+    # Test OsisWork
+    print "Testing OsisWork...";
     
     work = OsisWork("Bible")
     assert(work.type == "Bible")
+    
+    work = OsisWork("KJV")
+    assert(work.type is None)
+    assert(work.name == "KJV")
+    
     work = OsisWork("Bible.en")
+    assert(work.type == "Bible")
     assert(work.language == "en")
+    
     work = OsisWork("Bible.en.KJV")
+    assert(work.type == "Bible")
+    assert(work.language == "en")
+    assert(work.name == "KJV")
+    
     work = OsisWork("Bible.en.KJV.1611")
-    assert(work.year == "1611")
+    assert(work.language == "en")
+    assert(work.name == "KJV")
+    assert(work.year == 1611)
+    
     work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
+    assert(work.type == "Bible")
+    assert(work.language == "en")
+    assert(work.publisher == "ChurchOfEngland")
+    assert(work.name == "KJV")
+    assert(work.year == 1611)
+    
+    work = OsisWork("KJV.1611.06.07")
+    #work = OsisWork("KJV.1611-06-07")
+    assert(work.name == "KJV")
+    assert(work.year == 1611)
+    assert(work.month == 6)
+    assert(work.day == 7)
+    assert(str(work.date) == "1611-06-07")
     
     exit()
     bad_works = [
