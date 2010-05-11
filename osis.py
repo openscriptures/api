@@ -153,6 +153,7 @@ class OsisWork():
     ]
     
     def __init__(self, osis_work_str):
+        self.segments = []
         self.type = None
         self.publisher = None
         self.name = None
@@ -174,7 +175,10 @@ class OsisWork():
         
         # Now that we've verified the pattern, now split it into segments
         # Is there a better way to tie this into the REGEX?
-        segments = re.split(r"\.", osis_work_str)
+        self.segments = re.split(r"\.", osis_work_str)
+        
+        # Segment token stream for parsing
+        segments = list(self.segments)
         
         # Get the type
         if segments[0] in self.TYPES:
@@ -260,6 +264,7 @@ class OsisWork():
                     self.pub_date = datetime(*datetime_args) #spread!
                 
             else:
+                #TODO: This should glob all unrecognized segments into an etc
                 raise Exception("Unexpected segment: %s" % segment)
         
         # If only one slug, then it's the name
@@ -272,6 +277,8 @@ class OsisWork():
         # Otherwise, error!
         elif len(segment_slugs) != 0:
             raise Exception("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
+        
+        # Now handle revision number, version number, and edition number?
     
 
 class OsisPassage():
@@ -497,6 +504,7 @@ if __name__ == "__main__":
     assert(work.language == "en")
     assert(work.name == "KJV")
     assert(work.pub_date.year == 1611)
+    assert(len(work.segments) == 4)
     
     work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
     assert(work.type == "Bible")
