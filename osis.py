@@ -1,6 +1,7 @@
 # coding: utf8 #
 import re
-from datetime import date, time
+from datetime import date, time, datetime
+
 
 #TODO: We need a way of creating/storing arbitrary canonical book orders
 #TODO: Include facility for converting natural language references into osisRefs?
@@ -155,11 +156,12 @@ class OsisWork():
         self.type = None
         self.publisher = None
         self.name = None
-        self.date = None
-        self.year = None
-        self.month = None
-        self.day = None
-        self.time = None
+        #self.date = None
+        #self.year = None
+        #self.month = None
+        #self.day = None
+        #self.time = None
+        self.pub_date = None
         
         if __name__ == "__main__":
             print "OsisWork(%s)" % osis_work_str
@@ -192,31 +194,34 @@ class OsisWork():
             if re.match(ur"^(?!\d\d)\w+$", segments[0]):
                 segment_slugs.append(segments.pop(0))
             
+            
             # The Date/Time
-            elif self.year is None and re.match(r'^\d\d\d\d$', segments[0]):
+            elif self.pub_date is None and re.match(r'^\d\d\d\d$', segments[0]):
+                datetime_args = []
+                
                 datetime_segment_formats = (
                     (
                         'year',
                         r'^\d\d\d\d$',
-                        lambda matches: int(matches.group(0))
+                        lambda matches: ( int(matches.group(0)), )
                     ),
                     (
                         'month',
                         r'^\d\d$',
-                        lambda matches: int(matches.group(0))
+                        lambda matches: ( int(matches.group(0)), )
                     ),
                     (
                         'day',
                         r'^\d\d$',
-                        lambda matches: int(matches.group(0))
+                        lambda matches: ( int(matches.group(0)), )
                     ),
                     (
                         'time',
                         r'^(?P<hours>\d\d)(?P<minutes>\d\d)(?P<seconds>\d\d)?$',
-                        lambda matches: time(
-                            matches.group('hours'),
-                            matches.group('minutes'),
-                            matches.group('seconds')
+                        lambda matches: (
+                            int(matches.group('hours')),
+                            int(matches.group('minutes')),
+                            int(matches.group('seconds'))
                         )
                     ),
                     #(
@@ -233,50 +238,38 @@ class OsisWork():
                     if matches is None:
                         break
                     
-                    setattr(
-                        self,
-                        format[0],
-                        format[2](matches)
-                    )
+                    #setattr(
+                    #    self,
+                    #    format[0],
+                    #    format[2](matches)
+                    #)
+                    for arg in format[2](matches):
+                        datetime_args.append( arg )
                     
+                    # Segment was parsed, so pop it and see if we continue
                     segments.pop(0)
                     if not has_remaining_segments():
                         break
-                    
-                    #segment = segments.pop(0)
-                    
-                    ## The month
-                    #if has_remaining_segments() and re.match(r'^\d\d$', segments[0]):
-                    #    self.month = segments.pop(0)
-                    #    
-                    #    # The day
-                    #    if has_remaining_segments() and re.match(r'^\d\d$', segments[0]):
-                    #        self.day = segments.pop(0)
-                    #    
-                    #        # The time
-                    #        if has_remaining_segments() and re.match(r'^\d\d$', segments[0]):
-                    #            self.day = segments.pop(0)
-                    #        
-                    #        # The time???
-                    #        # TODO
-                    #
                 
-                if self.year is not None:
-                    self.date = date(
-                        self.year,
-                        self.month or 1,
-                        self.day or 1
-                    )
+                # The datetime segments have been parsed, so make the datetime
+                if len(datetime_args) > 0:
+                    # Provide default month and day
+                    while len(datetime_args) <3: # Yes, I love you!
+                        datetime_args.append(1)
+                    
+                    self.pub_date = datetime(*datetime_args) #spread!
                 
             else:
                 raise Exception("Unexpected segment: %s" % segment)
         
-        # Assign the slugs to the publisher and name
+        # If only one slug, then it's the name
         if len(segment_slugs) == 1:
             self.name = segment_slugs[0]
+        # If two slugs, then its publisher followed by name
         elif len(segment_slugs) == 2:
             self.publisher = segment_slugs[0]
             self.name = segment_slugs[1]
+        # Otherwise, error!
         elif len(segment_slugs) != 0:
             raise Exception("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
     
@@ -503,22 +496,33 @@ if __name__ == "__main__":
     work = OsisWork("Bible.en.KJV.1611")
     assert(work.language == "en")
     assert(work.name == "KJV")
-    assert(work.year == 1611)
+    assert(work.pub_date.year == 1611)
     
     work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
     assert(work.type == "Bible")
     assert(work.language == "en")
     assert(work.publisher == "ChurchOfEngland")
     assert(work.name == "KJV")
-    assert(work.year == 1611)
+    assert(work.pub_date.year == 1611)
     
     work = OsisWork("KJV.1611.06.07")
     #work = OsisWork("KJV.1611-06-07")
     assert(work.name == "KJV")
-    assert(work.year == 1611)
-    assert(work.month == 6)
-    assert(work.day == 7)
-    assert(str(work.date) == "1611-06-07")
+    assert(work.pub_date.year == 1611)
+    assert(work.pub_date.month == 6)
+    assert(work.pub_date.day == 7)
+    assert(work.pub_date.isoformat() == "1611-06-07T00:00:00")
+    
+    work = OsisWork("KJV.1611.06.07.235930")
+    assert(work.pub_date.isoformat() == "1611-06-07T23:59:30")
+    #assert(work.time.hour == 23)
+    #assert(work.time.minute == 59)
+    #assert(work.time.second == 30)
+    #assert(work.time.microsecond == 0) # This is not implemented
+    #assert(work.time.tzinfo is None) # Should this ever be anything else?
+    
+    
+    
     
     exit()
     bad_works = [
