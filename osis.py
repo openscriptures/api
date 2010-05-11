@@ -157,12 +157,10 @@ class OsisWork():
         self.type = None
         self.publisher = None
         self.name = None
-        #self.date = None
-        #self.year = None
-        #self.month = None
-        #self.day = None
-        #self.time = None
         self.pub_date = None
+        
+        # TODO: Allow the osis_work_str param to not be provided, and for the
+        # components to be supplied after init
         
         if __name__ == "__main__":
             print "OsisWork(%s)" % osis_work_str
@@ -279,6 +277,8 @@ class OsisWork():
             raise Exception("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
         
         # Now handle revision number, version number, and edition number?
+    
+    # TODO: add __str__() which serializes the osisID back out
     
 
 class OsisPassage():
