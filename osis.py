@@ -1,3 +1,8 @@
+# Copyright (C) 2010 OpenScriptures.org
+# Open source dual-licensed:
+#  - MIT: http://creativecommons.org/licenses/MIT/
+#  - GPL: http://creativecommons.org/licenses/GPL/2.0/
+
 # coding: utf8 #
 import re
 from datetime import date, time, datetime
