@@ -159,6 +159,8 @@ class OsisWork():
     >> work = OsisWork("Bible.Crossway.ESV.2001")
     >> work = OsisWork("Bible.BibleOrg.NET.2004.04.01.r123")
     """
+    # osisWorkType = ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
+    # osisWork = (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)
     REGEX = re.compile(ur"""
         \w+ (?: \. \w+ )*
         
@@ -183,9 +185,13 @@ class OsisWork():
     def __init__(self, osis_work_str):
         self.segments = []
         self.type = None
+        self.language = None
         self.publisher = None
         self.name = None
         self.pub_date = None
+        self.pub_date_granularity = 0 #1=year, 2=year-month, 3=year-month-day, 4=year-month-day-hour, etc.
+        
+        # TODO: What if pub_date is later modified? The granularity will need to be re-set
         
         # TODO: Allow the osis_work_str param to not be provided, and for the
         # components to be supplied after init
@@ -214,6 +220,8 @@ class OsisWork():
         if len(segments) and re.match(r'^[a-z]{2,3}\b', segments[0]):
             self.language = segments.pop(0)
         
+        # TODO: We need to unescape characters!
+        
         # Get the rest of the Get the slugs, publisher and/or shortname 
         segment_slugs = []
         has_remaining_segments = lambda: len(segments) > 0
@@ -223,7 +231,6 @@ class OsisWork():
             # Find the slugs (e.g. Publisher or Name)
             if re.match(ur"^(?!\d\d)\w+$", segments[0]):
                 segment_slugs.append(segments.pop(0))
-            
             
             # The Date/Time
             elif self.pub_date is None and re.match(r'^\d\d\d\d$', segments[0]):
@@ -274,6 +281,7 @@ class OsisWork():
                     #    format[2](matches)
                     #)
                     for arg in format[2](matches):
+                        self.pub_date_granularity += 1
                         datetime_args.append( arg )
                     
                     # Segment was parsed, so pop it and see if we continue
@@ -306,7 +314,45 @@ class OsisWork():
         
         # Now handle revision number, version number, and edition number?
     
+    
     # TODO: add __str__() which serializes the osisID back out
+    def __str__(self):
+        segments = []
+        
+        if self.type is not None:
+            segments.append(self.type)
+        
+        if self.language is not None:
+            segments.append(self.language)
+        
+        if self.publisher is not None:
+            segments.append(self.publisher)
+        
+        if self.name is not None:
+            segments.append(self.name)
+        
+        if self.pub_date is not None:
+            date_parts = (
+                'year',
+                'month',
+                'day',
+            )
+            for i in range(0, min( len(date_parts), self.pub_date_granularity )):
+                segments.append( "%02d" % getattr(self.pub_date, date_parts[i]) )
+            
+            time_parts = (
+                'hour',
+                'minute',
+                'second'
+            )
+            time = ""
+            for i in range(0, min( len(time_parts), self.pub_date_granularity - 3 )):
+                #segments.append( "%02d" % getattr(self.pub_date, time_parts[i]) )
+                time += "%02d" % getattr(self.pub_date, time_parts[i])
+            if time != "":
+                segments.append(time)
+        
+        return ".".join(segments)
     
 
 class OsisPassage():
@@ -514,25 +560,32 @@ if __name__ == "__main__":
     
     work = OsisWork("Bible")
     assert(work.type == "Bible")
+    assert(str(work) == "Bible")
+    assert("Bible" == str(work))
     
     work = OsisWork("KJV")
     assert(work.type is None)
     assert(work.name == "KJV")
+    print work
+    assert("KJV" == str(work))
     
     work = OsisWork("Bible.en")
     assert(work.type == "Bible")
     assert(work.language == "en")
+    assert("Bible.en" == str(work))
     
     work = OsisWork("Bible.en.KJV")
     assert(work.type == "Bible")
     assert(work.language == "en")
     assert(work.name == "KJV")
+    assert("Bible.en.KJV" == str(work))
     
     work = OsisWork("Bible.en.KJV.1611")
     assert(work.language == "en")
     assert(work.name == "KJV")
     assert(work.pub_date.year == 1611)
     assert(len(work.segments) == 4)
+    assert("Bible.en.KJV.1611" == str(work))
     
     work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
     assert(work.type == "Bible")
@@ -540,6 +593,7 @@ if __name__ == "__main__":
     assert(work.publisher == "ChurchOfEngland")
     assert(work.name == "KJV")
     assert(work.pub_date.year == 1611)
+    assert("Bible.en.ChurchOfEngland.KJV.1611" == str(work))
     
     work = OsisWork("KJV.1611.06.07")
     #work = OsisWork("KJV.1611-06-07")
@@ -548,9 +602,27 @@ if __name__ == "__main__":
     assert(work.pub_date.month == 6)
     assert(work.pub_date.day == 7)
     assert(work.pub_date.isoformat() == "1611-06-07T00:00:00")
+    assert("KJV.1611.06.07" == str(work))
     
     work = OsisWork("KJV.1611.06.07.235930")
     assert(work.pub_date.isoformat() == "1611-06-07T23:59:30")
+    assert("KJV.1611.06.07.235930" == str(work))
+    work.pub_date = work.pub_date.replace(year=2001, hour=0)
+    work.pub_date_granularity = 6
+    assert("KJV.2001.06.07.005930" == str(work))
+    work.pub_date_granularity = 5
+    assert("KJV.2001.06.07.0059" == str(work))
+    work.pub_date_granularity = 4
+    assert("KJV.2001.06.07.00" == str(work))
+    work.pub_date_granularity = 3
+    assert("KJV.2001.06.07" == str(work))
+    work.pub_date_granularity = 2
+    assert("KJV.2001.06" == str(work))
+    work.pub_date_granularity = 1
+    assert("KJV.2001" == str(work))
+    work.pub_date_granularity = 0
+    assert("KJV" == str(work))
+    
     #assert(work.time.hour == 23)
     #assert(work.time.minute == 59)
     #assert(work.time.second == 30)
