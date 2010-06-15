@@ -161,7 +161,7 @@ class OsisWork():
     """
     # osisWorkType = ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
     # osisWork = (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)
-    REGEX = re.compile(ur"""
+    REGEX = re.compile(ur'''
         \w+ (?: \. \w+ )*
         
         #( \w+ )(?: \. ( \w+ ))*
@@ -169,7 +169,7 @@ class OsisWork():
         #    (?:(?<!^) \. )?
         #    ( \w+ )
         #)+
-    """, re.VERBOSE | re.UNICODE)
+    ''', re.VERBOSE | re.UNICODE)
     # Note: repeating capture groups aren't used because only the last one is accessible
     
     # This list can be modified as needed to add support (recognition) for other types
@@ -183,7 +183,6 @@ class OsisWork():
     ]
     
     def __init__(self, osis_work_str):
-        self.segments = []
         self.type = None
         self.language = None
         self.publisher = None
@@ -207,10 +206,11 @@ class OsisWork():
         
         # Now that we've verified the pattern, now split it into segments
         # Is there a better way to tie this into the REGEX?
-        self.segments = re.split(r"\.", osis_work_str)
+        #self.segments = re.split(r"\.", osis_work_str)
+        segments = re.split(r"\.", osis_work_str)
         
         # Segment token stream for parsing
-        segments = list(self.segments)
+        #segments = list(self.segments)
         
         # Get the type
         if segments[0] in self.TYPES:
@@ -314,9 +314,7 @@ class OsisWork():
         
         # Now handle revision number, version number, and edition number?
     
-    
-    # TODO: add __str__() which serializes the osisID back out
-    def __str__(self):
+    def get_segments(self):
         segments = []
         
         if self.type is not None:
@@ -351,8 +349,11 @@ class OsisWork():
                 time += "%02d" % getattr(self.pub_date, time_parts[i])
             if time != "":
                 segments.append(time)
-        
-        return ".".join(segments)
+        return segments
+    segments = property(get_segments)
+    
+    def __str__(self):
+        return ".".join(self.segments)
     
 
 class OsisPassage():
@@ -360,27 +361,69 @@ class OsisPassage():
     OSIS passage such as Exodus.3.8 (i.e. without the work prefix)
     
     Organized into period-delimited segments increasingly narrowing in scope,
-    followed by an optional sub-identifier which is work-specific.
+    followed by an optional sub-identifier which is work-specific. Segments
+    usually consist of an alpha-neumeric book code followed by a chapter number
+    and a verse number. While there are conventions for book names, they are not
+    standardized and one system is not inherently preferable over another, as
+    the goal is to affirm canon-neutrality. Likewise, there is nothing
+    restricting the segments to a single book, chapter, and verse identifier.
+    There may be a book volumn identifier, or alphabetical chapters, or even
+    numbered paragraph segments.
+    
+    Read what Chris Little of Crosswire says:
+    http://groups.google.com/group/open-scriptures/msg/4fb744efb27c1a41?pli=1
     """
-    REGEX = re.compile(ur"""
-        ({segment})(?:\.({segment}))*
+    
+    # Work: (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+    
+    # Passage: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
+    # Subidentifiers: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
+    
+    SEGMENT_REGEX = ur"(?:\w|\\\S)+"
+    REGEX = re.compile(ur'''
+        (
+            {segment}(?:\.{segment})*
+        )
         
         # OSIS Manual: “Translations also often split verses into parts,
         # provided labels such as ‘a’ and ‘b’ for the separate parts. Encoders
         # may freely add sub-identifiers below the lowest standardized level.
         # They are set off from the standardized portion by the character ‘!’.”
         (?:!
-            (?P<subidentifier>
-                ({segment})(?:\.({segment}))*
+            (
+                {segment}(?:\.{segment})*
             )
         )?
-    """.format(
-        segment=ur"((?:\w|\\\S)+)"
+    '''.format(
+        segment=SEGMENT_REGEX
     ), re.VERBOSE | re.UNICODE)
     
-    def __init__(self, osis_work_str):
-        pass
+    def __init__(self, osis_passage_str):
+        self.segments = []
+        
+        if __name__ == "__main__":
+            print "OsisPassage(%s)" % osis_passage_str
+        
+        matches = self.REGEX.match(osis_passage_str)
+        #print "osis_work_str = ", osis_work_str
+        #print matches.endpos-1 , len(osis_work_str)
+        if not matches or len(matches.group(0)) != len(osis_passage_str):
+            raise Exception("Unable to parse string as a OsisPassage: %s" % osis_passage_str)
+        
+        self.segments = osis_passage_str.split('.') #temp
 
+    
+    #def get_segments(self):
+    #    return 
+    #segments = property(get_segments)
+    
+    def __str__(self):
+        return ".".join(
+            map(
+                lambda segment: re.sub(ur'(\W)', '\\\1', segment),
+                self.segments
+            )
+        )
 
 
 class OsisID():
@@ -555,7 +598,7 @@ def parse_osis_ref(osis_ref_string):
 if __name__ == "__main__":
     import sys
     
-    # Test OsisWork
+    # Test OsisWork ########################################
     print "Testing OsisWork...";
     
     work = OsisWork("Bible")
@@ -584,7 +627,6 @@ if __name__ == "__main__":
     assert(work.language == "en")
     assert(work.name == "KJV")
     assert(work.pub_date.year == 1611)
-    assert(len(work.segments) == 4)
     assert("Bible.en.KJV.1611" == str(work))
     
     work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
@@ -594,6 +636,10 @@ if __name__ == "__main__":
     assert(work.name == "KJV")
     assert(work.pub_date.year == 1611)
     assert("Bible.en.ChurchOfEngland.KJV.1611" == str(work))
+    work.publisher = None
+    work.name = "Steph"
+    work.pub_date = work.pub_date.replace(year = 1500)
+    assert("Bible.en.Steph.1500" == str(work))
     
     work = OsisWork("KJV.1611.06.07")
     #work = OsisWork("KJV.1611-06-07")
@@ -630,7 +676,13 @@ if __name__ == "__main__":
     #assert(work.time.tzinfo is None) # Should this ever be anything else?
     
     
+    # Test OsisPassage ########################################
+    passage = OsisPassage("John.3.16")
+    assert(len(passage.segments) == 3)
     
+    #assert(passage.book == "John")
+    #assert(passage.chapter == "3")
+    #assert(passage.verse == "16")
     
     exit()
     bad_works = [
