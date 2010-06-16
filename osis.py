@@ -207,7 +207,7 @@ class OsisWork():
         # Now that we've verified the pattern, now split it into segments
         # Is there a better way to tie this into the REGEX?
         #self.segments = re.split(r"\.", osis_work_str)
-        segments = re.split(r"\.", osis_work_str)
+        segments = re.split(r'\.', osis_work_str)
         
         # Segment token stream for parsing
         #segments = list(self.segments)
@@ -379,8 +379,7 @@ class OsisPassage():
     # Passage: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
     # Subidentifiers: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
     
-    SEGMENT_REGEX = ur"(?:\w|\\\S)+"
-    REGEX = re.compile(ur'''
+    REGEX = re.compile(ur"""
         (
             {segment}(?:\.{segment})*
         )
@@ -394,36 +393,94 @@ class OsisPassage():
                 {segment}(?:\.{segment})*
             )
         )?
-    '''.format(
-        segment=SEGMENT_REGEX
+    """.format(
+        segment= ur"(?:\w|\\\S)+"
     ), re.VERBOSE | re.UNICODE)
     
     def __init__(self, osis_passage_str):
         self.segments = []
+        self.subsegments = []
         
         if __name__ == "__main__":
             print "OsisPassage(%s)" % osis_passage_str
         
-        matches = self.REGEX.match(osis_passage_str)
+        segment_regex = re.compile(ur"""
+            (?P<segment>   (?: \w | \\\S )+ )
+            (?P<delimiter>   ! | \. | $     )
+        """, re.VERBOSE | re.UNICODE)
+        
+        # Parse the segments out of the string
+        in_subidentifier = False
+        remaining_str = osis_passage_str
+        while len(remaining_str) > 0:
+            matches = segment_regex.match(remaining_str)
+            if not matches:
+                raise Exception("Unxpected string at '%s' in '%s'" % (remaining_str, osis_passage_str))
+            segment = matches.group('segment')
+            
+            # Remove escapes
+            segment = segment.replace("\\", "")
+            
+            if in_subidentifier:
+                self.subsegments.append(segment)
+            else:
+                self.segments.append(segment)
+            
+            if matches.group('delimiter') == '!':
+                # If we're already in the subidentifier, then it's a syntax error
+                if in_subidentifier:
+                    raise Exception("Unxpected second '!' in '%s'" % (osis_passage_str))
+                in_subidentifier = True
+            
+            remaining_str = remaining_str[len(matches.group(0)):]
+        
+        
+        #matches = self.SEGMENT_REGEX.match(osis_passage_str)
         #print "osis_work_str = ", osis_work_str
         #print matches.endpos-1 , len(osis_work_str)
-        if not matches or len(matches.group(0)) != len(osis_passage_str):
-            raise Exception("Unable to parse string as a OsisPassage: %s" % osis_passage_str)
+        #if not matches or len(matches.group(0)) != len(osis_passage_str):
+        #    raise Exception("Unable to parse string as a OsisPassage: %s" % osis_passage_str)
         
-        self.segments = osis_passage_str.split('.') #temp
+        #self.segments = osis_passage_str.split('.') #temp
 
     
-    #def get_segments(self):
-    #    return 
-    #segments = property(get_segments)
     
-    def __str__(self):
+    def get_identifier(self):
         return ".".join(
             map(
-                lambda segment: re.sub(ur'(\W)', '\\\1', segment),
+                lambda segment: re.sub(ur"(\W)", ur"\\\1", segment),
                 self.segments
             )
         )
+    identifier = property(get_identifier)
+    
+    def get_subidentifier(self):
+        return ".".join(
+            map(
+                lambda subsegment: re.sub(ur"(\W)", ur"\\\1", subsegment),
+                self.subsegments
+            )
+        )
+    subidentifier = property(get_subidentifier)
+    
+    def __str__(self):
+        #identifier = ".".join(
+        #    map(
+        #        lambda segment: re.sub(ur"(\W)", ur"\\\1", segment),
+        #        self.segments
+        #    )
+        #)
+        #
+        #subidentifier = ".".join(
+        #    map(
+        #        lambda subsegment: re.sub(ur"(\W)", ur"\\\1", subsegment),
+        #        self.subsegments
+        #    )
+        #)
+        str = self.identifier
+        if len(self.subsegments) > 0:
+            str += "!" + self.subidentifier
+        return str
 
 
 class OsisID():
@@ -679,6 +736,24 @@ if __name__ == "__main__":
     # Test OsisPassage ########################################
     passage = OsisPassage("John.3.16")
     assert(len(passage.segments) == 3)
+    assert("John.3.16" == str(passage))
+    
+    passage = OsisPassage("John")
+    assert(len(passage.segments) == 1)
+    passage.segments.append("17")
+    assert(len(passage.segments) == 2)
+    assert("John.17" == str(passage))
+    
+    passage = OsisPassage("John.A.B\.C\.D")
+    assert(passage.segments[0] == "John")
+    assert(passage.segments[1] == "A")
+    assert(passage.segments[2] == "B.C.D")
+    
+    passage = OsisPassage("John.3.16!b")
+    assert(passage.subsegments[0] == "b")
+    passage.subsegments[0] = "a"
+    assert("John.3.16!a" == str(passage))
+    
     
     #assert(passage.book == "John")
     #assert(passage.chapter == "3")
