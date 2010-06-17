@@ -27,6 +27,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+
+# ----
+# TODO: Each object should be initializable without any input (empty)
+# Each object should also have a stream parser which can be used from the outside
+
 import re
 from datetime import date, time, datetime
 
@@ -354,7 +359,45 @@ class OsisWork():
     
     def __str__(self):
         return ".".join(self.segments)
+
+
+class OsisSegmentList():
+    """
+    Used for OsisPassage.identifier and OsisPassage.subidentifier
+    Potentially could also be used for OsisWork.
+    """
     
+    def __init__(self, segment_str = ""):
+        self.segments = []
+        
+        segment_regex = re.compile(ur"""
+            (?P<segment>   (?: \w | \\\S )+ )
+            (?P<delimiter>     \. | $     )
+        """, re.VERBOSE | re.UNICODE)
+
+        remaining_segment_str = segment_str
+        while len(remaining_segment_str) > 0:
+            matches = segment_regex.match(remaining_segment_str)
+            if not matches:
+                raise Exception("Unxpected string at '%s' in '%s'" % (remaining_segment_str, segment_str))
+            segment = matches.group('segment')
+            
+            # Remove escapes
+            segment = segment.replace("\\", "")
+            self.segments.append(segment)
+            
+            remaining_segment_str = remaining_segment_str[len(matches.group(0)):]
+        
+    def __str__(self):
+        return ".".join(
+            map(
+                lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
+                self.segments
+            )
+        )
+    
+    
+
 
 class OsisPassage():
     """
@@ -379,60 +422,81 @@ class OsisPassage():
     # Passage: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
     # Subidentifiers: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
     
-    REGEX = re.compile(ur"""
-        (
-            {segment}(?:\.{segment})*
-        )
-        
-        # OSIS Manual: “Translations also often split verses into parts,
-        # provided labels such as ‘a’ and ‘b’ for the separate parts. Encoders
-        # may freely add sub-identifiers below the lowest standardized level.
-        # They are set off from the standardized portion by the character ‘!’.”
-        (?:!
-            (
-                {segment}(?:\.{segment})*
-            )
-        )?
-    """.format(
-        segment= ur"(?:\w|\\\S)+"
-    ), re.VERBOSE | re.UNICODE)
+    #REGEX = re.compile(ur"""
+    #    (
+    #        {segment}(?:\.{segment})*
+    #    )
+    #    
+    #    # OSIS Manual: “Translations also often split verses into parts,
+    #    # provided labels such as ‘a’ and ‘b’ for the separate parts. Encoders
+    #    # may freely add sub-identifiers below the lowest standardized level.
+    #    # They are set off from the standardized portion by the character ‘!’.”
+    #    (?:!
+    #        (
+    #            {segment}(?:\.{segment})*
+    #        )
+    #    )?
+    #""".format(
+    #    segment= ur"(?:\w|\\\S)+"
+    #), re.VERBOSE | re.UNICODE)
     
-    def __init__(self, osis_passage_str):
-        self.segments = []
-        self.subsegments = []
+    def __init__(self, osis_passage_str = ""):
         
         if __name__ == "__main__":
             print "OsisPassage(%s)" % osis_passage_str
         
-        segment_regex = re.compile(ur"""
-            (?P<segment>   (?: \w | \\\S )+ )
-            (?P<delimiter>   ! | \. | $     )
-        """, re.VERBOSE | re.UNICODE)
+        # It's ok to have an empty passage (it can be built later)
+        if not osis_passage_str:
+            self.identifier = OsisSegmentList()
+            self.subidentifier = OsisSegmentList()
+            return
+        
+        # This regular expression need not be 
+        #segment_regex = re.compile(r"""
+        #    (?P<identifier>.+?)
+        #    (?:
+        #        !
+        #        (?P<subidentifier>.+?)
+        #    )
+        #""", re.VERBOSE | re.UNICODE)
+        #
+        #matches = segment_regex.match(osis_passage_str)
+        #if not matches:
+        #    raise Exception("Unable to parse out identifier and subidentifier from %s" % osis_passage_str)
+        passage_parts = osis_passage_str.split("!", 2)
+        self.identifier = OsisSegmentList(passage_parts[0])
+        
+        if len(passage_parts) == 2:
+            self.subidentifier = OsisSegmentList(passage_parts[1])
+        else:
+            self.subidentifier = OsisSegmentList()
+        
+        return
         
         # Parse the segments out of the string
-        in_subidentifier = False
-        remaining_str = osis_passage_str
-        while len(remaining_str) > 0:
-            matches = segment_regex.match(remaining_str)
-            if not matches:
-                raise Exception("Unxpected string at '%s' in '%s'" % (remaining_str, osis_passage_str))
-            segment = matches.group('segment')
-            
-            # Remove escapes
-            segment = segment.replace("\\", "")
-            
-            if in_subidentifier:
-                self.subsegments.append(segment)
-            else:
-                self.segments.append(segment)
-            
-            if matches.group('delimiter') == '!':
-                # If we're already in the subidentifier, then it's a syntax error
-                if in_subidentifier:
-                    raise Exception("Unxpected second '!' in '%s'" % (osis_passage_str))
-                in_subidentifier = True
-            
-            remaining_str = remaining_str[len(matches.group(0)):]
+        #in_subidentifier = False
+        #remaining_str = osis_passage_str
+        #while len(remaining_str) > 0:
+        #    matches = segment_regex.match(remaining_str)
+        #    if not matches:
+        #        raise Exception("Unxpected string at '%s' in '%s'" % (remaining_str, osis_passage_str))
+        #    segment = matches.group('segment')
+        #    
+        #    # Remove escapes
+        #    segment = segment.replace("\\", "")
+        #    
+        #    if in_subidentifier:
+        #        self.subsegments.append(segment)
+        #    else:
+        #        self.segments.append(segment)
+        #    
+        #    if matches.group('delimiter') == '!':
+        #        # If we're already in the subidentifier, then it's a syntax error
+        #        if in_subidentifier:
+        #            raise Exception("Unxpected second '!' in '%s'" % (osis_passage_str))
+        #        in_subidentifier = True
+        #    
+        #    remaining_str = remaining_str[len(matches.group(0)):]
         
         
         #matches = self.SEGMENT_REGEX.match(osis_passage_str)
@@ -445,23 +509,23 @@ class OsisPassage():
 
     
     
-    def get_identifier(self):
-        return ".".join(
-            map(
-                lambda segment: re.sub(ur"(\W)", ur"\\\1", segment),
-                self.segments
-            )
-        )
-    identifier = property(get_identifier)
-    
-    def get_subidentifier(self):
-        return ".".join(
-            map(
-                lambda subsegment: re.sub(ur"(\W)", ur"\\\1", subsegment),
-                self.subsegments
-            )
-        )
-    subidentifier = property(get_subidentifier)
+    #def get_identifier(self):
+    #    return ".".join(
+    #        map(
+    #            lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
+    #            self.segments
+    #        )
+    #    )
+    #identifier = property(get_identifier)
+    #
+    #def get_subidentifier(self):
+    #    return ".".join(
+    #        map(
+    #            lambda subsegment: re.sub(ur"(\W)", ur"\\\1", str(subsegment)),
+    #            self.subsegments
+    #        )
+    #    )
+    #subidentifier = property(get_subidentifier)
     
     def __str__(self):
         #identifier = ".".join(
@@ -477,65 +541,65 @@ class OsisPassage():
         #        self.subsegments
         #    )
         #)
-        str = self.identifier
-        if len(self.subsegments) > 0:
-            str += "!" + self.subidentifier
-        return str
+        repr = str(self.identifier)
+        if len(self.subidentifier.segments) > 0:
+            repr += "!" + str(self.subidentifier)
+        return repr
 
-
-class OsisID():
-    """
-    An osisID which represents a passage within a single work like ESV:Exodus.1
-    Includes a work prefix (OsisWork) and/or a passage (OsisPassage).
-    """
-    REGEX = re.compile(
-        ur"""
-            #^
-            (?:
-                (?P<work>{work})
-                :
-            )?
-            
-            (?P<passage>{passage})?
-            
-            #$
-        """.format(
-            work = OsisWork.REGEX.pattern,
-            passage = OsisPassage.REGEX.pattern
-    ), re.VERBOSE | re.UNICODE)
-    
-    def __init__(self, osis_id_str):
-        #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
-        
-        self.work = None
-        self.passage = None
-        
-        matches = self.REGEX.match(id)
-        if not matches:
-            raise Exception("Unable to parse osisID: " + osis_id_str)
-        
-        
-        
-        print matches.groups()
-        print matches.groupdict()
-        
-        #assert(matches)
-
-
-class OsisRef():
-    """
-    An osisRef which can contain a single passage from a work or a passage range from a work
-    """
-    #(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
-    start = None
-    end = None
-    
-    
-    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
-    
-    def __init__(self, osis_ref_str):
-        raise Exception("Not implemented")
-    
+#
+#class OsisID():
+#    """
+#    An osisID which represents a passage within a single work like ESV:Exodus.1
+#    Includes a work prefix (OsisWork) and/or a passage (OsisPassage).
+#    """
+#    REGEX = re.compile(
+#        ur"""
+#            #^
+#            (?:
+#                (?P<work>{work})
+#                :
+#            )?
+#            
+#            (?P<passage>{passage})?
+#            
+#            #$
+#        """.format(
+#            work = OsisWork.REGEX.pattern,
+#            passage = OsisPassage.REGEX.pattern
+#    ), re.VERBOSE | re.UNICODE)
+#    
+#    def __init__(self, osis_id_str):
+#        #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
+#        
+#        self.work = None
+#        self.passage = None
+#        
+#        matches = self.REGEX.match(id)
+#        if not matches:
+#            raise Exception("Unable to parse osisID: " + osis_id_str)
+#        
+#        
+#        
+#        print matches.groups()
+#        print matches.groupdict()
+#        
+#        #assert(matches)
+#
+#
+#class OsisRef():
+#    """
+#    An osisRef which can contain a single passage from a work or a passage range from a work
+#    """
+#    #(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
+#    start = None
+#    end = None
+#    
+#    
+#    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
+#    
+#    def __init__(self, osis_ref_str):
+#        raise Exception("Not implemented")
+#    
 
 
 #### DEPRECATED!!! #####
@@ -735,68 +799,85 @@ if __name__ == "__main__":
     
     # Test OsisPassage ########################################
     passage = OsisPassage("John.3.16")
-    assert(len(passage.segments) == 3)
+    assert(len(passage.identifier.segments) == 3)
+    print str(passage)
     assert("John.3.16" == str(passage))
     
     passage = OsisPassage("John")
-    assert(len(passage.segments) == 1)
-    passage.segments.append("17")
-    assert(len(passage.segments) == 2)
+    assert(len(passage.identifier.segments) == 1)
+    passage.identifier.segments.append("17")
+    assert(len(passage.identifier.segments) == 2)
     assert("John.17" == str(passage))
     
     passage = OsisPassage("John.A.B\.C\.D")
-    assert(passage.segments[0] == "John")
-    assert(passage.segments[1] == "A")
-    assert(passage.segments[2] == "B.C.D")
+    assert(passage.identifier.segments[0] == "John")
+    assert(passage.identifier.segments[1] == "A")
+    assert(passage.identifier.segments[2] == "B.C.D")
     
+    # Test subidentifiers
     passage = OsisPassage("John.3.16!b")
-    assert(passage.subsegments[0] == "b")
-    passage.subsegments[0] = "a"
+    print passage
+    assert(passage.subidentifier.segments[0] == "b")
+    passage.subidentifier.segments[0] = "a"
     assert("John.3.16!a" == str(passage))
+    assert(str(passage.subidentifier) == "a")
+    passage.subidentifier.segments.append(1);
+    assert(str(passage.subidentifier) == "a.1")
+    passage.subidentifier.segments.pop();
+    passage.subidentifier.segments.append("2");
+    assert(str(passage.subidentifier) == "a.2")
     
+    # Test identifier shortcut
+    assert(str(passage.identifier) == "John.3.16")
+    passage.identifier.segments.pop()
+    passage.identifier.segments.append("Hello World!")
+    assert(str(passage.identifier) == r"John.3.Hello\ World\!")
+    
+    passage = OsisPassage()
+    assert(str(passage) == "")
     
     #assert(passage.book == "John")
     #assert(passage.chapter == "3")
     #assert(passage.verse == "16")
     
-    exit()
-    bad_works = [
-        "@#$%^&",
-        "Bible.Hello World Bible Society.NonExistantTranslation"
-    ]
-    for work in bad_works:
-        try:
-            obj = OsisWork(work)
-            raise Exception(True)
-        except:
-            assert(sys.exc_value is not True)
-    
-    exit()
-    
-    # Test full osisID
-    #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
-    ok_passages = [
-        "John.1",
-        "John.1.13",
-        "John.A.13",
-        "John.A.B.C.D",
-        "John.A.B\.C\.D",
-        "Bible:John.1",
-        "Bible.KJV:John.1",
-        "Bible.KJV.1611:John.1",
-        "Bible.ChurchOfEngland.KJV.1611:John.1",
-        
-        "Esth.1.1!note.c",
-        "Esth.1.1!crossReference"
-    ]
-    for passage in ok_passages:
-        passage = OsisPassage(passage)
-        
-        #matches = osisIDRegExp.match(id)
-        #assert(matches)
-        #print id, matches.groups()
-    
-    # Test OsisID object
+    #exit()
+    #bad_works = [
+    #    "@#$%^&",
+    #    "Bible.Hello World Bible Society.NonExistantTranslation"
+    #]
+    #for work in bad_works:
+    #    try:
+    #        obj = OsisWork(work)
+    #        raise Exception(True)
+    #    except:
+    #        assert(sys.exc_value is not True)
+    #
+    #exit()
+    #
+    ## Test full osisID
+    ##osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
+    #ok_passages = [
+    #    "John.1",
+    #    "John.1.13",
+    #    "John.A.13",
+    #    "John.A.B.C.D",
+    #    "John.A.B\.C\.D",
+    #    "Bible:John.1",
+    #    "Bible.KJV:John.1",
+    #    "Bible.KJV.1611:John.1",
+    #    "Bible.ChurchOfEngland.KJV.1611:John.1",
+    #    
+    #    "Esth.1.1!note.c",
+    #    "Esth.1.1!crossReference"
+    #]
+    #for passage in ok_passages:
+    #    passage = OsisPassage(passage)
+    #    
+    #    #matches = osisIDRegExp.match(id)
+    #    #assert(matches)
+    #    #print id, matches.groups()
+    #
+    ## Test OsisID object
     
     
     # Test osisRef (extended)
