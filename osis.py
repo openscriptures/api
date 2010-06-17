@@ -166,15 +166,15 @@ class OsisWork():
     """
     # osisWorkType = ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
     # osisWork = (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)
-    REGEX = re.compile(ur'''
-        \w+ (?: \. \w+ )*
-        
-        #( \w+ )(?: \. ( \w+ ))*
-        #(?:
-        #    (?:(?<!^) \. )?
-        #    ( \w+ )
-        #)+
-    ''', re.VERBOSE | re.UNICODE)
+    #REGEX = re.compile(ur'''
+    #    \w+ (?: \. \w+ )*
+    #    
+    #    #( \w+ )(?: \. ( \w+ ))*
+    #    #(?:
+    #    #    (?:(?<!^) \. )?
+    #    #    ( \w+ )
+    #    #)+
+    #''', re.VERBOSE | re.UNICODE)
     # Note: repeating capture groups aren't used because only the last one is accessible
     
     # This list can be modified as needed to add support (recognition) for other types
@@ -187,137 +187,178 @@ class OsisWork():
         # ...
     ]
     
-    def __init__(self, osis_work_str):
+    def __init__(self, *args, **kwargs):
+        # Todo: Allow these properties to be set via kwargs!
+        
         self.type = None
         self.language = None
         self.publisher = None
         self.name = None
         self.pub_date = None
-        self.pub_date_granularity = 0 #1=year, 2=year-month, 3=year-month-day, 4=year-month-day-hour, etc.
+        self.pub_date_granularity = 6 #1=year, 2=year-month, 3=year-month-day, 4=year-month-day-hour, etc.
+        
+        self.remaining_input_unparsed = None
         
         # TODO: What if pub_date is later modified? The granularity will need to be re-set
         
         # TODO: Allow the osis_work_str param to not be provided, and for the
         # components to be supplied after init
         
-        if __name__ == "__main__":
-            print "OsisWork(%s)" % osis_work_str
         
-        matches = self.REGEX.match(osis_work_str)
-        #print "osis_work_str = ", osis_work_str
-        #print matches.endpos-1 , len(osis_work_str)
-        if not matches or len(matches.group(0)) != len(osis_work_str):
-            raise Exception("Unable to parse string as a osisWork: %s" % osis_work_str)
-        
-        # Now that we've verified the pattern, now split it into segments
-        # Is there a better way to tie this into the REGEX?
-        #self.segments = re.split(r"\.", osis_work_str)
-        segments = re.split(r'\.', osis_work_str)
-        
-        # Segment token stream for parsing
-        #segments = list(self.segments)
-        
-        # Get the type
-        if segments[0] in self.TYPES:
-            self.type = segments.pop(0)
-        
-        # Get the language
-        if len(segments) and re.match(r'^[a-z]{2,3}\b', segments[0]):
-            self.language = segments.pop(0)
-        
-        # TODO: We need to unescape characters!
-        
-        # Get the rest of the Get the slugs, publisher and/or shortname 
-        segment_slugs = []
-        has_remaining_segments = lambda: len(segments) > 0
-        while has_remaining_segments(): #for segment in segments:
-            #segment = segments.pop(0)
+        # Parse the input
+        if len(args):
             
-            # Find the slugs (e.g. Publisher or Name)
-            if re.match(ur"^(?!\d\d)\w+$", segments[0]):
-                segment_slugs.append(segments.pop(0))
+            segment_regexp = re.compile(ur"""
+                (\w+)( \. | $ )
+            """, re.VERBOSE | re.UNICODE)
             
-            # The Date/Time
-            elif self.pub_date is None and re.match(r'^\d\d\d\d$', segments[0]):
-                datetime_args = []
-                
-                datetime_segment_formats = (
-                    (
-                        'year',
-                        r'^\d\d\d\d$',
-                        lambda matches: ( int(matches.group(0)), )
-                    ),
-                    (
-                        'month',
-                        r'^\d\d$',
-                        lambda matches: ( int(matches.group(0)), )
-                    ),
-                    (
-                        'day',
-                        r'^\d\d$',
-                        lambda matches: ( int(matches.group(0)), )
-                    ),
-                    (
-                        'time',
-                        r'^(?P<hours>\d\d)(?P<minutes>\d\d)(?P<seconds>\d\d)?$',
-                        lambda matches: (
-                            int(matches.group('hours')),
-                            int(matches.group('minutes')),
-                            int(matches.group('seconds'))
-                        )
-                    ),
-                    #(
-                    #    'milliseconds',
-                    #    r'^\d+$',
-                    #    lambda matches: int(matches.group(0))
-                    #),
-                )
-                
-                for format in datetime_segment_formats:
-                    
-                    # See if the pattern matches but if not stop doing date/time
-                    matches = re.match(format[1], segments[0])
-                    if matches is None:
-                        break
-                    
-                    #setattr(
-                    #    self,
-                    #    format[0],
-                    #    format[2](matches)
-                    #)
-                    for arg in format[2](matches):
-                        self.pub_date_granularity += 1
-                        datetime_args.append( arg )
-                    
-                    # Segment was parsed, so pop it and see if we continue
-                    segments.pop(0)
-                    if not has_remaining_segments():
+            segments = []
+            self.remaining_input_unparsed = args[0]
+            while len(self.remaining_input_unparsed) > 0:
+                matches = segment_regexp.match(self.remaining_input_unparsed)
+                if not matches:
+                    # Usually error if there is remaining that cannot be parsed
+                    if kwargs.get('error_if_remainder', True):
+                        raise Exception("Unable to parse string at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, args[0]))
+                    # When OsisID invokes OsisWork, it will want to use the remaining
+                    else:
                         break
                 
-                # The datetime segments have been parsed, so make the datetime
-                if len(datetime_args) > 0:
-                    # Provide default month and day
-                    while len(datetime_args) <3: # Yes, I love you!
-                        datetime_args.append(1)
-                    
-                    self.pub_date = datetime(*datetime_args) #spread!
+                segments.append(matches.group(1))
+                self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
+            
+            # Get the type
+            if segments[0] in self.TYPES:
+                self.type = segments.pop(0)
+            
+            # Get the language
+            if len(segments) and re.match(r'^[a-z]{2,3}\b', segments[0]):
+                self.language = segments.pop(0)
+            
+            # TODO: We need to unescape characters!
+            
+            # Get the rest of the Get the slugs, publisher and/or shortname 
+            segment_slugs = []
+            has_remaining_segments = lambda: len(segments) > 0
+            while has_remaining_segments(): #for segment in segments:
+                #segment = segments.pop(0)
                 
+                # Find the slugs (e.g. Publisher or Name)
+                if re.match(ur"^(?!\d\d)\w+$", segments[0]):
+                    segment_slugs.append(segments.pop(0))
+                
+                # The Date/Time
+                elif self.pub_date is None and re.match(r'^\d\d\d\d$', segments[0]):
+                    datetime_args = []
+                    self.pub_date_granularity = 0
+                    
+                    datetime_segment_formats = (
+                        (
+                            'year',
+                            r'^\d\d\d\d$',
+                            lambda matches: ( int(matches.group(0)), )
+                        ),
+                        (
+                            'month',
+                            r'^\d\d$',
+                            lambda matches: ( int(matches.group(0)), )
+                        ),
+                        (
+                            'day',
+                            r'^\d\d$',
+                            lambda matches: ( int(matches.group(0)), )
+                        ),
+                        (
+                            'time',
+                            r'^(?P<hours>\d\d)(?P<minutes>\d\d)(?P<seconds>\d\d)?$',
+                            lambda matches: (
+                                int(matches.group('hours')),
+                                int(matches.group('minutes')),
+                                int(matches.group('seconds'))
+                            )
+                        ),
+                        #(
+                        #    'milliseconds',
+                        #    r'^\d+$',
+                        #    lambda matches: int(matches.group(0))
+                        #),
+                    )
+                    
+                    for format in datetime_segment_formats:
+                        
+                        # See if the pattern matches but if not stop doing date/time
+                        matches = re.match(format[1], segments[0])
+                        if matches is None:
+                            break
+                        
+                        #setattr(
+                        #    self,
+                        #    format[0],
+                        #    format[2](matches)
+                        #)
+                        for arg in format[2](matches):
+                            self.pub_date_granularity += 1
+                            datetime_args.append( arg )
+                        
+                        # Segment was parsed, so pop it and see if we continue
+                        segments.pop(0)
+                        if not has_remaining_segments():
+                            break
+                    
+                    # The datetime segments have been parsed, so make the datetime
+                    if len(datetime_args) > 0:
+                        # Provide default month and day
+                        while len(datetime_args) <3: # Yes, I love you!
+                            datetime_args.append(1)
+                        
+                        self.pub_date = datetime(*datetime_args) #spread!
+                    
+                else:
+                    #TODO: This should glob all unrecognized segments into an etc
+                    raise Exception("Unexpected segment: %s" % segment)
+            
+            # If only one slug, then it's the name
+            if len(segment_slugs) == 1:
+                self.name = segment_slugs[0]
+            # If two slugs, then its publisher followed by name
+            elif len(segment_slugs) == 2:
+                self.publisher = segment_slugs[0]
+                self.name = segment_slugs[1]
+            # Otherwise, error!
+            elif len(segment_slugs) != 0:
+                raise Exception("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
+            
+            # Now handle revision number, version number, and edition number?
+        # end if not len(args)
+        
+        # Now populate the members via the kwargs
+        #for key in ('type', 'language', 'publisher', 'name', 'pub_date', 'pub_date_granularity'):
+        #setattr(self, key, kwargs[key])
+        if kwargs.has_key('type'):
+            self.type = str(kwargs['type'])
+            
+        if kwargs.has_key('language'):
+            self.language = str(kwargs['language'])
+            
+        if kwargs.has_key('publisher'):
+            self.publisher = str(kwargs['publisher'])
+            
+        if kwargs.has_key('name'):
+            self.name = str(kwargs['name'])
+            
+        if kwargs.has_key('pub_date'):
+            if isinstance(kwargs['pub_date'], datetime):
+                self.pub_date = kwargs['pub_date']
             else:
-                #TODO: This should glob all unrecognized segments into an etc
-                raise Exception("Unexpected segment: %s" % segment)
+                #self.pub_date = datetime.strptime(str(kwargs['pub_date']), "%Y-%m-%dT%H:%M:%S.Z")
+                raise Exception("pub_date must be a datetime object")
         
-        # If only one slug, then it's the name
-        if len(segment_slugs) == 1:
-            self.name = segment_slugs[0]
-        # If two slugs, then its publisher followed by name
-        elif len(segment_slugs) == 2:
-            self.publisher = segment_slugs[0]
-            self.name = segment_slugs[1]
-        # Otherwise, error!
-        elif len(segment_slugs) != 0:
-            raise Exception("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
+        if kwargs.has_key('pub_date_granularity'):
+            self.pub_date_granularity = int(kwargs['pub_date_granularity'])
+            
         
-        # Now handle revision number, version number, and edition number?
+        if __name__ == "__main__":
+            print "OsisWork(%s)" % str(self)
     
     def get_segments(self):
         segments = []
@@ -546,12 +587,12 @@ class OsisPassage():
             repr += "!" + str(self.subidentifier)
         return repr
 
-#
-#class OsisID():
-#    """
-#    An osisID which represents a passage within a single work like ESV:Exodus.1
-#    Includes a work prefix (OsisWork) and/or a passage (OsisPassage).
-#    """
+
+class OsisID():
+    """
+    An osisID which represents a passage within a single work like ESV:Exodus.1
+    Includes a work prefix (OsisWork) and/or a passage (OsisPassage).
+    """
 #    REGEX = re.compile(
 #        ur"""
 #            #^
@@ -567,8 +608,18 @@ class OsisPassage():
 #            work = OsisWork.REGEX.pattern,
 #            passage = OsisPassage.REGEX.pattern
 #    ), re.VERBOSE | re.UNICODE)
-#    
-#    def __init__(self, osis_id_str):
+    
+    def __init__(self, osis_id_str = ""):
+        
+        self.work = OsisWork()
+        
+        
+        
+        self.passage = OsisPassage()
+        
+        # Consists of OsisWork + OsisPassage
+        pass
+        
 #        #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
 #        
 #        self.work = None
@@ -790,11 +841,30 @@ if __name__ == "__main__":
     work.pub_date_granularity = 0
     assert("KJV" == str(work))
     
-    #assert(work.time.hour == 23)
-    #assert(work.time.minute == 59)
-    #assert(work.time.second == 30)
-    #assert(work.time.microsecond == 0) # This is not implemented
-    #assert(work.time.tzinfo is None) # Should this ever be anything else?
+    work = OsisWork()
+    assert(str(work) == "")
+    
+    work = OsisWork(
+        type = "Bible",
+        language = "en-US",
+        publisher = "Baz",
+        name = "WMR",
+        pub_date = datetime(1611, 1, 1),
+        pub_date_granularity = 1 #year
+    )
+    assert(work.type == "Bible")
+    assert(work.language == "en-US")
+    assert(work.publisher == "Baz")
+    assert(work.name == "WMR")
+    assert(work.pub_date.year == 1611)
+    assert("Bible.en-US.Baz.WMR.1611" == str(work))
+    
+    work = OsisWork("Bible.Baz.WMR.1611",
+        language = "en-UK",
+        pub_date = datetime(2000,2,1),
+        pub_date_granularity = 2
+    )
+    assert("Bible.en-UK.Baz.WMR.2000.02" == str(work))
     
     
     # Test OsisPassage ########################################
@@ -814,7 +884,7 @@ if __name__ == "__main__":
     assert(passage.identifier.segments[1] == "A")
     assert(passage.identifier.segments[2] == "B.C.D")
     
-    # Test subidentifiers
+    # Test subidentifier
     passage = OsisPassage("John.3.16!b")
     print passage
     assert(passage.subidentifier.segments[0] == "b")
@@ -827,7 +897,7 @@ if __name__ == "__main__":
     passage.subidentifier.segments.append("2");
     assert(str(passage.subidentifier) == "a.2")
     
-    # Test identifier shortcut
+    # Test identifier
     assert(str(passage.identifier) == "John.3.16")
     passage.identifier.segments.pop()
     passage.identifier.segments.append("Hello World!")
