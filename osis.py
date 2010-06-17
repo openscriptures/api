@@ -187,7 +187,7 @@ class OsisWork():
         # ...
     ]
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, unparsed_input = "", **kwargs):
         # Todo: Allow these properties to be set via kwargs!
         
         self.type = None
@@ -206,20 +206,20 @@ class OsisWork():
         
         
         # Parse the input
-        if len(args):
+        if unparsed_input:
             
             segment_regexp = re.compile(ur"""
                 (\w+)( \. | $ )
             """, re.VERBOSE | re.UNICODE)
             
             segments = []
-            self.remaining_input_unparsed = args[0]
+            self.remaining_input_unparsed = unparsed_input
             while len(self.remaining_input_unparsed) > 0:
                 matches = segment_regexp.match(self.remaining_input_unparsed)
                 if not matches:
                     # Usually error if there is remaining that cannot be parsed
                     if kwargs.get('error_if_remainder', True):
-                        raise Exception("Unable to parse string at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, args[0]))
+                        raise Exception("Unable to parse string at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, unparsed_input))
                     # When OsisID invokes OsisWork, it will want to use the remaining
                     else:
                         break
@@ -409,23 +409,23 @@ class OsisSegmentList():
     Potentially could also be used for OsisWork.
     """
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, unparsed_input = "", **kwargs):
         self.segments = []
         self.remaining_input_unparsed = None
         
-        if len(args):
+        if unparsed_input:
             segment_regex = re.compile(ur"""
                 (?P<segment>   (?: \w | \\\S )+ )
                 (?P<delimiter>     \. | $     )
             """, re.VERBOSE | re.UNICODE)
     
-            self.remaining_input_unparsed = args[0]
+            self.remaining_input_unparsed = unparsed_input
             while len(self.remaining_input_unparsed) > 0:
                 matches = segment_regex.match(self.remaining_input_unparsed)
                 if not matches:
                     # Usually error if there is remaining that cannot be parsed
                     if kwargs.get('error_if_remainder', True):
-                        raise Exception("Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, args[0]))
+                        raise Exception("Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, unparsed_input))
                     # When OsisID invokes OsisWork, it will want to use the remaining
                     else:
                         break
@@ -490,10 +490,10 @@ class OsisPassage():
     #    segment= ur"(?:\w|\\\S)+"
     #), re.VERBOSE | re.UNICODE)
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, unparsed_input = "", **kwargs):
         
-        if len(args):
-            passage_parts = args[0].split("!", 2)
+        if unparsed_input:
+            passage_parts = unparsed_input.split("!", 2)
             self.identifier = OsisSegmentList(passage_parts.pop(0), error_if_remainder = True) #???
             self.subidentifier = OsisSegmentList(*passage_parts, error_if_remainder = False)
             
