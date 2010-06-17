@@ -356,9 +356,10 @@ class OsisWork():
         if kwargs.has_key('pub_date_granularity'):
             self.pub_date_granularity = int(kwargs['pub_date_granularity'])
             
-        
+        # Debug output for test
         if __name__ == "__main__":
             print "OsisWork(%s)" % str(self)
+    
     
     def get_segments(self):
         segments = []
@@ -408,26 +409,34 @@ class OsisSegmentList():
     Potentially could also be used for OsisWork.
     """
     
-    def __init__(self, segment_str = ""):
+    def __init__(self, *args, **kwargs):
         self.segments = []
+        self.remaining_input_unparsed = None
         
-        segment_regex = re.compile(ur"""
-            (?P<segment>   (?: \w | \\\S )+ )
-            (?P<delimiter>     \. | $     )
-        """, re.VERBOSE | re.UNICODE)
-
-        remaining_segment_str = segment_str
-        while len(remaining_segment_str) > 0:
-            matches = segment_regex.match(remaining_segment_str)
-            if not matches:
-                raise Exception("Unxpected string at '%s' in '%s'" % (remaining_segment_str, segment_str))
-            segment = matches.group('segment')
-            
-            # Remove escapes
-            segment = segment.replace("\\", "")
-            self.segments.append(segment)
-            
-            remaining_segment_str = remaining_segment_str[len(matches.group(0)):]
+        if len(args):
+            segment_regex = re.compile(ur"""
+                (?P<segment>   (?: \w | \\\S )+ )
+                (?P<delimiter>     \. | $     )
+            """, re.VERBOSE | re.UNICODE)
+    
+            self.remaining_input_unparsed = args[0]
+            while len(self.remaining_input_unparsed) > 0:
+                matches = segment_regex.match(self.remaining_input_unparsed)
+                if not matches:
+                    # Usually error if there is remaining that cannot be parsed
+                    if kwargs.get('error_if_remainder', True):
+                        raise Exception("Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, args[0]))
+                    # When OsisID invokes OsisWork, it will want to use the remaining
+                    else:
+                        break
+                    
+                segment = matches.group('segment')
+                
+                # Remove escapes
+                segment = segment.replace("\\", "")
+                self.segments.append(segment)
+                
+                self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
         
     def __str__(self):
         return ".".join(
@@ -481,107 +490,30 @@ class OsisPassage():
     #    segment= ur"(?:\w|\\\S)+"
     #), re.VERBOSE | re.UNICODE)
     
-    def __init__(self, osis_passage_str = ""):
+    def __init__(self, *args, **kwargs):
         
-        if __name__ == "__main__":
-            print "OsisPassage(%s)" % osis_passage_str
-        
-        # It's ok to have an empty passage (it can be built later)
-        if not osis_passage_str:
+        if len(args):
+            passage_parts = args[0].split("!", 2)
+            self.identifier = OsisSegmentList(passage_parts.pop(0), error_if_remainder = True) #???
+            self.subidentifier = OsisSegmentList(*passage_parts, error_if_remainder = False)
+            
+            # TODO: we'll need to manually set self.remaining_input_unparsed
+        else:
             self.identifier = OsisSegmentList()
             self.subidentifier = OsisSegmentList()
-            return
         
-        # This regular expression need not be 
-        #segment_regex = re.compile(r"""
-        #    (?P<identifier>.+?)
-        #    (?:
-        #        !
-        #        (?P<subidentifier>.+?)
-        #    )
-        #""", re.VERBOSE | re.UNICODE)
-        #
-        #matches = segment_regex.match(osis_passage_str)
-        #if not matches:
-        #    raise Exception("Unable to parse out identifier and subidentifier from %s" % osis_passage_str)
-        passage_parts = osis_passage_str.split("!", 2)
-        self.identifier = OsisSegmentList(passage_parts[0])
+        # Allow members to be passed in discretely
+        if kwargs.has_key('identifier'):
+            self.subidentifier = OsisSegmentList(kwargs['identifier'])
         
-        if len(passage_parts) == 2:
-            self.subidentifier = OsisSegmentList(passage_parts[1])
-        else:
-            self.subidentifier = OsisSegmentList()
+        if kwargs.has_key('subidentifier'):
+            self.subidentifier = OsisSegmentList(kwargs['subidentifier'])
         
-        return
-        
-        # Parse the segments out of the string
-        #in_subidentifier = False
-        #remaining_str = osis_passage_str
-        #while len(remaining_str) > 0:
-        #    matches = segment_regex.match(remaining_str)
-        #    if not matches:
-        #        raise Exception("Unxpected string at '%s' in '%s'" % (remaining_str, osis_passage_str))
-        #    segment = matches.group('segment')
-        #    
-        #    # Remove escapes
-        #    segment = segment.replace("\\", "")
-        #    
-        #    if in_subidentifier:
-        #        self.subsegments.append(segment)
-        #    else:
-        #        self.segments.append(segment)
-        #    
-        #    if matches.group('delimiter') == '!':
-        #        # If we're already in the subidentifier, then it's a syntax error
-        #        if in_subidentifier:
-        #            raise Exception("Unxpected second '!' in '%s'" % (osis_passage_str))
-        #        in_subidentifier = True
-        #    
-        #    remaining_str = remaining_str[len(matches.group(0)):]
-        
-        
-        #matches = self.SEGMENT_REGEX.match(osis_passage_str)
-        #print "osis_work_str = ", osis_work_str
-        #print matches.endpos-1 , len(osis_work_str)
-        #if not matches or len(matches.group(0)) != len(osis_passage_str):
-        #    raise Exception("Unable to parse string as a OsisPassage: %s" % osis_passage_str)
-        
-        #self.segments = osis_passage_str.split('.') #temp
-
-    
-    
-    #def get_identifier(self):
-    #    return ".".join(
-    #        map(
-    #            lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
-    #            self.segments
-    #        )
-    #    )
-    #identifier = property(get_identifier)
-    #
-    #def get_subidentifier(self):
-    #    return ".".join(
-    #        map(
-    #            lambda subsegment: re.sub(ur"(\W)", ur"\\\1", str(subsegment)),
-    #            self.subsegments
-    #        )
-    #    )
-    #subidentifier = property(get_subidentifier)
+        # Debug output for test
+        if __name__ == "__main__":
+            print "OsisPassage(%s)" % str(self)
     
     def __str__(self):
-        #identifier = ".".join(
-        #    map(
-        #        lambda segment: re.sub(ur"(\W)", ur"\\\1", segment),
-        #        self.segments
-        #    )
-        #)
-        #
-        #subidentifier = ".".join(
-        #    map(
-        #        lambda subsegment: re.sub(ur"(\W)", ur"\\\1", subsegment),
-        #        self.subsegments
-        #    )
-        #)
         repr = str(self.identifier)
         if len(self.subidentifier.segments) > 0:
             repr += "!" + str(self.subidentifier)
@@ -902,6 +834,10 @@ if __name__ == "__main__":
     passage.identifier.segments.pop()
     passage.identifier.segments.append("Hello World!")
     assert(str(passage.identifier) == r"John.3.Hello\ World\!")
+    
+    passage = OsisPassage("John", subidentifier = "abc")
+    assert(str(passage) == r"John!abc")
+    assert(str(passage.subidentifier) == r"abc")
     
     passage = OsisPassage()
     assert(str(passage) == "")
