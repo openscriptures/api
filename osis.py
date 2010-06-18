@@ -197,7 +197,8 @@ class OsisWork():
         self.pub_date = None
         self.pub_date_granularity = 6 #1=year, 2=year-month, 3=year-month-day, 4=year-month-day-hour, etc.
         
-        self.remaining_input_unparsed = None
+        self.remaining_input_unparsed = ""
+        error_if_remainder = kwargs.get('error_if_remainder', True)
         
         # TODO: What if pub_date is later modified? The granularity will need to be re-set
         
@@ -209,7 +210,8 @@ class OsisWork():
         if unparsed_input:
             
             segment_regexp = re.compile(ur"""
-                (\w+)( \. | $ )
+                (?P<segment>    \w+    )
+                (?P<delimiter> \. | $ )?
             """, re.VERBOSE | re.UNICODE)
             
             segments = []
@@ -218,14 +220,21 @@ class OsisWork():
                 matches = segment_regexp.match(self.remaining_input_unparsed)
                 if not matches:
                     # Usually error if there is remaining that cannot be parsed
-                    if kwargs.get('error_if_remainder', True):
+                    if error_if_remainder:
                         raise Exception("Unable to parse string at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, unparsed_input))
                     # When OsisID invokes OsisWork, it will want to use the remaining
                     else:
                         break
                 
-                segments.append(matches.group(1))
+                segments.append(matches.group("segment"))
                 self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
+                
+                # Handle case where no ending delimiter was found
+                if matches.group("delimiter") is None:
+                    if error_if_remainder:
+                        raise Exception("Expected ending delimiter at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, unparsed_input))
+                    else:
+                        break
             
             # Get the type
             if segments[0] in self.TYPES:
@@ -411,12 +420,13 @@ class OsisSegmentList():
     
     def __init__(self, unparsed_input = "", **kwargs):
         self.segments = []
-        self.remaining_input_unparsed = None
+        self.remaining_input_unparsed = ""
+        error_if_remainder = kwargs.get('error_if_remainder', True)
         
         if unparsed_input:
             segment_regex = re.compile(ur"""
                 (?P<segment>   (?: \w | \\\S )+ )
-                (?P<delimiter>     \. | $     )
+                (?P<delimiter>     \. | $     )?
             """, re.VERBOSE | re.UNICODE)
     
             self.remaining_input_unparsed = unparsed_input
@@ -424,8 +434,8 @@ class OsisSegmentList():
                 matches = segment_regex.match(self.remaining_input_unparsed)
                 if not matches:
                     # Usually error if there is remaining that cannot be parsed
-                    if kwargs.get('error_if_remainder', True):
-                        raise Exception("Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, unparsed_input))
+                    if error_if_remainder:
+                        raise Exception("2Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, unparsed_input))
                     # When OsisID invokes OsisWork, it will want to use the remaining
                     else:
                         break
@@ -437,6 +447,14 @@ class OsisSegmentList():
                 self.segments.append(segment)
                 
                 self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
+                
+                # Handle case where no ending delimiter was found
+                if matches.group("delimiter") is None:
+                    if error_if_remainder:
+                        raise Exception("3Expected ending delimiter at '%s' for OsisSegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
+                    else:
+                        break
+                
         
     def __str__(self):
         return ".".join(
@@ -491,13 +509,24 @@ class OsisPassage():
     #), re.VERBOSE | re.UNICODE)
     
     def __init__(self, unparsed_input = "", **kwargs):
+        error_if_remainder = kwargs.get('error_if_remainder', True)
+        self.remaining_input_unparsed = ""
         
         if unparsed_input:
-            passage_parts = unparsed_input.split("!", 2)
-            self.identifier = OsisSegmentList(passage_parts.pop(0), error_if_remainder = True) #???
-            self.subidentifier = OsisSegmentList(*passage_parts, error_if_remainder = False)
+            #passage_parts = unparsed_input.split("!", 2)
+            self.identifier = OsisSegmentList(unparsed_input, error_if_remainder = False)
+            self.remaining_input_unparsed = self.identifier.remaining_input_unparsed
+            if self.remaining_input_unparsed.startswith('!'):
+                self.remaining_input_unparsed = self.remaining_input_unparsed[1:]
+                self.subidentifier = OsisSegmentList(self.remaining_input_unparsed, error_if_remainder = False)
+                self.remaining_input_unparsed = self.subidentifier.remaining_input_unparsed
+            else:
+                self.subidentifier = OsisSegmentList()
             
-            # TODO: we'll need to manually set self.remaining_input_unparsed
+            # Handle case where no ending delimiter was found
+            if error_if_remainder and len(self.remaining_input_unparsed) > 0:
+                raise Exception("2Expected ending delimiter at '%s' for OsisPassage: %s" % (self.remaining_input_unparsed, unparsed_input))
+            
         else:
             self.identifier = OsisSegmentList()
             self.subidentifier = OsisSegmentList()
@@ -525,33 +554,66 @@ class OsisID():
     An osisID which represents a passage within a single work like ESV:Exodus.1
     Includes a work prefix (OsisWork) and/or a passage (OsisPassage).
     """
-#    REGEX = re.compile(
-#        ur"""
-#            #^
-#            (?:
-#                (?P<work>{work})
-#                :
-#            )?
-#            
-#            (?P<passage>{passage})?
-#            
-#            #$
-#        """.format(
-#            work = OsisWork.REGEX.pattern,
-#            passage = OsisPassage.REGEX.pattern
-#    ), re.VERBOSE | re.UNICODE)
     
-    def __init__(self, osis_id_str = ""):
+    def __init__(self, unparsed_input = "", **kwargs):
+        error_if_remainder = kwargs.get('error_if_remainder', True)
         
-        self.work = OsisWork()
+        if unparsed_input:
+            # It has an OsisWork component
+            if unparsed_input.find(":") != -1:
+                # Parse OsisWork
+                self.work = OsisWork(
+                    unparsed_input,
+                    error_if_remainder = False
+                )
+                self.remaining_input_unparsed = self.work.remaining_input_unparsed
+                
+                # Parse OsisPassage
+                if self.remaining_input_unparsed.startswith(":"):
+                    self.passage = OsisPassage(
+                        self.remaining_input_unparsed[1:],
+                        error_if_remainder = False
+                    )
+                    self.remaining_input_unparsed = self.passage.remaining_input_unparsed
+                else:
+                    self.passage = OsisPassage()
+            
+            # It's only an OsisPassage
+            else:
+                self.work = OsisWork()
+                self.passage = OsisPassage(
+                    unparsed_input,
+                    error_if_remainder = False
+                )
+                self.remaining_input_unparsed = self.passage.remaining_input_unparsed
+            
+            if error_if_remainder and self.remaining_input_unparsed:
+                raise Exception("Remaining string not parsed at '%s' for OsisID: %s" % (self.remaining_input_unparsed, unparsed_input))
         
+        else:
+            self.work = OsisWork()
+            self.passage = OsisPassage()
         
+        # TODO: get passage and work from kwargs
         
-        self.passage = OsisPassage()
+        # Debug output for test
+        if __name__ == "__main__":
+            print "OsisID(%s)" % str(self)
+
+    def __str__(self):
+        work_str = str(self.work)
+        passage_str = str(self.passage)
         
-        # Consists of OsisWork + OsisPassage
-        pass
-        
+        if not work_str and not passage_str:
+            return ""
+        if not work_str:
+            return passage_str
+        elif not passage_str:
+            return work_str + ":"
+        else:
+            return work_str + ":" + passage_str
+    
+    
 #        #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
 #        
 #        self.work = None
@@ -713,7 +775,6 @@ if __name__ == "__main__":
     work = OsisWork("KJV")
     assert(work.type is None)
     assert(work.name == "KJV")
-    print work
     assert("KJV" == str(work))
     
     work = OsisWork("Bible.en")
@@ -798,11 +859,17 @@ if __name__ == "__main__":
     )
     assert("Bible.en-UK.Baz.WMR.2000.02" == str(work))
     
+    work = OsisWork("Bible.en remainder1", error_if_remainder = False)
+    assert(str(work) == "Bible.en")
+    try:
+        work = OsisWork("Bible.en remainder2", error_if_remainder = True)
+        raise Exception(True)
+    except:
+        assert(sys.exc_value is not True)
     
     # Test OsisPassage ########################################
     passage = OsisPassage("John.3.16")
     assert(len(passage.identifier.segments) == 3)
-    print str(passage)
     assert("John.3.16" == str(passage))
     
     passage = OsisPassage("John")
@@ -818,7 +885,6 @@ if __name__ == "__main__":
     
     # Test subidentifier
     passage = OsisPassage("John.3.16!b")
-    print passage
     assert(passage.subidentifier.segments[0] == "b")
     passage.subidentifier.segments[0] = "a"
     assert("John.3.16!a" == str(passage))
@@ -841,6 +907,34 @@ if __name__ == "__main__":
     
     passage = OsisPassage()
     assert(str(passage) == "")
+    
+    passage = OsisPassage("John.3!a remainder1", error_if_remainder = False)
+    assert(str(passage) == "John.3!a")
+    try:
+        passage = OsisPassage("John.3!a remainder2", error_if_remainder = True)
+        raise Exception(True)
+    except:
+        assert(sys.exc_value is not True)
+    
+    
+    
+    # Test OsisID
+    id = OsisID("Bible:John.1")
+    assert(str(id) == "Bible:John.1")
+    assert(str(id.work) == "Bible")
+    assert(str(id.passage) == "John.1")
+    
+    id = OsisID("John.3!a")
+    assert(str(id.work) == "")
+    assert(str(id.passage) == "John.3!a")
+    assert(str(id.passage.subidentifier) == "a")
+    
+    id = OsisID("Bible.en:")
+    assert(str(id) == "Bible.en:")
+    assert(str(id.work) == "Bible.en")
+    
+    id = OsisID()
+    assert(str(id) == "")
     
     #assert(passage.book == "John")
     #assert(passage.chapter == "3")
