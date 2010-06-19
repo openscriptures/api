@@ -158,6 +158,8 @@ class OsisWork():
     
     Organized into period-delimited segments increasingly narrowing in scope.
     
+    Schema regexp: ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
+    
     #TODO: Is this the way to do docstring tests?
     >> work = OsisWork("Bible")
     >> work = OsisWork("ESV")
@@ -340,7 +342,7 @@ class OsisWork():
             # Now handle revision number, version number, and edition number?
         # end if not len(args)
         
-        # Now populate the members via the kwargs
+        # Allow members to be passed in discretely
         #for key in ('type', 'language', 'publisher', 'name', 'pub_date', 'pub_date_granularity'):
         #setattr(self, key, kwargs[key])
         if kwargs.has_key('type'):
@@ -451,7 +453,7 @@ class OsisSegmentList():
                 if not matches:
                     # Usually error if there is remaining that cannot be parsed
                     if error_if_remainder:
-                        raise Exception("2Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, unparsed_input))
+                        raise Exception("Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, unparsed_input))
                     # When OsisID invokes OsisWork, it will want to use the remaining
                     else:
                         break
@@ -467,7 +469,7 @@ class OsisSegmentList():
                 # Handle case where no ending delimiter was found
                 if matches.group("delimiter") is None:
                     if error_if_remainder:
-                        raise Exception("3Expected ending delimiter at '%s' for OsisSegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
+                        raise Exception("Expected ending delimiter at '%s' for OsisSegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
                     else:
                         break
                 
@@ -489,7 +491,7 @@ class OsisPassage():
     
     Organized into period-delimited segments increasingly narrowing in scope,
     followed by an optional sub-identifier which is work-specific. Segments
-    usually consist of an alpha-neumeric book code followed by a chapter number
+    usually consist of an alphanumeric book code followed by a chapter number
     and a verse number. While there are conventions for book names, they are not
     standardized and one system is not inherently preferable over another, as
     the goal is to affirm canon-neutrality. Likewise, there is nothing
@@ -499,30 +501,16 @@ class OsisPassage():
     
     Read what Chris Little of Crosswire says:
     http://groups.google.com/group/open-scriptures/msg/4fb744efb27c1a41?pli=1
-    """
     
-    # Work: (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+    OSIS Manual: “Translations also often split verses into parts,
+    provided labels such as ‘a’ and ‘b’ for the separate parts. Encoders
+    may freely add sub-identifiers below the lowest standardized level.
+    They are set off from the standardized portion by the character ‘!’.”
     
-    # Passage: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
-    # Subidentifiers: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
-    
-    #REGEX = re.compile(ur"""
-    #    (
-    #        {segment}(?:\.{segment})*
-    #    )
-    #    
-    #    # OSIS Manual: “Translations also often split verses into parts,
-    #    # provided labels such as ‘a’ and ‘b’ for the separate parts. Encoders
-    #    # may freely add sub-identifiers below the lowest standardized level.
-    #    # They are set off from the standardized portion by the character ‘!’.”
-    #    (?:!
-    #        (
-    #            {segment}(?:\.{segment})*
-    #        )
-    #    )?
-    #""".format(
-    #    segment= ur"(?:\w|\\\S)+"
-    #), re.VERBOSE | re.UNICODE)
+    Schema Regexp:
+    identifier: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
+    subidentifier: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
+    """    
     
     def __init__(self, unparsed_input = "", **kwargs):
         error_if_remainder = kwargs.get('error_if_remainder', True)
@@ -549,10 +537,16 @@ class OsisPassage():
         
         # Allow members to be passed in discretely
         if kwargs.has_key('identifier'):
-            self.subidentifier = OsisSegmentList(kwargs['identifier'])
+            if isinstance(kwargs['identifier'], OsisSegmentList):
+                self.identifier = kwargs['identifier']
+            else:
+                self.identifier = OsisSegmentList(str(kwargs['identifier']))
         
         if kwargs.has_key('subidentifier'):
-            self.subidentifier = OsisSegmentList(kwargs['subidentifier'])
+            if isinstance(kwargs['subidentifier'], OsisSegmentList):
+                self.subidentifier = kwargs['subidentifier']
+            else:
+                self.subidentifier = OsisSegmentList(str(kwargs['subidentifier']))
         
         # Debug output for test
         if __name__ == "__main__":
@@ -569,6 +563,11 @@ class OsisID():
     """
     An osisID which represents a passage within a single work like ESV:Exodus.1
     Includes a work prefix (OsisWork) and/or a passage (OsisPassage).
+    
+    Schema regexp:
+    work: (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+    identifier: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
+    subidentifier: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
     """
     
     def __init__(self, unparsed_input = "", **kwargs):
@@ -610,7 +609,17 @@ class OsisID():
             self.work = OsisWork()
             self.passage = OsisPassage()
         
-        # TODO: get passage and work from kwargs
+        # Allow members to be passed in discretely
+        if kwargs.has_key('work'):
+            if isinstance(kwargs['work'], OsisWork):
+                self.work = kwargs['work']
+            else:
+                self.work = OsisWork(str(kwargs['work']))
+        if kwargs.has_key('passage'):
+            if isinstance(kwargs['passage'], OsisPassage):
+                self.passage = kwargs['passage']
+            else:
+                self.passage = OsisPassage(str(kwargs['passage']))
         
         # Debug output for test
         if __name__ == "__main__":
@@ -629,24 +638,7 @@ class OsisID():
         else:
             return work_str + ":" + passage_str
     
-    
-#        #osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
-#        
-#        self.work = None
-#        self.passage = None
-#        
-#        matches = self.REGEX.match(id)
-#        if not matches:
-#            raise Exception("Unable to parse osisID: " + osis_id_str)
-#        
-#        
-#        
-#        print matches.groups()
-#        print matches.groupdict()
-#        
-#        #assert(matches)
-#
-#
+
 #class OsisRef():
 #    """
 #    An osisRef which can contain a single passage from a work or a passage range from a work
@@ -908,6 +900,20 @@ if __name__ == "__main__":
     assert(passage.identifier.segments[1] == "A")
     assert(passage.identifier.segments[2] == "B.C.D")
     
+    # Try different ways of passing in kwargs
+    passage = OsisPassage(
+        identifier = "John.2.1",
+        subidentifier = "a"
+    )
+    assert(str(passage) == "John.2.1!a")
+    
+    passage = OsisPassage(
+        identifier = OsisSegmentList("John.2.1"),
+        subidentifier = OsisSegmentList("a")
+    )
+    assert(str(passage) == "John.2.1!a")
+    
+    
     # Test subidentifier
     passage = OsisPassage("John.3.16!b")
     assert(passage.subidentifier.segments[0] == "b")
@@ -960,6 +966,25 @@ if __name__ == "__main__":
     
     id = OsisID()
     assert(str(id) == "")
+    
+    id = OsisID("Bible.KJV:",
+        passage = "John.3"
+    )
+    assert(str(id) == "Bible.KJV:John.3")
+    id.work = OsisWork()
+    
+    id = OsisID("John.3.16",
+        work = "Bible.NIV"
+    )
+    assert(str(id) == "Bible.NIV:John.3.16")
+    
+    id = OsisID(
+        work = OsisWork("Bible.NIV"),
+        passage = OsisPassage("John.3.16")
+    )
+    assert(str(id) == "Bible.NIV:John.3.16")
+    id.work = OsisWork("Bible.KJV")
+    assert(str(id) == "Bible.KJV:John.3.16")
     
     #assert(passage.book == "John")
     #assert(passage.chapter == "3")
