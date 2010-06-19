@@ -359,8 +359,24 @@ class OsisWork():
             if isinstance(kwargs['pub_date'], datetime):
                 self.pub_date = kwargs['pub_date']
             else:
+                matches = re.match(r"(\d\d\d\d)-?(\d\d)?-?(\d\d)?[T ]?(\d\d)?:?(\d\d)?:?(\d\d)?$", str(kwargs['pub_date']))
+                if not matches:
+                    raise Exception("pub_date passed as a string must be in ISO format (e.g. YYYY-MM-DDTHH:MM:SS)")
+                
+                # Retreive date values from match groups and determine granularity
+                self.pub_date_granularity = 0
+                groups = []
+                for group in matches.groups():
+                    if group is None:
+                        break
+                    groups.append(int(group))
+                    self.pub_date_granularity += 1
+                
+                # datetime objects must have values for
+                while len(groups) <3: # I ♥ you!
+                    groups.append(1)
+                self.pub_date = datetime(*groups)
                 #self.pub_date = datetime.strptime(str(kwargs['pub_date']), "%Y-%m-%dT%H:%M:%S.Z")
-                raise Exception("pub_date must be a datetime object")
         
         if kwargs.has_key('pub_date_granularity'):
             self.pub_date_granularity = int(kwargs['pub_date_granularity'])
@@ -606,7 +622,7 @@ class OsisID():
         
         if not work_str and not passage_str:
             return ""
-        if not work_str:
+        elif not work_str:
             return passage_str
         elif not passage_str:
             return work_str + ":"
@@ -858,6 +874,15 @@ if __name__ == "__main__":
         pub_date_granularity = 2
     )
     assert("Bible.en-UK.Baz.WMR.2000.02" == str(work))
+    
+    work = OsisWork(
+        type = "Bible",
+        language = "en-UK",
+        pub_date = "1992-01-03"
+    )
+    assert("Bible.en-UK.1992.01.03" == str(work))
+    work.pub_date_granularity = 2
+    assert("Bible.en-UK.1992.01" == str(work))
     
     work = OsisWork("Bible.en remainder1", error_if_remainder = False)
     assert(str(work) == "Bible.en")
