@@ -166,18 +166,6 @@ class OsisWork():
     >> work = OsisWork("Bible.Crossway.ESV.2001")
     >> work = OsisWork("Bible.BibleOrg.NET.2004.04.01.r123")
     """
-    # osisWorkType = ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
-    # osisWork = (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)
-    #REGEX = re.compile(ur'''
-    #    \w+ (?: \. \w+ )*
-    #    
-    #    #( \w+ )(?: \. ( \w+ ))*
-    #    #(?:
-    #    #    (?:(?<!^) \. )?
-    #    #    ( \w+ )
-    #    #)+
-    #''', re.VERBOSE | re.UNICODE)
-    # Note: repeating capture groups aren't used because only the last one is accessible
     
     # This list can be modified as needed to add support (recognition) for other types
     TYPES = [
@@ -190,8 +178,6 @@ class OsisWork():
     ]
     
     def __init__(self, unparsed_input = "", **kwargs):
-        # Todo: Allow these properties to be set via kwargs!
-        
         self.type = None
         self.language = None
         self.publisher = None
@@ -201,12 +187,6 @@ class OsisWork():
         
         self.remaining_input_unparsed = ""
         error_if_remainder = kwargs.get('error_if_remainder', True)
-        
-        # TODO: What if pub_date is later modified? The granularity will need to be re-set
-        
-        # TODO: Allow the osis_work_str param to not be provided, and for the
-        # components to be supplied after init
-        
         
         # Parse the input
         if unparsed_input:
@@ -319,7 +299,7 @@ class OsisWork():
                     # The datetime segments have been parsed, so make the datetime
                     if len(datetime_args) > 0:
                         # Provide default month and day
-                        while len(datetime_args) <3: # Yes, I love you!
+                        while len(datetime_args) <3: # Yes, I ♥ you!
                             datetime_args.append(1)
                         
                         self.pub_date = datetime(*datetime_args) #spread!
@@ -375,7 +355,7 @@ class OsisWork():
                     self.pub_date_granularity += 1
                 
                 # datetime objects must have values for
-                while len(groups) <3: # I ♥ you!
+                while len(groups) <3: # Yes, I ♥ you indeed!
                     groups.append(1)
                 self.pub_date = datetime(*groups)
                 #self.pub_date = datetime.strptime(str(kwargs['pub_date']), "%Y-%m-%dT%H:%M:%S.Z")
@@ -529,7 +509,7 @@ class OsisPassage():
             
             # Handle case where no ending delimiter was found
             if error_if_remainder and len(self.remaining_input_unparsed) > 0:
-                raise Exception("2Expected ending delimiter at '%s' for OsisPassage: %s" % (self.remaining_input_unparsed, unparsed_input))
+                raise Exception("Expected ending delimiter at '%s' for OsisPassage: %s" % (self.remaining_input_unparsed, unparsed_input))
             
         else:
             self.identifier = OsisSegmentList()
@@ -637,22 +617,124 @@ class OsisID():
             return work_str + ":"
         else:
             return work_str + ":" + passage_str
-    
 
-#class OsisRef():
-#    """
-#    An osisRef which can contain a single passage from a work or a passage range from a work
-#    """
-#    #(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
-#    start = None
-#    end = None
-#    
-#    
-#    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
-#    
-#    def __init__(self, osis_ref_str):
-#        raise Exception("Not implemented")
-#    
+
+class OsisGrain():
+    """
+    Re-used by OsisRef for start and end OsisIDs
+    
+    OSIS Manual: “To refer to specific locations within a named canonical
+    reference element, give the osisID as usual, followed by a "grain
+    identifier", which consists of the character "@", and then an identifier for
+    the portion desired.”
+    
+    Schema regexp: (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
+    TODO: Should "@" be included? Leaning toward not.
+    """
+    
+    FORMATS = (
+        # cp (code-point)
+        re.compile(ur"(cp) \[(\d+)\]", re.U | re.X),
+        
+        # s (string)
+        
+        re.compile(ur"(s)  \[(\w+)\]  (?:\[(\d+)\])", re.U | re.X),
+        # default
+        re.compile(ur"(\w+)  (?:\[(.+?)\])+", re.U | re.X),
+    )
+    
+    #class cp(self):
+    #    regexp = re.compile(
+    #        ur"cp\[(\d+)\]",
+    #        re.UNICODE | re.VERBOSE
+    #    )
+    #    def _populate_params(self, match):
+    #        self.parameters.append(match.group(1))
+    #
+    #class s(self):
+    #    regexp = re.compile(
+    #        ur"s\[(\w+)\](?:\[(\d+)\])",
+    #        re.UNICODE | re.VERBOSE
+    #    )
+    #    def _populate_params(self, match):
+    #        self.parameters.append(match.group(1), match.group(2))
+    
+    def __init__(self, unparsed_input = "", **kwargs):
+        self.type = ""
+        self.parameters = []
+        error_if_remainder = kwargs.get('error_if_remainder', True)
+        
+        #if self.__class__ is OsisGrain:
+        #    match = re.match(ur"(\w+)")
+        #    if match and hasattr(self, match.group(1)):
+        #        self = getattr(self, match.group(1))(unparsed_input, **kwargs)
+        #    return
+        
+        # self.__class__ is OsisGrain
+        
+        self.remaining_input_unparsed = ""
+        
+        if unparsed_input:
+            
+            for format in self.FORMATS:
+                match = re.match(format, unparsed_input)
+                if match:
+                    break
+            if not match:
+                raise Exception("Unable to parse OsisGrain: %s", unparsed_input)
+            
+            self.type = match.group(1)
+            self.parameters.extend(match.groups()[1:])
+            
+            self.remaining_input_unparsed = self.remaining_input_unparsed[len(match.group(0)):]
+            if error_if_remainder and self.remaining_input_unparsed:
+                raise Exception("Remaining string not parsed at '%s' for OsisGrain: %s" % (self.remaining_input_unparsed, unparsed_input))
+        
+        # Allow members to be passed in discretely
+        if kwargs.has_key('type'):
+            self.type = kwargs['type']
+        if kwargs.has_key('parameters'):
+            self.parameters = kwargs['parameters']
+        
+        # Debug output for test
+        if __name__ == "__main__":
+            print "OsisGrain(%s)" % str(self)
+        
+    def __str__(self):
+        return self.type + "".join(map(
+            lambda param: '[' +  str(param) +  ']',
+            self.parameters
+        ))
+
+
+
+class OsisRef():
+    """
+    An osisRef which can contain a single passage from a work or a passage range from a work.
+    Note: This should also allow for an arbitrary chain of references? Or just have a list?
+    
+    Schema regexp:
+    (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
+    ((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*
+    (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+    (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
+    (\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)
+    (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+    (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
+    
+    Do I need an OsisRefEndPoint?
+    What if there is no end? Does "start" make sense?
+    """    
+    
+    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
+    
+    def __init__(self, unparsed_input = "", **kwargs):
+        self.start = None
+        self.end = None
+        error_if_remainder = kwargs.get('error_if_remainder', True)
+        
+        raise Exception("Not implemented")
+    
 
 
 #### DEPRECATED!!! #####
@@ -989,6 +1071,21 @@ if __name__ == "__main__":
     #assert(passage.book == "John")
     #assert(passage.chapter == "3")
     #assert(passage.verse == "16")
+    
+    # OsisRef
+    
+    grain = OsisGrain("cp[2]")
+    assert(grain.type == "cp")
+    assert(grain.parameters[0] == "2")
+    assert(str(grain) == "cp[2]")
+    
+    #ref = OsisRef("Bible:John.1@cp(2)-John.2@cp(3)")
+    #assert(str(ref.start.work) == "Bible")
+    #assert(str(ref.start.passage) == "John.1")
+    #assert(str(ref.start.grain) == "cp(2)")
+    #assert(ref.start.grain.type == "cp")
+    #assert(ref.start.grain.parameters[0] == "2")
+    
     
     #exit()
     #bad_works = [
