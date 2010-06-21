@@ -7,7 +7,7 @@
 # Dual licensed under the MIT or GPL Version 2 licenses.
 # 
 # MIT License (appears below): http://creativecommons.org/licenses/MIT/
-# GPL license: http://creativecommons.org/licenses/GPL/2.0/
+# GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,12 +29,16 @@
 
 
 # ----
-# TODO: Each object should be initializable without any input (empty)
-# Each object should also have a stream parser which can be used from the outside
+# TODO: When passing in objects to kwargs, make sure that we do deepcopy?
+# TODO: SegmentList should inherit from list
+# TODO: Ideally there would be setters for properties which would allow both:
+#         id.work = OsisWork("Bible.KJV")
+#         id.work = "Bible.KJV"
+#       The second of which would get casted into an OsisWork
 
 import re
+import copy
 from datetime import date, time, datetime
-
 
 #TODO: We need a way of creating/storing arbitrary canonical book orders
 #TODO: Include facility for converting natural language references into osisRefs?
@@ -365,7 +369,7 @@ class OsisWork():
             
         # Debug output for test
         if __name__ == "__main__":
-            print "OsisWork(%s)" % str(self)
+            print repr(self)
     
     
     def get_segments(self):
@@ -406,7 +410,29 @@ class OsisWork():
         return segments
     segments = property(get_segments)
     
-    def __str__(self):
+    
+    def __lt__(self, other):
+        return str(self) < str(other)
+    def __le__(self, other):
+        return str(self) <= str(other)
+    def __eq__(self, other):
+        return str(self) == str(other)
+    def __ne__(self, other):
+        return str(self) != str(other)
+    def __gt__(self, other):
+        return str(self) > str(other)
+    def __ge__(self, other):
+        return str(self) >= str(other)
+    def __cmp__(self, other):
+        return cmp(str(self), str(other))
+    def __hash__(self):
+        return hash(str(self))
+    def __nonzero__(self):
+        return bool(str(self))
+    
+    def __repr__(self): #TODO unicode instead?
+        return "%s<%s>" % (self.__class__.__name__, self)
+    def __str__(self): #TODO unicode instead?
         return ".".join(self.segments)
 
 
@@ -467,34 +493,65 @@ class OsisPassage():
         
         # Allow members to be passed in discretely
         if kwargs.has_key('identifier'):
-            if isinstance(kwargs['identifier'], self.SegmentList):
-                self.identifier = kwargs['identifier']
+            #if isinstance(kwargs['identifier'], self.SegmentList):
+            #    self.identifier = kwargs['identifier'] #TODO: copy?
+            if hasattr(kwargs['identifier'], "__iter__"):  #isinstance(kwargs['identifier'], list)
+                self.identifier = self.SegmentList(
+                    segments = kwargs['identifier'] #TODO: copy?
+                )
             else:
                 self.identifier = self.SegmentList(str(kwargs['identifier']))
         
         if kwargs.has_key('subidentifier'):
-            if isinstance(kwargs['subidentifier'], self.SegmentList):
-                self.subidentifier = kwargs['subidentifier']
+            #if isinstance(kwargs['subidentifier'], self.SegmentList):
+            #    self.subidentifier = kwargs['subidentifier'] #TODO: copy?
+            if hasattr(kwargs['subidentifier'], "__iter__"):  #isinstance(kwargs['identifier'], list)
+                self.subidentifier = self.SegmentList(
+                    segments = kwargs['subidentifier'] #TODO: copy?
+                )
             else:
                 self.subidentifier = self.SegmentList(str(kwargs['subidentifier']))
         
         # Debug output for test
         if __name__ == "__main__":
-            print "OsisPassage(%s)" % str(self)
+            print repr(self)
     
-    def __str__(self):
+    def __lt__(self, other):
+        return str(self) < str(other)
+    def __le__(self, other):
+        return str(self) <= str(other)
+    def __eq__(self, other):
+        return str(self) == str(other)
+    def __ne__(self, other):
+        return str(self) != str(other)
+    def __gt__(self, other):
+        return str(self) > str(other)
+    def __ge__(self, other):
+        return str(self) >= str(other)
+    def __cmp__(self, other):
+        return cmp(str(self), str(other))
+    def __hash__(self):
+        return hash(str(self))
+    def __nonzero__(self):
+        return bool(str(self))
+    
+    def __repr__(self):
+        return "%s<%s>" % (self.__class__.__name__, self)
+    def __str__(self): #TODO unicode instead?
         repr = str(self.identifier)
         if len(self.subidentifier.segments) > 0:
             repr += "!" + str(self.subidentifier)
         return repr
     
-    
-    class SegmentList():
+    # Should this be prefixed by '_'?
+    class SegmentList(): #Should this just inherit from List?
         """
         Used for OsisPassage.identifier and OsisPassage.subidentifier
         """
         
         def __init__(self, unparsed_input = "", **kwargs):
+            # If this were written to inherit from list, then
+            # we'd need to optionally copy kwargs['segments']
             self.segments = []
             self.remaining_input_unparsed = ""
             error_if_remainder = kwargs.get('error_if_remainder', True)
@@ -530,9 +587,39 @@ class OsisPassage():
                             raise Exception("Expected ending delimiter at '%s' for SegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
                         else:
                             break
-                    
             
-        def __str__(self):
+            # Allow members to be passed in discretely
+            if kwargs.has_key('segments') and hasattr(kwargs['segments'], "__iter__"): #isinstance(kwargs['segments'], list):
+                del self.segments[:]
+                self.segments.extend(list(kwargs['segments']))
+        
+        # Allow the segments list to be operated on implicitly (should this just extend list?)
+        # TODO: If this just inherited from list, then we wouldn't need these
+        def __len__(self):
+            return len(self.segments)
+            
+        def __getitem__(self, key):
+            return self.segments[key]
+        
+        def __setitem__(self, key, value):
+            self.segments[key] = value
+        
+        def __delitem__(self, key):
+            del self.segments[key]
+        
+        def __iter__(self):
+            return iter(self.segments)
+        
+        def __reversed__(self):
+            return reversed(self.segments)
+        
+        def __contains__(self, item):
+            return item in self.segments
+        
+        
+        def __repr__(self):
+            return "%s<%s>" % (self.__class__.__name__, self)
+        def __str__(self): #TODO __unicode__
             return ".".join(
                 map(
                     lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
@@ -556,33 +643,63 @@ class OsisID():
         error_if_remainder = kwargs.get('error_if_remainder', True)
         
         if unparsed_input:
-            # It has an OsisWork component
-            if unparsed_input.find(":") != -1:
-                # Parse OsisWork
+            self.remaining_input_unparsed = unparsed_input
+            
+            # Try to get the OsisWork component
+            try:
                 self.work = OsisWork(
                     unparsed_input,
                     error_if_remainder = False
                 )
-                self.remaining_input_unparsed = self.work.remaining_input_unparsed
-                
-                # Parse OsisPassage
-                if self.remaining_input_unparsed.startswith(":"):
-                    self.passage = OsisPassage(
-                        self.remaining_input_unparsed[1:],
-                        error_if_remainder = False
-                    )
-                    self.remaining_input_unparsed = self.passage.remaining_input_unparsed
-                else:
-                    self.passage = OsisPassage()
-            
-            # It's only an OsisPassage
-            else:
+                if not self.work.remaining_input_unparsed.startswith(":"):
+                    raise Exception("Not starting with a work")
+                self.remaining_input_unparsed = self.work.remaining_input_unparsed[1:]
+            except:
                 self.work = OsisWork()
-                self.passage = OsisPassage(
-                    unparsed_input,
-                    error_if_remainder = False
-                )
-                self.remaining_input_unparsed = self.passage.remaining_input_unparsed
+            
+            # Parse OsisPassage
+            self.passage = OsisPassage(
+                self.remaining_input_unparsed,
+                error_if_remainder = False
+            )
+            self.remaining_input_unparsed = self.passage.remaining_input_unparsed
+            
+            #if self.remaining_input_unparsed.startswith(":"):
+            #    self.passage = OsisPassage(
+            #        self.remaining_input_unparsed[1:],
+            #        error_if_remainder = False
+            #    )
+            #    self.remaining_input_unparsed = self.passage.remaining_input_unparsed
+            #else:
+            #    self.passage = OsisPassage()
+            
+            ## It has an OsisWork component
+            #if unparsed_input.find(":") != -1: #TODO: This is bad
+            #    # Parse OsisWork
+            #    self.work = OsisWork(
+            #        unparsed_input,
+            #        error_if_remainder = False
+            #    )
+            #    self.remaining_input_unparsed = self.work.remaining_input_unparsed
+            #    
+            #    # Parse OsisPassage
+            #    if self.remaining_input_unparsed.startswith(":"):
+            #        self.passage = OsisPassage(
+            #            self.remaining_input_unparsed[1:],
+            #            error_if_remainder = False
+            #        )
+            #        self.remaining_input_unparsed = self.passage.remaining_input_unparsed
+            #    else:
+            #        self.passage = OsisPassage()
+            #
+            ## It's only an OsisPassage
+            #else:
+            #    self.work = OsisWork()
+            #    self.passage = OsisPassage(
+            #        unparsed_input,
+            #        error_if_remainder = False
+            #    )
+            #    self.remaining_input_unparsed = self.passage.remaining_input_unparsed
             
             if error_if_remainder and self.remaining_input_unparsed:
                 raise Exception("Remaining string not parsed at '%s' for OsisID: %s" % (self.remaining_input_unparsed, unparsed_input))
@@ -594,20 +711,41 @@ class OsisID():
         # Allow members to be passed in discretely
         if kwargs.has_key('work'):
             if isinstance(kwargs['work'], OsisWork):
-                self.work = kwargs['work']
+                self.work = kwargs['work'] #TODO: copy?
             else:
                 self.work = OsisWork(str(kwargs['work']))
         if kwargs.has_key('passage'):
             if isinstance(kwargs['passage'], OsisPassage):
-                self.passage = kwargs['passage']
+                self.passage = kwargs['passage'] #TODO: copy?
             else:
                 self.passage = OsisPassage(str(kwargs['passage']))
         
         # Debug output for test
         if __name__ == "__main__":
-            print "OsisID(%s)" % str(self)
+            print repr(self)
 
-    def __str__(self):
+    def __lt__(self, other):
+        return str(self) < str(other)
+    def __le__(self, other):
+        return str(self) <= str(other)
+    def __eq__(self, other):
+        return str(self) == str(other)
+    def __ne__(self, other):
+        return str(self) != str(other)
+    def __gt__(self, other):
+        return str(self) > str(other)
+    def __ge__(self, other):
+        return str(self) >= str(other)
+    def __cmp__(self, other):
+        return cmp(str(self), str(other))
+    def __hash__(self):
+        return hash(str(self))
+    def __nonzero__(self):
+        return bool(str(self))
+    
+    def __repr__(self):
+        return "%s<%s>" % (self.__class__.__name__, self)
+    def __str__(self): #TODO __unicode__ instead
         work_str = str(self.work)
         passage_str = str(self.passage)
         
@@ -621,94 +759,7 @@ class OsisID():
             return work_str + ":" + passage_str
 
 
-class OsisGrain():
-    """
-    Re-used by OsisRef for start and end OsisIDs
-    
-    OSIS Manual: “To refer to specific locations within a named canonical
-    reference element, give the osisID as usual, followed by a "grain
-    identifier", which consists of the character "@", and then an identifier for
-    the portion desired.”
-    
-    Schema regexp: (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
-    TODO: Should "@" be included? Leaning toward not.
-    """
-    
-    FORMATS = (
-        # cp (code-point)
-        re.compile(ur"(cp) \[(\d+)\]", re.U | re.X),
-        
-        # s (string)
-        
-        re.compile(ur"(s)  \[(\w+)\]  (?:\[(\d+)\])", re.U | re.X),
-        # default
-        re.compile(ur"(\w+)  (?:\[(.+?)\])+", re.U | re.X),
-    )
-    
-    #class cp(self):
-    #    regexp = re.compile(
-    #        ur"cp\[(\d+)\]",
-    #        re.UNICODE | re.VERBOSE
-    #    )
-    #    def _populate_params(self, match):
-    #        self.parameters.append(match.group(1))
-    #
-    #class s(self):
-    #    regexp = re.compile(
-    #        ur"s\[(\w+)\](?:\[(\d+)\])",
-    #        re.UNICODE | re.VERBOSE
-    #    )
-    #    def _populate_params(self, match):
-    #        self.parameters.append(match.group(1), match.group(2))
-    
-    def __init__(self, unparsed_input = "", **kwargs):
-        self.type = ""
-        self.parameters = []
-        error_if_remainder = kwargs.get('error_if_remainder', True)
-        
-        #if self.__class__ is OsisGrain:
-        #    match = re.match(ur"(\w+)")
-        #    if match and hasattr(self, match.group(1)):
-        #        self = getattr(self, match.group(1))(unparsed_input, **kwargs)
-        #    return
-        
-        # self.__class__ is OsisGrain
-        
-        self.remaining_input_unparsed = ""
-        
-        if unparsed_input:
-            
-            for format in self.FORMATS:
-                match = re.match(format, unparsed_input)
-                if match:
-                    break
-            if not match:
-                raise Exception("Unable to parse OsisGrain: %s", unparsed_input)
-            
-            self.type = match.group(1)
-            self.parameters.extend(match.groups()[1:])
-            
-            self.remaining_input_unparsed = self.remaining_input_unparsed[len(match.group(0)):]
-            if error_if_remainder and self.remaining_input_unparsed:
-                raise Exception("Remaining string not parsed at '%s' for OsisGrain: %s" % (self.remaining_input_unparsed, unparsed_input))
-        
-        # Allow members to be passed in discretely
-        if kwargs.has_key('type'):
-            self.type = kwargs['type']
-        if kwargs.has_key('parameters'):
-            self.parameters = kwargs['parameters']
-        
-        # Debug output for test
-        if __name__ == "__main__":
-            print "OsisGrain(%s)" % str(self)
-        
-    def __str__(self):
-        return self.type + "".join(
-            map(
-                lambda param: '[' +  str(param) +  ']',
-                self.parameters
-            )
-        )
+
 
 
 
@@ -725,19 +776,292 @@ class OsisRef():
     (\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)
     (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
     (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
-    
-    Do I need an OsisRefEndPoint?
-    What if there is no end? Does "start" make sense?
     """    
     
-    #(((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?(\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)(!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?(@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
-    
     def __init__(self, unparsed_input = "", **kwargs):
-        self.start = None
-        self.end = None
         error_if_remainder = kwargs.get('error_if_remainder', True)
+        self.remaining_input_unparsed = unparsed_input
         
-        raise Exception("Not implemented")
+        if unparsed_input:
+            
+            # Try to get the OsisWork component
+            try:
+                self.work = OsisWork(
+                    unparsed_input,
+                    error_if_remainder = False
+                )
+                if not self.work.remaining_input_unparsed.startswith(":"):
+                    raise Exception("Not starting with a work")
+                self.remaining_input_unparsed = self.work.remaining_input_unparsed[1:]
+            except:
+                self.work = OsisWork()
+            
+            # Parse start part
+            self.start = OsisRef.Part(
+                self.remaining_input_unparsed,
+                error_if_remainder = False
+            )
+            self.remaining_input_unparsed = self.start.remaining_input_unparsed
+            
+            # Parse the end part
+            if self.remaining_input_unparsed.startswith("-"):
+                self.end = OsisRef.Part(
+                    self.remaining_input_unparsed[1:],
+                    error_if_remainder = False
+                )
+                self.remaining_input_unparsed = self.end.remaining_input_unparsed
+            else:
+                self.end = copy.deepcopy(self.start)
+            
+            if error_if_remainder and self.remaining_input_unparsed:
+                raise Exception("Remaining string not parsed at '%s' for OsisRef: %s" % (self.remaining_input_unparsed, unparsed_input))
+        else:
+            self.work = OsisWork()
+            self.start = OsisRef.Part()
+            self.end = OsisRef.Part()
+        
+        # Allow members to be passed in discretely
+        if kwargs.has_key('work'):
+            if isinstance(kwargs['work'], OsisWork):
+                self.work = kwargs['work'] #TODO: copy?
+            else:
+                self.work = OsisWork(str(kwargs['work']))
+        if kwargs.has_key('start'):
+            if isinstance(kwargs['start'], OsisRef.Part):
+                self.start = kwargs['start'] #TODO: copy?
+            else:
+                self.start = OsisRef.Part(str(kwargs['start']))
+        if kwargs.has_key('end'):
+            if isinstance(kwargs['end'], OsisRef.Part):
+                self.end = kwargs['end'] #TODO: copy?
+            else:
+                self.end = OsisRef.Part(str(kwargs['end']))
+    
+
+    def __lt__(self, other):
+        return str(self) < str(other)
+    def __le__(self, other):
+        return str(self) <= str(other)
+    def __eq__(self, other):
+        return str(self) == str(other)
+    def __ne__(self, other):
+        return str(self) != str(other)
+    def __gt__(self, other):
+        return str(self) > str(other)
+    def __ge__(self, other):
+        return str(self) >= str(other)
+    def __cmp__(self, other):
+        return cmp(str(self), str(other))
+    def __hash__(self):
+        return hash(str(self))
+    def __nonzero__(self):
+        return bool(str(self))
+    
+    def __str__(self): #TODO __unicode__ instead
+        work_str = str(self.work)
+        start_str = str(self.start)
+        end_str = str(self.end)
+        
+        s = ""
+        if work_str:
+            s = work_str + ":"
+        s += start_str
+        if start_str != end_str:
+            s += "-" + end_str
+        return s
+    
+    
+    class Part():
+        """
+        Represents the start or end points of an osisRef.
+        
+        Contains an OsisPassage and OsisRef.Grain
+        """
+        
+        def __init__(self, unparsed_input = "", **kwargs):
+            error_if_remainder = kwargs.get('error_if_remainder', True)
+            self.remaining_input_unparsed = ""
+            
+            if unparsed_input:
+                # Parse OsisPassage
+                self.passage = OsisPassage(
+                    unparsed_input,
+                    error_if_remainder = False
+                )
+                self.remaining_input_unparsed = self.passage.remaining_input_unparsed
+                
+                # Parse OsisRef.Grain
+                if self.remaining_input_unparsed.startswith("@"):
+                    self.grain = OsisRef.Grain(
+                        self.remaining_input_unparsed[1:],
+                        error_if_remainder = False
+                    )
+                    self.remaining_input_unparsed = self.grain.remaining_input_unparsed
+                else:
+                    self.grain = OsisRef.Grain()
+                
+                if error_if_remainder and self.remaining_input_unparsed:
+                    raise Exception("Remaining string not parsed at '%s' for OsisRef.Part: %s" % (self.remaining_input_unparsed, unparsed_input))
+            
+            else:
+                self.passage = OsisPassage()
+                self.grain = OsisRef.Grain()
+            
+            # Allow members to be passed in discretely
+            if kwargs.has_key('passage'):
+                if isinstance(kwargs['passage'], OsisPassage):
+                    self.passage = kwargs['passage'] #TODO: copy?
+                else:
+                    self.passage = OsisPassage(str(kwargs['passage']))
+            
+            if kwargs.has_key('grain'):
+                if isinstance(kwargs['grain'], OsisRef.Grain):
+                    self.grain = kwargs['grain'] #TODO: copy?
+                else:
+                    self.grain = OsisRef.Grain(str(kwargs['grain']))
+            
+            # Debug output for test
+            if __name__ == "__main__":
+                print repr(self)
+        
+        def __lt__(self, other):
+            return str(self) < str(other)
+        def __le__(self, other):
+            return str(self) <= str(other)
+        def __eq__(self, other):
+            return str(self) == str(other)
+        def __ne__(self, other):
+            return str(self) != str(other)
+        def __gt__(self, other):
+            return str(self) > str(other)
+        def __ge__(self, other):
+            return str(self) >= str(other)
+        def __cmp__(self, other):
+            return cmp(str(self), str(other))
+        def __hash__(self):
+            return hash(str(self))
+        def __nonzero__(self):
+            return bool(str(self))
+            
+        def __repr__(self):
+            return "%s<%s>" % (self.__class__.__name__, self)
+        def __str__(self): #TODO __unicode__ instead
+            passage_str = str(self.passage)
+            grain_str = str(self.grain)
+            if grain_str:
+                return passage_str + "@" + grain_str
+            else:
+                return passage_str
+    
+    
+    # Should this be prefixed by '_'?
+    class Grain():
+        """
+        Re-used by OsisRef for start and end OsisIDs
+        
+        OSIS Manual: “To refer to specific locations within a named canonical
+        reference element, give the osisID as usual, followed by a "grain
+        identifier", which consists of the character "@", and then an identifier for
+        the portion desired.”
+        
+        Schema regexp: (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
+        TODO: Should "@" be included? Leaning toward not.
+        """
+        
+        FORMATS = (
+            # cp (code-point)
+            re.compile(ur"(cp) \[(\d+)\]", re.U | re.X),
+            # s (string)
+            re.compile(ur"(s)  \[(\w+)\]  (?:\[(\d+)\])", re.U | re.X),
+            # default
+            re.compile(ur"(\w+)  (?:\[(.+?)\])+", re.U | re.X),
+        )
+        
+        #class cp(self):
+        #    regexp = re.compile(
+        #        ur"cp\[(\d+)\]",
+        #        re.UNICODE | re.VERBOSE
+        #    )
+        #    def _populate_params(self, match):
+        #        self.parameters.append(match.group(1))
+        #
+        #class s(self):
+        #    regexp = re.compile(
+        #        ur"s\[(\w+)\](?:\[(\d+)\])",
+        #        re.UNICODE | re.VERBOSE
+        #    )
+        #    def _populate_params(self, match):
+        #        self.parameters.append(match.group(1), match.group(2))
+        
+        def __init__(self, unparsed_input = "", **kwargs):
+            self.type = ""
+            self.parameters = [] #TODO Use "params" instead?
+            error_if_remainder = kwargs.get('error_if_remainder', True)
+            self.remaining_input_unparsed = ""
+            
+            #if self.__class__ is OsisGrain:
+            #    match = re.match(ur"(\w+)")
+            #    if match and hasattr(self, match.group(1)):
+            #        self = getattr(self, match.group(1))(unparsed_input, **kwargs)
+            #    return
+            
+            # self.__class__ is OsisGrain
+            
+            
+            if unparsed_input:
+                
+                for format in self.FORMATS:
+                    match = re.match(format, unparsed_input)
+                    if match:
+                        break
+                if not match:
+                    raise Exception("Unable to parse Grain: %s", unparsed_input)
+                
+                self.type = match.group(1)
+                self.parameters.extend(match.groups()[1:])
+                
+                self.remaining_input_unparsed = self.remaining_input_unparsed[len(match.group(0)):]
+                if error_if_remainder and self.remaining_input_unparsed:
+                    raise Exception("Remaining string not parsed at '%s' for Grain: %s" % (self.remaining_input_unparsed, unparsed_input))
+            
+            # Allow members to be passed in discretely
+            if kwargs.has_key('type'):
+                self.type = kwargs['type']
+            if kwargs.has_key('parameters'):
+                self.parameters = kwargs['parameters']
+            
+            # Debug output for test
+            if __name__ == "__main__":
+                print repr(self)
+        
+        def __lt__(self, other):
+            return str(self) < str(other)
+        def __le__(self, other):
+            return str(self) <= str(other)
+        def __eq__(self, other):
+            return str(self) == str(other)
+        def __ne__(self, other):
+            return str(self) != str(other)
+        def __gt__(self, other):
+            return str(self) > str(other)
+        def __ge__(self, other):
+            return str(self) >= str(other)
+        def __cmp__(self, other):
+            return cmp(str(self), str(other))
+        def __hash__(self):
+            return hash(str(self))
+        def __nonzero__(self):
+            return bool(str(self))
+        
+        def __repr__(self):
+            return "%s<%s>" % (self.__class__.__name__, self)
+        def __str__(self): #TODO: __unicode__ instead?
+            return self.type + "".join(
+                map(
+                    lambda param: '[' +  str(param) +  ']',
+                    self.parameters
+                )
+            )
     
 
 
@@ -865,6 +1189,7 @@ if __name__ == "__main__":
     assert(work.type == "Bible")
     assert(str(work) == "Bible")
     assert("Bible" == str(work))
+    print repr(work)
     
     work = OsisWork("KJV")
     assert(work.type is None)
@@ -983,8 +1308,11 @@ if __name__ == "__main__":
     
     passage = OsisPassage("John.A.B\.C\.D")
     assert(passage.identifier.segments[0] == "John")
+    assert(passage.identifier[0] == "John") #shortcut
     assert(passage.identifier.segments[1] == "A")
+    assert(passage.identifier[1] == "A") #shortcut
     assert(passage.identifier.segments[2] == "B.C.D")
+    assert(passage.identifier[2] == "B.C.D") #shortcut
     
     # Try different ways of passing in kwargs
     passage = OsisPassage(
@@ -995,22 +1323,32 @@ if __name__ == "__main__":
     
     passage = OsisPassage(
         identifier = OsisPassage.SegmentList("John.2.1"),
-        subidentifier = OsisPassage.SegmentList("a")
+        subidentifier = OsisPassage.SegmentList(
+            segments = ["a"]
+        )
     )
     assert(str(passage) == "John.2.1!a")
     
+    passage = OsisPassage(
+        identifier = ["John", 2],
+        subidentifier = ("a", "1")
+    )
+    assert(str(passage) == "John.2!a.1")
     
     # Test subidentifier
     passage = OsisPassage("John.3.16!b")
     assert(passage.subidentifier.segments[0] == "b")
+    assert(passage.subidentifier[0] == "b") #shortcut
     passage.subidentifier.segments[0] = "a"
     assert("John.3.16!a" == str(passage))
     assert(str(passage.subidentifier) == "a")
-    passage.subidentifier.segments.append(1);
+    passage.subidentifier.segments.append(1)
     assert(str(passage.subidentifier) == "a.1")
     passage.subidentifier.segments.pop();
     passage.subidentifier.segments.append("2");
     assert(str(passage.subidentifier) == "a.2")
+    
+    
     
     # Test identifier
     assert(str(passage.identifier) == "John.3.16")
@@ -1035,11 +1373,13 @@ if __name__ == "__main__":
     
     
     
-    # Test OsisID
+    # Test OsisID ############################################
     id = OsisID("Bible:John.1")
+    print id
     assert(str(id) == "Bible:John.1")
     assert(str(id.work) == "Bible")
     assert(str(id.passage) == "John.1")
+    assert(id.passage.identifier[0] == "John")
     
     id = OsisID("John.3!a")
     assert(str(id.work) == "")
@@ -1076,19 +1416,89 @@ if __name__ == "__main__":
     #assert(passage.chapter == "3")
     #assert(passage.verse == "16")
     
-    # OsisRef
+    # OsisRef ############################################
     
-    grain = OsisGrain("cp[2]")
+    # OsisRef.Grain
+    grain = OsisRef.Grain("cp[2]")
     assert(grain.type == "cp")
     assert(grain.parameters[0] == "2")
     assert(str(grain) == "cp[2]")
     
-    #ref = OsisRef("Bible:John.1@cp(2)-John.2@cp(3)")
-    #assert(str(ref.start.work) == "Bible")
-    #assert(str(ref.start.passage) == "John.1")
-    #assert(str(ref.start.grain) == "cp(2)")
-    #assert(ref.start.grain.type == "cp")
-    #assert(ref.start.grain.parameters[0] == "2")
+    # OsisRef.Part
+    ref_part = OsisRef.Part("John.3.16@s[love]")
+    assert(ref_part.passage.identifier[0] == "John")
+    assert(ref_part.passage.identifier[1] == "3")
+    assert(ref_part.passage.identifier[2] == "16")
+    assert(str(ref_part.passage) == "John.3.16")
+    
+    assert(ref_part.grain.type == "s")
+    assert(ref_part.grain.parameters[0] == "love")
+    assert(str(ref_part.grain) == "s[love]")
+    
+    
+    # OsisRef
+    ref = OsisRef("Bible.KJV:John.2")
+    assert(ref.work.type == "Bible")
+    assert(ref.work.name == "KJV")
+    assert(ref.start == ref.end)
+    assert(ref.start is not ref.end) #due to deepcopy
+    assert(ref.start.passage.identifier.segments[0] == "John")
+    assert("Bible.KJV:John.2" == str(ref))
+    ref.end.passage.identifier[1] = "3" #John.3
+    print str(ref)
+    assert("Bible.KJV:John.2-John.3" == str(ref))
+    ref.start.grain.type = "cp"
+    ref.start.grain.parameters.append(1)
+    assert(str(ref.start) == "John.2@cp[1]")
+    
+    ref2 = OsisRef(
+        work = "Bible.KJV",
+        start = "John.2@cp[1]",
+        end = "John.3"
+    )   
+    assert(ref == ref2)
+    
+    ref3 = OsisRef("Bible.KJV:",
+        start = OsisRef.Part(
+            passage = OsisPassage(
+                identifier = ["John", "2"]
+            ),
+            grain = OsisRef.Grain(
+                type = "cp",
+                parameters = [1]
+            )
+        ),
+        end = OsisRef.Part("John.3")
+    )
+    assert(ref2 == ref3)
+    
+    assert(ref3.start != ref3.end)
+    ref3.start.passage.identifier[1] = 3 #chapter
+    ref3.end.grain = OsisRef.Grain("cp[1]")
+    assert(ref3.start == ref3.end)
+    
+    # In OsisRef, work is optional
+    ref = OsisRef("John.1-John.1")
+    assert("John.1" == str(ref)) # collapses
+    ref.end.passage.identifier[1] = 2
+    assert("John.1-John.2" == str(ref)) # uncollapses
+    ref.work = OsisWork("Bible.KJV")
+    assert("Bible.KJV:John.1-John.2" == str(ref))
+    
+    # Try bad OsisRef
+    try:
+        ref = OsisRef("Bible.KJV:John.2.1!a:John.2.1!b  ")
+        raise Exception(True)
+    except:
+        assert(sys.exc_value is not True)
+    
+    
+    ref = OsisRef("Bible:John.1@cp[2]-John.2@cp[3]")
+    assert(str(ref.work) == "Bible")
+    assert(str(ref.start.passage) == "John.1")
+    assert(str(ref.start.grain) == "cp[2]")
+    assert(ref.start.grain.type == "cp")
+    assert(ref.start.grain.parameters[0] == "2")
     
     
     #exit()
