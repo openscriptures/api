@@ -410,57 +410,7 @@ class OsisWork():
         return ".".join(self.segments)
 
 
-class OsisSegmentList():
-    """
-    Used for OsisPassage.identifier and OsisPassage.subidentifier
-    Potentially could also be used for OsisWork.
-    """
-    
-    def __init__(self, unparsed_input = "", **kwargs):
-        self.segments = []
-        self.remaining_input_unparsed = ""
-        error_if_remainder = kwargs.get('error_if_remainder', True)
-        
-        if unparsed_input:
-            segment_regex = re.compile(ur"""
-                (?P<segment>   (?: \w | \\\S )+ )
-                (?P<delimiter>     \. | $     )?
-            """, re.VERBOSE | re.UNICODE)
-    
-            self.remaining_input_unparsed = unparsed_input
-            while len(self.remaining_input_unparsed) > 0:
-                matches = segment_regex.match(self.remaining_input_unparsed)
-                if not matches:
-                    # Usually error if there is remaining that cannot be parsed
-                    if error_if_remainder:
-                        raise Exception("Unxpected string at '%s' in '%s' for OsisSegmentList" % (self.remaining_input_unparsed, unparsed_input))
-                    # When OsisID invokes OsisWork, it will want to use the remaining
-                    else:
-                        break
-                    
-                segment = matches.group('segment')
-                
-                # Remove escapes
-                segment = segment.replace("\\", "")
-                self.segments.append(segment)
-                
-                self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
-                
-                # Handle case where no ending delimiter was found
-                if matches.group("delimiter") is None:
-                    if error_if_remainder:
-                        raise Exception("Expected ending delimiter at '%s' for OsisSegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
-                    else:
-                        break
-                
-        
-    def __str__(self):
-        return ".".join(
-            map(
-                lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
-                self.segments
-            )
-        )
+
     
     
 
@@ -498,35 +448,35 @@ class OsisPassage():
         
         if unparsed_input:
             #passage_parts = unparsed_input.split("!", 2)
-            self.identifier = OsisSegmentList(unparsed_input, error_if_remainder = False)
+            self.identifier = self.SegmentList(unparsed_input, error_if_remainder = False)
             self.remaining_input_unparsed = self.identifier.remaining_input_unparsed
             if self.remaining_input_unparsed.startswith('!'):
                 self.remaining_input_unparsed = self.remaining_input_unparsed[1:]
-                self.subidentifier = OsisSegmentList(self.remaining_input_unparsed, error_if_remainder = False)
+                self.subidentifier = self.SegmentList(self.remaining_input_unparsed, error_if_remainder = False)
                 self.remaining_input_unparsed = self.subidentifier.remaining_input_unparsed
             else:
-                self.subidentifier = OsisSegmentList()
+                self.subidentifier = self.SegmentList()
             
             # Handle case where no ending delimiter was found
             if error_if_remainder and len(self.remaining_input_unparsed) > 0:
                 raise Exception("Expected ending delimiter at '%s' for OsisPassage: %s" % (self.remaining_input_unparsed, unparsed_input))
             
         else:
-            self.identifier = OsisSegmentList()
-            self.subidentifier = OsisSegmentList()
+            self.identifier = self.SegmentList()
+            self.subidentifier = self.SegmentList()
         
         # Allow members to be passed in discretely
         if kwargs.has_key('identifier'):
-            if isinstance(kwargs['identifier'], OsisSegmentList):
+            if isinstance(kwargs['identifier'], self.SegmentList):
                 self.identifier = kwargs['identifier']
             else:
-                self.identifier = OsisSegmentList(str(kwargs['identifier']))
+                self.identifier = self.SegmentList(str(kwargs['identifier']))
         
         if kwargs.has_key('subidentifier'):
-            if isinstance(kwargs['subidentifier'], OsisSegmentList):
+            if isinstance(kwargs['subidentifier'], self.SegmentList):
                 self.subidentifier = kwargs['subidentifier']
             else:
-                self.subidentifier = OsisSegmentList(str(kwargs['subidentifier']))
+                self.subidentifier = self.SegmentList(str(kwargs['subidentifier']))
         
         # Debug output for test
         if __name__ == "__main__":
@@ -537,6 +487,58 @@ class OsisPassage():
         if len(self.subidentifier.segments) > 0:
             repr += "!" + str(self.subidentifier)
         return repr
+    
+    
+    class SegmentList():
+        """
+        Used for OsisPassage.identifier and OsisPassage.subidentifier
+        """
+        
+        def __init__(self, unparsed_input = "", **kwargs):
+            self.segments = []
+            self.remaining_input_unparsed = ""
+            error_if_remainder = kwargs.get('error_if_remainder', True)
+            
+            if unparsed_input:
+                segment_regex = re.compile(ur"""
+                    (?P<segment>   (?: \w | \\\S )+ )
+                    (?P<delimiter>     \. | $     )?
+                """, re.VERBOSE | re.UNICODE)
+        
+                self.remaining_input_unparsed = unparsed_input
+                while len(self.remaining_input_unparsed) > 0:
+                    matches = segment_regex.match(self.remaining_input_unparsed)
+                    if not matches:
+                        # Usually error if there is remaining that cannot be parsed
+                        if error_if_remainder:
+                            raise Exception("Unxpected string at '%s' in '%s' for SegmentList" % (self.remaining_input_unparsed, unparsed_input))
+                        # When OsisID invokes OsisWork, it will want to use the remaining
+                        else:
+                            break
+                        
+                    segment = matches.group('segment')
+                    
+                    # Remove escapes
+                    segment = segment.replace("\\", "")
+                    self.segments.append(segment)
+                    
+                    self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
+                    
+                    # Handle case where no ending delimiter was found
+                    if matches.group("delimiter") is None:
+                        if error_if_remainder:
+                            raise Exception("Expected ending delimiter at '%s' for SegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
+                        else:
+                            break
+                    
+            
+        def __str__(self):
+            return ".".join(
+                map(
+                    lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
+                    self.segments
+                )
+            )
 
 
 class OsisID():
@@ -701,10 +703,12 @@ class OsisGrain():
             print "OsisGrain(%s)" % str(self)
         
     def __str__(self):
-        return self.type + "".join(map(
-            lambda param: '[' +  str(param) +  ']',
-            self.parameters
-        ))
+        return self.type + "".join(
+            map(
+                lambda param: '[' +  str(param) +  ']',
+                self.parameters
+            )
+        )
 
 
 
@@ -990,8 +994,8 @@ if __name__ == "__main__":
     assert(str(passage) == "John.2.1!a")
     
     passage = OsisPassage(
-        identifier = OsisSegmentList("John.2.1"),
-        subidentifier = OsisSegmentList("a")
+        identifier = OsisPassage.SegmentList("John.2.1"),
+        subidentifier = OsisPassage.SegmentList("a")
     )
     assert(str(passage) == "John.2.1!a")
     
