@@ -34,7 +34,14 @@
 # TODO: Ideally there would be setters for properties which would allow both:
 #         id.work = OsisWork("Bible.KJV")
 #         id.work = "Bible.KJV"
-#       The second of which would get casted into an OsisWork
+#       The second of which would get casted into an OsisWork; this can be done
+#       with a private dict containing values, but exposing getter/setter UI
+
+# TODO: Use more appropriate Exception classes?
+# TODO: Write DocString tests (replacing test suite at footer?)
+# TODO: use __unicode__ in addition to __str__?
+# TODO: potentially refactor out common patterns in classes; improve consistency
+# TODO: use better names than "unparsed_input" and "error_if_remainder" and "remaining_input_unparsed"
 
 import re
 import copy
@@ -663,43 +670,6 @@ class OsisID():
                 error_if_remainder = False
             )
             self.remaining_input_unparsed = self.passage.remaining_input_unparsed
-            
-            #if self.remaining_input_unparsed.startswith(":"):
-            #    self.passage = OsisPassage(
-            #        self.remaining_input_unparsed[1:],
-            #        error_if_remainder = False
-            #    )
-            #    self.remaining_input_unparsed = self.passage.remaining_input_unparsed
-            #else:
-            #    self.passage = OsisPassage()
-            
-            ## It has an OsisWork component
-            #if unparsed_input.find(":") != -1: #TODO: This is bad
-            #    # Parse OsisWork
-            #    self.work = OsisWork(
-            #        unparsed_input,
-            #        error_if_remainder = False
-            #    )
-            #    self.remaining_input_unparsed = self.work.remaining_input_unparsed
-            #    
-            #    # Parse OsisPassage
-            #    if self.remaining_input_unparsed.startswith(":"):
-            #        self.passage = OsisPassage(
-            #            self.remaining_input_unparsed[1:],
-            #            error_if_remainder = False
-            #        )
-            #        self.remaining_input_unparsed = self.passage.remaining_input_unparsed
-            #    else:
-            #        self.passage = OsisPassage()
-            #
-            ## It's only an OsisPassage
-            #else:
-            #    self.work = OsisWork()
-            #    self.passage = OsisPassage(
-            #        unparsed_input,
-            #        error_if_remainder = False
-            #    )
-            #    self.remaining_input_unparsed = self.passage.remaining_input_unparsed
             
             if error_if_remainder and self.remaining_input_unparsed:
                 raise Exception("Remaining string not parsed at '%s' for OsisID: %s" % (self.remaining_input_unparsed, unparsed_input))
