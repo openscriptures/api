@@ -565,7 +565,7 @@ class OsisPassage():
             
             if unparsed_input:
                 segment_regex = re.compile(ur"""
-                    (?P<segment>   (?: \w | \\\S )+ )
+                    (?P<segment>   (?: \w | \\ \S )+ )
                     (?P<delimiter>     \. | $     )?
                 """, re.VERBOSE | re.UNICODE)
         
