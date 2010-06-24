@@ -30,12 +30,13 @@
 
 # ----
 # TODO: When passing in objects to kwargs, make sure that we do deepcopy?
-# TODO: SegmentList should inherit from list
 # TODO: Ideally there would be setters for properties which would allow both:
 #         id.work = OsisWork("Bible.KJV")
 #         id.work = "Bible.KJV"
 #       The second of which would get casted into an OsisWork; this can be done
 #       with a private dict containing values, but exposing getter/setter UI
+# TODO: OsisWork may not be properly implemented according to the spec; it may need to just be a SegmentList (without escapes)
+#       Can work's languages contain hyphens?
 
 # TODO: Use more appropriate Exception classes?
 # TODO: Write DocString tests (replacing test suite at footer?)
@@ -170,12 +171,6 @@ class OsisWork():
     Organized into period-delimited segments increasingly narrowing in scope.
     
     Schema regexp: ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
-    
-    #TODO: Is this the way to do docstring tests?
-    >> work = OsisWork("Bible")
-    >> work = OsisWork("ESV")
-    >> work = OsisWork("Bible.Crossway.ESV.2001")
-    >> work = OsisWork("Bible.BibleOrg.NET.2004.04.01.r123")
     """
     
     # This list can be modified as needed to add support (recognition) for other types
@@ -373,14 +368,10 @@ class OsisWork():
         
         if kwargs.has_key('pub_date_granularity'):
             self.pub_date_granularity = int(kwargs['pub_date_granularity'])
-            
-        # Debug output for test
-        if __name__ == "__main__":
-            print repr(self)
     
     
     def get_segments(self):
-        segments = []
+        segments = [] #This should be a SegmentList; except segments can't have unescaped segments! i.e. language identifier
         
         if self.type is not None:
             segments.append(self.type)
@@ -481,47 +472,43 @@ class OsisPassage():
         
         if unparsed_input:
             #passage_parts = unparsed_input.split("!", 2)
-            self.identifier = self.SegmentList(unparsed_input, error_if_remainder = False)
+            self.identifier = SegmentList(unparsed_input, error_if_remainder = False)
             self.remaining_input_unparsed = self.identifier.remaining_input_unparsed
             if self.remaining_input_unparsed.startswith('!'):
                 self.remaining_input_unparsed = self.remaining_input_unparsed[1:]
-                self.subidentifier = self.SegmentList(self.remaining_input_unparsed, error_if_remainder = False)
+                self.subidentifier = SegmentList(self.remaining_input_unparsed, error_if_remainder = False)
                 self.remaining_input_unparsed = self.subidentifier.remaining_input_unparsed
             else:
-                self.subidentifier = self.SegmentList()
+                self.subidentifier = SegmentList()
             
             # Handle case where no ending delimiter was found
             if error_if_remainder and len(self.remaining_input_unparsed) > 0:
                 raise Exception("Expected ending delimiter at '%s' for OsisPassage: %s" % (self.remaining_input_unparsed, unparsed_input))
             
         else:
-            self.identifier = self.SegmentList()
-            self.subidentifier = self.SegmentList()
+            self.identifier = SegmentList()
+            self.subidentifier = SegmentList()
         
         # Allow members to be passed in discretely
         if kwargs.has_key('identifier'):
-            #if isinstance(kwargs['identifier'], self.SegmentList):
+            #if isinstance(kwargs['identifier'], SegmentList):
             #    self.identifier = kwargs['identifier'] #TODO: copy?
             if hasattr(kwargs['identifier'], "__iter__"):  #isinstance(kwargs['identifier'], list)
-                self.identifier = self.SegmentList(
+                self.identifier = SegmentList(
                     segments = kwargs['identifier'] #TODO: copy?
                 )
             else:
-                self.identifier = self.SegmentList(str(kwargs['identifier']))
+                self.identifier = SegmentList(str(kwargs['identifier']))
         
         if kwargs.has_key('subidentifier'):
-            #if isinstance(kwargs['subidentifier'], self.SegmentList):
+            #if isinstance(kwargs['subidentifier'], SegmentList):
             #    self.subidentifier = kwargs['subidentifier'] #TODO: copy?
             if hasattr(kwargs['subidentifier'], "__iter__"):  #isinstance(kwargs['identifier'], list)
-                self.subidentifier = self.SegmentList(
+                self.subidentifier = SegmentList(
                     segments = kwargs['subidentifier'] #TODO: copy?
                 )
             else:
-                self.subidentifier = self.SegmentList(str(kwargs['subidentifier']))
-        
-        # Debug output for test
-        if __name__ == "__main__":
-            print repr(self)
+                self.subidentifier = SegmentList(str(kwargs['subidentifier']))
     
     def __lt__(self, other):
         return str(self) < str(other)
@@ -546,93 +533,70 @@ class OsisPassage():
         return "%s<%s>" % (self.__class__.__name__, self)
     def __str__(self): #TODO unicode instead?
         repr = str(self.identifier)
-        if len(self.subidentifier.segments) > 0:
+        if len(self.subidentifier) > 0:
             repr += "!" + str(self.subidentifier)
         return repr
     
-    # Should this be prefixed by '_'?
-    class SegmentList(): #Should this just inherit from List?
-        """
-        Used for OsisPassage.identifier and OsisPassage.subidentifier
-        """
+
+# Should this be prefixed by '_'?
+class SegmentList(list):
+    """
+    Used for OsisPassage.identifier and OsisPassage.subidentifier
+    """
+    
+    def __init__(self, unparsed_input = "", **kwargs):
+        # If this were written to inherit from list, then
+        # we'd need to optionally copy kwargs['segments']
+        #self.segments = []
+        self.remaining_input_unparsed = ""
+        error_if_remainder = kwargs.get('error_if_remainder', True)
         
-        def __init__(self, unparsed_input = "", **kwargs):
-            # If this were written to inherit from list, then
-            # we'd need to optionally copy kwargs['segments']
-            self.segments = []
-            self.remaining_input_unparsed = ""
-            error_if_remainder = kwargs.get('error_if_remainder', True)
-            
-            if unparsed_input:
-                segment_regex = re.compile(ur"""
-                    (?P<segment>   (?: \w | \\ \S )+ )
-                    (?P<delimiter>     \. | $     )?
-                """, re.VERBOSE | re.UNICODE)
-        
-                self.remaining_input_unparsed = unparsed_input
-                while len(self.remaining_input_unparsed) > 0:
-                    matches = segment_regex.match(self.remaining_input_unparsed)
-                    if not matches:
-                        # Usually error if there is remaining that cannot be parsed
-                        if error_if_remainder:
-                            raise Exception("Unxpected string at '%s' in '%s' for SegmentList" % (self.remaining_input_unparsed, unparsed_input))
-                        # When OsisID invokes OsisWork, it will want to use the remaining
-                        else:
-                            break
-                        
-                    segment = matches.group('segment')
+        if unparsed_input:
+            segment_regex = re.compile(ur"""
+                (?P<segment>   (?: \w | \\ \S )+ )
+                (?P<delimiter>     \. | $     )?
+            """, re.VERBOSE | re.UNICODE)
+    
+            self.remaining_input_unparsed = unparsed_input
+            while len(self.remaining_input_unparsed) > 0:
+                matches = segment_regex.match(self.remaining_input_unparsed)
+                if not matches:
+                    # Usually error if there is remaining that cannot be parsed
+                    if error_if_remainder:
+                        raise Exception("Unxpected string at '%s' in '%s' for SegmentList" % (self.remaining_input_unparsed, unparsed_input))
+                    # When OsisID invokes OsisWork, it will want to use the remaining
+                    else:
+                        break
                     
-                    # Remove escapes
-                    segment = segment.replace("\\", "")
-                    self.segments.append(segment)
-                    
-                    self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
-                    
-                    # Handle case where no ending delimiter was found
-                    if matches.group("delimiter") is None:
-                        if error_if_remainder:
-                            raise Exception("Expected ending delimiter at '%s' for SegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
-                        else:
-                            break
-            
-            # Allow members to be passed in discretely
-            if kwargs.has_key('segments') and hasattr(kwargs['segments'], "__iter__"): #isinstance(kwargs['segments'], list):
-                del self.segments[:]
-                self.segments.extend(list(kwargs['segments']))
+                segment = matches.group('segment')
+                
+                # Remove escapes
+                segment = segment.replace("\\", "")
+                self.append(segment)
+                
+                self.remaining_input_unparsed = self.remaining_input_unparsed[len(matches.group(0)):]
+                
+                # Handle case where no ending delimiter was found
+                if matches.group("delimiter") is None:
+                    if error_if_remainder:
+                        raise Exception("Expected ending delimiter at '%s' for SegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
+                    else:
+                        break
         
-        # Allow the segments list to be operated on implicitly (should this just extend list?)
-        # TODO: If this just inherited from list, then we wouldn't need these
-        def __len__(self):
-            return len(self.segments)
-            
-        def __getitem__(self, key):
-            return self.segments[key]
-        
-        def __setitem__(self, key, value):
-            self.segments[key] = value
-        
-        def __delitem__(self, key):
-            del self.segments[key]
-        
-        def __iter__(self):
-            return iter(self.segments)
-        
-        def __reversed__(self):
-            return reversed(self.segments)
-        
-        def __contains__(self, item):
-            return item in self.segments
-        
-        
-        def __repr__(self):
-            return "%s<%s>" % (self.__class__.__name__, self)
-        def __str__(self): #TODO __unicode__
-            return ".".join(
-                map(
-                    lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
-                    self.segments
-                )
+        # Allow members to be passed in discretely
+        if kwargs.has_key('segments') and hasattr(kwargs['segments'], "__iter__"): #isinstance(kwargs['segments'], list):
+            del self[:]
+            self.extend(list(kwargs['segments']))
+    
+    def __repr__(self):
+        return "%s<%s>" % (self.__class__.__name__, self)
+    def __str__(self): #TODO __unicode__
+        return ".".join(
+            map(
+                lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
+                self
             )
+        )
 
 
 class OsisID():
@@ -689,10 +653,6 @@ class OsisID():
                 self.passage = kwargs['passage'] #TODO: copy?
             else:
                 self.passage = OsisPassage(str(kwargs['passage']))
-        
-        # Debug output for test
-        if __name__ == "__main__":
-            print repr(self)
 
     def __lt__(self, other):
         return str(self) < str(other)
@@ -889,10 +849,6 @@ class OsisRef():
                     self.grain = kwargs['grain'] #TODO: copy?
                 else:
                     self.grain = OsisRef.Grain(str(kwargs['grain']))
-            
-            # Debug output for test
-            if __name__ == "__main__":
-                print repr(self)
         
         def __lt__(self, other):
             return str(self) < str(other)
@@ -999,10 +955,6 @@ class OsisRef():
                 self.type = kwargs['type']
             if kwargs.has_key('parameters'):
                 self.parameters = kwargs['parameters']
-            
-            # Debug output for test
-            if __name__ == "__main__":
-                print repr(self)
         
         def __lt__(self, other):
             return str(self) < str(other)
@@ -1153,13 +1105,11 @@ if __name__ == "__main__":
     import sys
     
     # Test OsisWork ########################################
-    print "Testing OsisWork...";
     
     work = OsisWork("Bible")
     assert(work.type == "Bible")
     assert(str(work) == "Bible")
     assert("Bible" == str(work))
-    print repr(work)
     
     work = OsisWork("KJV")
     assert(work.type is None)
@@ -1267,22 +1217,19 @@ if __name__ == "__main__":
     
     # Test OsisPassage ########################################
     passage = OsisPassage("John.3.16")
-    assert(len(passage.identifier.segments) == 3)
+    assert(len(passage.identifier) == 3)
     assert("John.3.16" == str(passage))
     
     passage = OsisPassage("John")
-    assert(len(passage.identifier.segments) == 1)
-    passage.identifier.segments.append("17")
-    assert(len(passage.identifier.segments) == 2)
+    assert(len(passage.identifier) == 1)
+    passage.identifier.append("17")
+    assert(len(passage.identifier) == 2)
     assert("John.17" == str(passage))
     
     passage = OsisPassage("John.A.B\.C\.D")
-    assert(passage.identifier.segments[0] == "John")
-    assert(passage.identifier[0] == "John") #shortcut
-    assert(passage.identifier.segments[1] == "A")
-    assert(passage.identifier[1] == "A") #shortcut
-    assert(passage.identifier.segments[2] == "B.C.D")
-    assert(passage.identifier[2] == "B.C.D") #shortcut
+    assert(passage.identifier[0] == "John")
+    assert(passage.identifier[1] == "A")
+    assert(passage.identifier[2] == "B.C.D")
     
     # Try different ways of passing in kwargs
     passage = OsisPassage(
@@ -1292,8 +1239,8 @@ if __name__ == "__main__":
     assert(str(passage) == "John.2.1!a")
     
     passage = OsisPassage(
-        identifier = OsisPassage.SegmentList("John.2.1"),
-        subidentifier = OsisPassage.SegmentList(
+        identifier = SegmentList("John.2.1"),
+        subidentifier = SegmentList(
             segments = ["a"]
         )
     )
@@ -1307,23 +1254,22 @@ if __name__ == "__main__":
     
     # Test subidentifier
     passage = OsisPassage("John.3.16!b")
-    assert(passage.subidentifier.segments[0] == "b")
-    assert(passage.subidentifier[0] == "b") #shortcut
-    passage.subidentifier.segments[0] = "a"
+    assert(passage.subidentifier[0] == "b")
+    passage.subidentifier[0] = "a"
     assert("John.3.16!a" == str(passage))
     assert(str(passage.subidentifier) == "a")
-    passage.subidentifier.segments.append(1)
+    passage.subidentifier.append(1)
     assert(str(passage.subidentifier) == "a.1")
-    passage.subidentifier.segments.pop();
-    passage.subidentifier.segments.append("2");
+    passage.subidentifier.pop();
+    passage.subidentifier.append("2");
     assert(str(passage.subidentifier) == "a.2")
     
     
     
     # Test identifier
     assert(str(passage.identifier) == "John.3.16")
-    passage.identifier.segments.pop()
-    passage.identifier.segments.append("Hello World!")
+    passage.identifier.pop()
+    passage.identifier.append("Hello World!")
     assert(str(passage.identifier) == r"John.3.Hello\ World\!")
     
     passage = OsisPassage("John", subidentifier = "abc")
@@ -1345,7 +1291,6 @@ if __name__ == "__main__":
     
     # Test OsisID ############################################
     id = OsisID("Bible:John.1")
-    print id
     assert(str(id) == "Bible:John.1")
     assert(str(id.work) == "Bible")
     assert(str(id.passage) == "John.1")
@@ -1412,10 +1357,9 @@ if __name__ == "__main__":
     assert(ref.work.name == "KJV")
     assert(ref.start == ref.end)
     assert(ref.start is not ref.end) #due to deepcopy
-    assert(ref.start.passage.identifier.segments[0] == "John")
+    assert(ref.start.passage.identifier[0] == "John")
     assert("Bible.KJV:John.2" == str(ref))
     ref.end.passage.identifier[1] = "3" #John.3
-    print str(ref)
     assert("Bible.KJV:John.2-John.3" == str(ref))
     ref.start.grain.type = "cp"
     ref.start.grain.parameters.append(1)
@@ -1469,6 +1413,8 @@ if __name__ == "__main__":
     assert(str(ref.start.grain) == "cp[2]")
     assert(ref.start.grain.type == "cp")
     assert(ref.start.grain.parameters[0] == "2")
+    
+    print "All tests passed!"
     
     
     #exit()
