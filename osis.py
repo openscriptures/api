@@ -29,7 +29,8 @@ GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
 # THE SOFTWARE.
 
 __credits__ = [
-    "Weston Ruter"
+    "Weston Ruter",
+    # join me!
 ]
 __copyright__ = "Copyright 2010, Open Scriptures"
 __license__ = "GPL 2.0 or MIT"
