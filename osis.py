@@ -1,14 +1,15 @@
 # -*- coding: utf8 -*-
-# 
-# osis.py: Module for repesenting OSIS objects (osisIDs, osisRefs, etc)
-# Latest: http://github.com/openscriptures/api/blob/master/osis.py
-# 
-# Copyright (C) 2010 OpenScriptures.org contributors
-# Dual licensed under the MIT or GPL Version 2 licenses.
-# 
-# MIT License (appears below): http://creativecommons.org/licenses/MIT/
-# GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
-# 
+"""
+Module for repesenting OSIS objects (osisIDs, osisRefs, etc)
+
+Latest: http://github.com/openscriptures/api/blob/master/osis.py
+Copyright (C) 2010 OpenScriptures.org contributors
+Dual licensed under the MIT or GPL Version 2 licenses.
+MIT License: http://creativecommons.org/licenses/MIT/
+GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
+"""
+
+# MIT License:
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -27,6 +28,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+__credits__ = [
+    "Weston Ruter"
+]
+__copyright__ = "Copyright 2010, Open Scriptures"
+__license__ = "GPL 2.0 or MIT"
+__version_info__ = (0,1)
+__version__ = ".".join([str(part) for part in __version_info__ ])
+__status__ = "Development"
+
 
 # ----
 # TODO: When passing in objects to kwargs, make sure that we do deepcopy?
@@ -38,24 +48,17 @@
 # TODO: OsisWork may not be properly implemented according to the spec; it may need to just be a SegmentList (without escapes)
 #       Can work's languages contain hyphens?
 
-# TODO: Use more appropriate Exception classes?
-# TODO: Write DocString tests (replacing test suite at footer?)
-# TODO: use __unicode__ in addition to __str__?
 # TODO: potentially refactor out common patterns in classes; improve consistency
 # TODO: use better names than "unparsed_input" and "error_if_remainder" and "remaining_input_unparsed"
 
+
 import re
 import copy
+import sys
 from datetime import date, time, datetime
 
 #TODO: We need a way of creating/storing arbitrary canonical book orders
 #TODO: Include facility for converting natural language references into osisRefs?
-
-#BIBLE_BOOK_CODES = (
-#    "Gen", "Exod", "Lev", "Num", "Deut", "Josh", "Judg", "Ruth", "1Sam", "2Sam", "1Kgs", "2Kgs", "1Chr", "2Chr", "Ezra", "Neh", "Esth", "Job", "Ps", "Prov", "Eccl", "Song", "Isa", "Jer", "Lam", "Ezek", "Dan", "Hos", "Joel", "Amos", "Obad", "Jonah", "Mic", "Nah", "Hab", "Zeph", "Hag", "Zech", "Mal",
-#    "Matt", "Mark", "Luke", "John", "Acts", "Rom", "1Cor", "2Cor", "Gal", "Eph", "Phil", "Col", "1Thess", "2Thess", "1Tim", "2Tim", "Titus", "Phlm", "Heb", "Jas", "1Pet", "2Pet", "1John", "2John", "3John", "Jude", "Rev",
-#    "Bar", "AddDan", "PrAzar", "Bel", "SgThree", "Sus", "1Esd", "2Esd", "AddEsth", "EpJer", "Jdt", "1Macc", "2Macc", "3Macc", "4Macc", "PrMan", "Sir", "Tob", "Wis"
-#)
 
 #QUESTION: Do these even need to be defined here? Can an exhaustive list of orders be made?
 BOOK_ORDERS = {
@@ -71,7 +74,10 @@ BOOK_ORDERS = {
     }
 }
 
-#PROBLEM: Osis Book Names are biased toward the KJV tradition?
+# PROBLEM: Osis Book Names are biased toward the KJV tradition and they're
+# definitely English; this needs to be part of a separate canon-specific module
+# which also handles the parsing and generating of locale-specific references.
+
 BOOK_NAMES = {
     "Bible": {
         "Gen": "Genesis",
@@ -164,13 +170,133 @@ BOOK_NAMES = {
     }
 }
 
+class OsisError(Exception):
+    """Base class for errors in the OSIS module."""
+
+
 class OsisWork():
     """
     OSIS work such as Bible.Crossway.ESV.2001 (the part of an osisID before ‘:’)
     
     Organized into period-delimited segments increasingly narrowing in scope.
+    Currently, the required sequence is:
+     1. type
+     2. language
+     3. publisher
+     4. name
+     5. pub_date
+    All of these fields are optional.
+    
+    Note that this probably is the incorrect way to implement this model.
+    Namely, the name might need to go before publisher, and the whole OsisWork
+    may need to extend SegmentList just like OsisPassage does (twice).
+    The members listed above would then by dynamic getters which would retrieve
+    items from the segment list.
     
     Schema regexp: ((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?
+
+    >>> work = OsisWork("Bible")
+    >>> assert work.type == "Bible"
+    >>> assert str(work) == "Bible"
+    >>> assert "Bible" == str(work)
+    
+    >>> work = OsisWork("KJV")
+    >>> assert work.type is None
+    >>> assert work.name == "KJV"
+    >>> assert "KJV" == str(work)
+
+    >>> work = OsisWork("Bible.en.KJV")
+    >>> assert work.type == "Bible"
+    >>> assert work.language == "en"
+    >>> assert work.name == "KJV"
+    >>> assert "Bible.en.KJV" == str(work)
+    
+    >>> work = OsisWork("Bible.en.KJV.1611")
+    >>> assert work.language == "en"
+    >>> assert work.name == "KJV"
+    >>> assert work.pub_date.year == 1611
+    >>> assert "Bible.en.KJV.1611" == str(work)
+    
+    >>> work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
+    >>> assert work.type == "Bible"
+    >>> assert work.language == "en"
+    >>> assert work.publisher == "ChurchOfEngland"
+    >>> assert work.name == "KJV"
+    >>> assert work.pub_date.year == 1611
+    >>> assert "Bible.en.ChurchOfEngland.KJV.1611" == str(work)
+    >>> work.publisher = None
+    >>> work.name = "Steph"
+    >>> work.pub_date = work.pub_date.replace(year = 1500)
+    >>> assert "Bible.en.Steph.1500" == str(work)
+    
+    >>> work = OsisWork("KJV.1611.06.07")
+    >>> assert work.name == "KJV"
+    >>> assert work.pub_date.year == 1611
+    >>> assert work.pub_date.month == 6
+    >>> assert work.pub_date.day == 7
+    >>> assert work.pub_date.isoformat() == "1611-06-07T00:00:00"
+    >>> assert "KJV.1611.06.07" == str(work)
+    
+    >>> work = OsisWork("KJV.1611.06.07.235930")
+    >>> assert work.pub_date.isoformat() == "1611-06-07T23:59:30"
+    >>> assert "KJV.1611.06.07.235930" == str(work)
+    >>> work.pub_date = work.pub_date.replace(year=2001, hour=0)
+    >>> work.pub_date_granularity = 6
+    >>> assert "KJV.2001.06.07.005930" == str(work)
+    >>> work.pub_date_granularity = 5
+    >>> assert "KJV.2001.06.07.0059" == str(work)
+    >>> work.pub_date_granularity = 4
+    >>> assert "KJV.2001.06.07.00" == str(work)
+    >>> work.pub_date_granularity = 3
+    >>> assert "KJV.2001.06.07" == str(work)
+    >>> work.pub_date_granularity = 2
+    >>> assert "KJV.2001.06" == str(work)
+    >>> work.pub_date_granularity = 1
+    >>> assert "KJV.2001" == str(work)
+    >>> work.pub_date_granularity = 0
+    >>> assert "KJV" == str(work)
+    
+    >>> work = OsisWork()
+    >>> assert str(work) == ""
+    
+    >>> work = OsisWork(
+    ...     type = "Bible",
+    ...     language = "en-US",
+    ...     publisher = "Baz",
+    ...     name = "WMR",
+    ...     pub_date = datetime(1611, 1, 1),
+    ...     pub_date_granularity = 1 #year
+    ... )
+    >>> assert work.type == "Bible"
+    >>> assert work.language == "en-US"
+    >>> assert work.publisher == "Baz"
+    >>> assert work.name == "WMR"
+    >>> assert work.pub_date.year == 1611
+    >>> assert "Bible.en-US.Baz.WMR.1611" == str(work)
+    
+    >>> work = OsisWork("Bible.Baz.WMR.1611",
+    ...    language = "en-UK",
+    ...    pub_date = datetime(2000,2,1),
+    ...    pub_date_granularity = 2
+    ... )
+    >>> assert "Bible.en-UK.Baz.WMR.2000.02" == str(work)
+    
+    >>> work = OsisWork(
+    ...     type = "Bible",
+    ...     language = "en-UK",
+    ...     pub_date = "1992-01-03"
+    ... )
+    >>> assert "Bible.en-UK.1992.01.03" == str(work)
+    >>> work.pub_date_granularity = 2
+    >>> assert "Bible.en-UK.1992.01" == str(work)
+    
+    >>> work = OsisWork("Bible.en remainder1", error_if_remainder = False)
+    >>> assert str(work) == "Bible.en"
+    >>> try:
+    ...     work = OsisWork("Bible.en remainder2", error_if_remainder = True)
+    ...     raise Exception(True)
+    ... except:
+    ...     assert sys.exc_value is not True
     """
     
     # This list can be modified as needed to add support (recognition) for other types
@@ -183,6 +309,7 @@ class OsisWork():
         # ...
     ]
     
+    # Todo: It would be better if this was a SegmentList and that the various properties were dynamically discovered on get?
     def __init__(self, unparsed_input = "", **kwargs):
         self.type = None
         self.language = None
@@ -209,7 +336,7 @@ class OsisWork():
                 if not matches:
                     # Usually error if there is remaining that cannot be parsed
                     if error_if_remainder:
-                        raise Exception("Unable to parse string at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, unparsed_input))
+                        raise OsisError("Unable to parse string at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, unparsed_input))
                     # When OsisID invokes OsisWork, it will want to use the remaining
                     else:
                         break
@@ -220,7 +347,7 @@ class OsisWork():
                 # Handle case where no ending delimiter was found
                 if matches.group("delimiter") is None:
                     if error_if_remainder:
-                        raise Exception("Expected ending delimiter at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, unparsed_input))
+                        raise OsisError("Expected ending delimiter at '%s' for OsisWork: %s" % (self.remaining_input_unparsed, unparsed_input))
                     else:
                         break
             
@@ -288,11 +415,6 @@ class OsisWork():
                         if matches is None:
                             break
                         
-                        #setattr(
-                        #    self,
-                        #    format[0],
-                        #    format[2](matches)
-                        #)
                         for arg in format[2](matches):
                             self.pub_date_granularity += 1
                             datetime_args.append( arg )
@@ -312,7 +434,7 @@ class OsisWork():
                     
                 else:
                     #TODO: This should glob all unrecognized segments into an etc
-                    raise Exception("Unexpected segment: %s" % segment)
+                    raise OsisError("Unexpected segment: %s" % segment)
             
             # If only one slug, then it's the name
             if len(segment_slugs) == 1:
@@ -323,14 +445,12 @@ class OsisWork():
                 self.name = segment_slugs[1]
             # Otherwise, error!
             elif len(segment_slugs) != 0:
-                raise Exception("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
+                raise OsisError("Unexpected number of segment slugs (%d)! Only 2 are recognized.")
             
             # Now handle revision number, version number, and edition number?
         # end if not len(args)
         
         # Allow members to be passed in discretely
-        #for key in ('type', 'language', 'publisher', 'name', 'pub_date', 'pub_date_granularity'):
-        #setattr(self, key, kwargs[key])
         if kwargs.has_key('type'):
             self.type = str(kwargs['type'])
             
@@ -349,7 +469,7 @@ class OsisWork():
             else:
                 matches = re.match(r"(\d\d\d\d)-?(\d\d)?-?(\d\d)?[T ]?(\d\d)?:?(\d\d)?:?(\d\d)?$", str(kwargs['pub_date']))
                 if not matches:
-                    raise Exception("pub_date passed as a string must be in ISO format (e.g. YYYY-MM-DDTHH:MM:SS)")
+                    raise OsisError("pub_date passed as a string must be in ISO format (e.g. YYYY-MM-DDTHH:MM:SS)")
                 
                 # Retreive date values from match groups and determine granularity
                 self.pub_date_granularity = 0
@@ -369,7 +489,7 @@ class OsisWork():
         if kwargs.has_key('pub_date_granularity'):
             self.pub_date_granularity = int(kwargs['pub_date_granularity'])
     
-    
+    #NOTE: if OsisWork extends SegmentList, this obviously won't be necessary
     def get_segments(self):
         segments = [] #This should be a SegmentList; except segments can't have unescaped segments! i.e. language identifier
         
@@ -428,20 +548,17 @@ class OsisWork():
     def __nonzero__(self):
         return bool(str(self))
     
-    def __repr__(self): #TODO unicode instead?
+    def __repr__(self):
         return "%s<%s>" % (self.__class__.__name__, self)
-    def __str__(self): #TODO unicode instead?
+    def __unicode__(self):
         return ".".join(self.segments)
-
-
-
-    
-    
+    def __str__(self):
+        return unicode(self).encode('utf-8')
 
 
 class OsisPassage():
     """
-    OSIS passage such as Exodus.3.8 (i.e. without the work prefix)
+    OSIS passage such as Exodus.3.8: an osisID without the the work prefix.
     
     Organized into period-delimited segments increasingly narrowing in scope,
     followed by an optional sub-identifier which is work-specific. Segments
@@ -463,7 +580,76 @@ class OsisPassage():
     
     Schema Regexp:
     identifier: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
-    subidentifier: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
+    subidentifier: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+    
+    >>> passage = OsisPassage("John.3.16")
+    >>> assert len(passage.identifier) == 3
+    >>> assert "John.3.16" == str(passage)
+    
+    >>> passage = OsisPassage("John")
+    >>> assert len(passage.identifier) == 1
+    >>> passage.identifier.append("17")
+    >>> assert len(passage.identifier) == 2
+    >>> assert "John.17" == str(passage)
+    
+    >>> passage = OsisPassage("John.A.B\.C\.D")
+    >>> assert passage.identifier[0] == "John"
+    >>> assert passage.identifier[1] == "A"
+    >>> assert passage.identifier[2] == "B.C.D"
+    
+    >>> # Try different ways of passing in kwargs
+    >>> passage = OsisPassage(
+    ...     identifier = "John.2.1",
+    ...     subidentifier = "a"
+    ... )
+    >>> assert str(passage) == "John.2.1!a"
+    
+    >>> passage = OsisPassage(
+    ...     identifier = SegmentList("John.2.1"),
+    ...     subidentifier = SegmentList(
+    ...         segments = ["a"]
+    ...     )
+    ... )
+    >>> assert str(passage) == "John.2.1!a"
+    
+    >>> passage = OsisPassage(
+    ...     identifier = ["John", 2],
+    ...     subidentifier = ("a", "1")
+    ... )
+    >>> assert str(passage) == "John.2!a.1"
+    
+    >>> # Test subidentifier
+    >>> passage = OsisPassage("John.3.16!b")
+    >>> assert passage.subidentifier[0] == "b"
+    >>> passage.subidentifier[0] = "a"
+    >>> assert "John.3.16!a" == str(passage)
+    >>> assert str(passage.subidentifier) == "a"
+    >>> passage.subidentifier.append(1)
+    >>> assert str(passage.subidentifier) == "a.1"
+    >>> assert passage.subidentifier.pop() == 1
+    >>> passage.subidentifier.append("2");
+    >>> assert str(passage.subidentifier) == "a.2"
+    
+    >>> # Test identifier
+    >>> assert str(passage.identifier) == "John.3.16"
+    >>> assert passage.identifier.pop() == "16"
+    >>> passage.identifier.append("Hello World!")
+    >>> assert str(passage.identifier) == r"John.3.Hello\ World\!"
+    
+    >>> passage = OsisPassage("John", subidentifier = "abc")
+    >>> assert str(passage) == r"John!abc"
+    >>> assert str(passage.subidentifier) == r"abc"
+    
+    >>> passage = OsisPassage()
+    >>> assert str(passage) == ""
+    
+    >>> passage = OsisPassage("John.3!a remainder1", error_if_remainder = False)
+    >>> assert str(passage) == "John.3!a"
+    >>> try:
+    ...     passage = OsisPassage("John.3!a remainder2", error_if_remainder = True)
+    ...     raise Exception(True)
+    ... except:
+    ...     assert sys.exc_value is not True
     """    
     
     def __init__(self, unparsed_input = "", **kwargs):
@@ -483,7 +669,7 @@ class OsisPassage():
             
             # Handle case where no ending delimiter was found
             if error_if_remainder and len(self.remaining_input_unparsed) > 0:
-                raise Exception("Expected ending delimiter at '%s' for OsisPassage: %s" % (self.remaining_input_unparsed, unparsed_input))
+                raise OsisError("Expected ending delimiter at '%s' for OsisPassage: %s" % (self.remaining_input_unparsed, unparsed_input))
             
         else:
             self.identifier = SegmentList()
@@ -531,23 +717,21 @@ class OsisPassage():
     
     def __repr__(self):
         return "%s<%s>" % (self.__class__.__name__, self)
-    def __str__(self): #TODO unicode instead?
+    def __unicode__(self):
         repr = str(self.identifier)
         if len(self.subidentifier) > 0:
             repr += "!" + str(self.subidentifier)
         return repr
-    
+    def __str__(self):
+        return unicode(self).encode('utf-8')
 
-# Should this be prefixed by '_'?
+
 class SegmentList(list):
     """
-    Used for OsisPassage.identifier and OsisPassage.subidentifier
+    Used for OsisPassage.identifier and OsisPassage.subidentifier; also could be used by OsisWork if we merely disallowed escapes.
     """
     
     def __init__(self, unparsed_input = "", **kwargs):
-        # If this were written to inherit from list, then
-        # we'd need to optionally copy kwargs['segments']
-        #self.segments = []
         self.remaining_input_unparsed = ""
         error_if_remainder = kwargs.get('error_if_remainder', True)
         
@@ -563,7 +747,7 @@ class SegmentList(list):
                 if not matches:
                     # Usually error if there is remaining that cannot be parsed
                     if error_if_remainder:
-                        raise Exception("Unxpected string at '%s' in '%s' for SegmentList" % (self.remaining_input_unparsed, unparsed_input))
+                        raise OsisError("Unxpected string at '%s' in '%s' for SegmentList" % (self.remaining_input_unparsed, unparsed_input))
                     # When OsisID invokes OsisWork, it will want to use the remaining
                     else:
                         break
@@ -579,7 +763,7 @@ class SegmentList(list):
                 # Handle case where no ending delimiter was found
                 if matches.group("delimiter") is None:
                     if error_if_remainder:
-                        raise Exception("Expected ending delimiter at '%s' for SegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
+                        raise OsisError("Expected ending delimiter at '%s' for SegmentList: %s" % (self.remaining_input_unparsed, unparsed_input))
                     else:
                         break
         
@@ -590,13 +774,15 @@ class SegmentList(list):
     
     def __repr__(self):
         return "%s<%s>" % (self.__class__.__name__, self)
-    def __str__(self): #TODO __unicode__
+    def __unicode__(self):
         return ".".join(
             map(
                 lambda segment: re.sub(ur"(\W)", ur"\\\1", str(segment)),
                 self
             )
         )
+    def __str__(self):
+        return unicode(self).encode('utf-8')
 
 
 class OsisID():
@@ -607,7 +793,44 @@ class OsisID():
     Schema regexp:
     work: (((\p{L}|\p{N}|_)+)((\.(\p{L}|\p{N}|_)+)*)?:)?
     identifier: ((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?
-    subidentifier: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)? 
+    subidentifier: (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
+    
+    >>> id = OsisID("Bible:John.1")
+    >>> assert str(id) == "Bible:John.1"
+    >>> assert str(id.work) == "Bible"
+    >>> assert str(id.passage) == "John.1"
+    >>> assert id.passage.identifier[0] == "John"
+    
+    >>> id = OsisID("John.3!a")
+    >>> assert str(id.work) == ""
+    >>> assert str(id.passage) == "John.3!a"
+    >>> assert str(id.passage.subidentifier) == "a"
+    
+    >>> id = OsisID("Bible.en:")
+    >>> assert str(id) == "Bible.en:"
+    >>> assert str(id.work) == "Bible.en"
+    
+    >>> id = OsisID()
+    >>> assert str(id) == ""
+    >>> 
+    >>> id = OsisID("Bible.KJV:",
+    ...     passage = "John.3"
+    ... )
+    >>> assert str(id) == "Bible.KJV:John.3"
+    >>> id.work = OsisWork()
+    
+    >>> id = OsisID("John.3.16",
+    ...     work = "Bible.NIV"
+    ... )
+    >>> assert str(id) == "Bible.NIV:John.3.16"
+    >>> 
+    >>> id = OsisID(
+    ...     work = OsisWork("Bible.NIV"),
+    ...     passage = OsisPassage("John.3.16")
+    ... )
+    >>> assert str(id) == "Bible.NIV:John.3.16"
+    >>> id.work = OsisWork("Bible.KJV")
+    >>> assert str(id) == "Bible.KJV:John.3.16"
     """
     
     def __init__(self, unparsed_input = "", **kwargs):
@@ -623,7 +846,7 @@ class OsisID():
                     error_if_remainder = False
                 )
                 if not self.work.remaining_input_unparsed.startswith(":"):
-                    raise Exception("Not starting with a work")
+                    raise OsisError("Not starting with a work")
                 self.remaining_input_unparsed = self.work.remaining_input_unparsed[1:]
             except:
                 self.work = OsisWork()
@@ -636,7 +859,7 @@ class OsisID():
             self.remaining_input_unparsed = self.passage.remaining_input_unparsed
             
             if error_if_remainder and self.remaining_input_unparsed:
-                raise Exception("Remaining string not parsed at '%s' for OsisID: %s" % (self.remaining_input_unparsed, unparsed_input))
+                raise OsisError("Remaining string not parsed at '%s' for OsisID: %s" % (self.remaining_input_unparsed, unparsed_input))
         
         else:
             self.work = OsisWork()
@@ -675,7 +898,7 @@ class OsisID():
     
     def __repr__(self):
         return "%s<%s>" % (self.__class__.__name__, self)
-    def __str__(self): #TODO __unicode__ instead
+    def __unicode__(self):
         work_str = str(self.work)
         passage_str = str(self.passage)
         
@@ -687,7 +910,8 @@ class OsisID():
             return work_str + ":"
         else:
             return work_str + ":" + passage_str
-
+    def __str__(self):
+        return unicode(self).encode('utf-8')
 
 
 
@@ -706,6 +930,67 @@ class OsisRef():
     (\-((((\p{L}|\p{N}|_|(\\[^\s]))+)(\.(\p{L}|\p{N}|_|(\\[^\s]))*)*)+)
     (!((\p{L}|\p{N}|_|(\\[^\s]))+)((\.(\p{L}|\p{N}|_|(\\[^\s]))+)*)?)?
     (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?)?
+    
+    >>> ref = OsisRef("Bible.KJV:John.2")
+    >>> assert ref.work.type == "Bible"
+    >>> assert ref.work.name == "KJV"
+    >>> assert ref.start == ref.end
+    >>> assert ref.start is not ref.end #due to deepcopy
+    >>> assert ref.start.passage.identifier[0] == "John"
+    >>> assert "Bible.KJV:John.2" == str(ref)
+    >>> ref.end.passage.identifier[1] = "3" #John.3
+    >>> assert "Bible.KJV:John.2-John.3" == str(ref)
+    >>> ref.start.grain.type = "cp"
+    >>> ref.start.grain.parameters.append(1)
+    >>> assert str(ref.start) == "John.2@cp[1]"
+    
+    >>> ref2 = OsisRef(
+    ...     work = "Bible.KJV",
+    ...     start = "John.2@cp[1]",
+    ...     end = "John.3"
+    ... )   
+    >>> assert ref == ref2
+     
+    >>> ref3 = OsisRef("Bible.KJV:",
+    ...     start = OsisRef.Part(
+    ...         passage = OsisPassage(
+    ...             identifier = ["John", "2"]
+    ...         ),
+    ...         grain = OsisRef.Grain(
+    ...             type = "cp",
+    ...             parameters = [1]
+    ...         )
+    ...     ),
+    ...     end = OsisRef.Part("John.3")
+    ... )
+    >>> assert ref2 == ref3
+    
+    >>> assert ref3.start != ref3.end
+    >>> ref3.start.passage.identifier[1] = 3 #chapter
+    >>> ref3.end.grain = OsisRef.Grain("cp[1]")
+    >>> assert ref3.start == ref3.end
+    
+    >>> # In OsisRef, work is optional
+    >>> ref = OsisRef("John.1-John.1")
+    >>> assert "John.1" == str(ref) # collapses
+    >>> ref.end.passage.identifier[1] = 2
+    >>> assert "John.1-John.2" == str(ref) # uncollapses
+    >>> ref.work = OsisWork("Bible.KJV")
+    >>> assert "Bible.KJV:John.1-John.2" == str(ref)
+    
+    >>> # Try bad OsisRef
+    >>> try:
+    ...     ref = OsisRef("Bible.KJV:John.2.1!a:John.2.1!b  ")
+    ...     raise Exception(True)
+    ... except:
+    ...     assert sys.exc_value is not True
+    ... 
+    >>> ref = OsisRef("Bible:John.1@cp[2]-John.2@cp[3]")
+    >>> assert str(ref.work) == "Bible"
+    >>> assert str(ref.start.passage) == "John.1"
+    >>> assert str(ref.start.grain) == "cp[2]"
+    >>> assert ref.start.grain.type == "cp"
+    >>> assert ref.start.grain.parameters[0] == "2"
     """    
     
     def __init__(self, unparsed_input = "", **kwargs):
@@ -721,7 +1006,7 @@ class OsisRef():
                     error_if_remainder = False
                 )
                 if not self.work.remaining_input_unparsed.startswith(":"):
-                    raise Exception("Not starting with a work")
+                    raise OsisError("Not starting with a work")
                 self.remaining_input_unparsed = self.work.remaining_input_unparsed[1:]
             except:
                 self.work = OsisWork()
@@ -744,7 +1029,7 @@ class OsisRef():
                 self.end = copy.deepcopy(self.start)
             
             if error_if_remainder and self.remaining_input_unparsed:
-                raise Exception("Remaining string not parsed at '%s' for OsisRef: %s" % (self.remaining_input_unparsed, unparsed_input))
+                raise OsisError("Remaining string not parsed at '%s' for OsisRef: %s" % (self.remaining_input_unparsed, unparsed_input))
         else:
             self.work = OsisWork()
             self.start = OsisRef.Part()
@@ -767,7 +1052,6 @@ class OsisRef():
             else:
                 self.end = OsisRef.Part(str(kwargs['end']))
     
-
     def __lt__(self, other):
         return str(self) < str(other)
     def __le__(self, other):
@@ -787,7 +1071,7 @@ class OsisRef():
     def __nonzero__(self):
         return bool(str(self))
     
-    def __str__(self): #TODO __unicode__ instead
+    def __unicode__(self):
         work_str = str(self.work)
         start_str = str(self.start)
         end_str = str(self.end)
@@ -799,6 +1083,8 @@ class OsisRef():
         if start_str != end_str:
             s += "-" + end_str
         return s
+    def __str__(self):
+        return unicode(self).encode('utf-8')
     
     
     class Part():
@@ -806,6 +1092,16 @@ class OsisRef():
         Represents the start or end points of an osisRef.
         
         Contains an OsisPassage and OsisRef.Grain
+        
+        >>> ref_part = OsisRef.Part("John.3.16@s[love]")
+        >>> assert ref_part.passage.identifier[0] == "John"
+        >>> assert ref_part.passage.identifier[1] == "3"
+        >>> assert ref_part.passage.identifier[2] == "16"
+        >>> assert str(ref_part.passage) == "John.3.16"
+        
+        >>> assert ref_part.grain.type == "s"
+        >>> assert ref_part.grain.parameters[0] == "love"
+        >>> assert str(ref_part.grain) == "s[love]"
         """
         
         def __init__(self, unparsed_input = "", **kwargs):
@@ -831,7 +1127,7 @@ class OsisRef():
                     self.grain = OsisRef.Grain()
                 
                 if error_if_remainder and self.remaining_input_unparsed:
-                    raise Exception("Remaining string not parsed at '%s' for OsisRef.Part: %s" % (self.remaining_input_unparsed, unparsed_input))
+                    raise OsisError("Remaining string not parsed at '%s' for OsisRef.Part: %s" % (self.remaining_input_unparsed, unparsed_input))
             
             else:
                 self.passage = OsisPassage()
@@ -871,14 +1167,15 @@ class OsisRef():
             
         def __repr__(self):
             return "%s<%s>" % (self.__class__.__name__, self)
-        def __str__(self): #TODO __unicode__ instead
+        def __unicode__(self):
             passage_str = str(self.passage)
             grain_str = str(self.grain)
             if grain_str:
                 return passage_str + "@" + grain_str
             else:
                 return passage_str
-    
+        def __str__(self):
+            return unicode(self).encode('utf-8')
     
     # Should this be prefixed by '_'?
     class Grain():
@@ -891,7 +1188,11 @@ class OsisRef():
         the portion desired.”
         
         Schema regexp: (@(cp\[(\p{Nd})*\]|s\[(\p{L}|\p{N})+\](\[(\p{N})+\])?))?
-        TODO: Should "@" be included? Leaning toward not.
+        
+        >>> grain = OsisRef.Grain("cp[2]")
+        >>> assert grain.type == "cp"
+        >>> assert grain.parameters[0] == "2"
+        >>> assert str(grain) == "cp[2]"
         """
         
         FORMATS = (
@@ -941,14 +1242,14 @@ class OsisRef():
                     if match:
                         break
                 if not match:
-                    raise Exception("Unable to parse Grain: %s", unparsed_input)
+                    raise OsisError("Unable to parse Grain: %s", unparsed_input)
                 
                 self.type = match.group(1)
                 self.parameters.extend(match.groups()[1:])
                 
                 self.remaining_input_unparsed = self.remaining_input_unparsed[len(match.group(0)):]
                 if error_if_remainder and self.remaining_input_unparsed:
-                    raise Exception("Remaining string not parsed at '%s' for Grain: %s" % (self.remaining_input_unparsed, unparsed_input))
+                    raise OsisError("Remaining string not parsed at '%s' for Grain: %s" % (self.remaining_input_unparsed, unparsed_input))
             
             # Allow members to be passed in discretely
             if kwargs.has_key('type'):
@@ -977,14 +1278,15 @@ class OsisRef():
         
         def __repr__(self):
             return "%s<%s>" % (self.__class__.__name__, self)
-        def __str__(self): #TODO: __unicode__ instead?
+        def __unicode__(self):
             return self.type + "".join(
                 map(
                     lambda param: '[' +  str(param) +  ']',
                     self.parameters
                 )
             )
-    
+        def __str__(self):
+            return unicode(self).encode('utf-8')
 
 
 #### DEPRECATED!!! #####
@@ -992,6 +1294,9 @@ def parse_osis_ref(osis_ref_string):
     """
     DEPRECATED. Use OsisRef object instead?
     """
+    import sys
+    sys.stderr.write("The parse_osis_ref function is deprecated in favor of the OsisRef object!")
+    
     #TODO: This should instead return a list of OsisRef objects
     
     
@@ -1009,11 +1314,11 @@ def parse_osis_ref(osis_ref_string):
     """, re.VERBOSE)
     match = parser.match(osis_ref_string)
     if not match:
-        raise Exception("Unable to parse osisRef")
+        raise OsisError("Unable to parse osisRef")
     if not match.group('work_prefix') and not match.group('start_osis_id'):
-        raise Exception("Must have either work_prefix or osis_id")
+        raise OsisError("Must have either work_prefix or osis_id")
     if not match.group('start_osis_id') and match.group('end_osis_id'):
-        raise Exception("If having an end osisID, you must have a start.")
+        raise OsisError("If having an end osisID, you must have a start.")
     
     result = {
         'groups':match.groupdict(),
@@ -1056,7 +1361,7 @@ def parse_osis_ref(osis_ref_string):
             
             # Unrecognized 
             else:
-                raise Exception("Unexpected OSIS work prefix component: " + part)
+                raise OsisError("Unexpected OSIS work prefix component: " + part)
         
         # Get the osis_slug and publisher
         if len(slugs) == 1:
@@ -1065,7 +1370,7 @@ def parse_osis_ref(osis_ref_string):
             work_prefix['publisher'] = slugs[0]
             work_prefix['osis_slug'] = slugs[1]
         elif len(slugs) != 0:
-            raise Exception("Unexpected slug count in OSIS work prefix: " + str(work_prefix))
+            raise OsisError("Unexpected slug count in OSIS work prefix: " + str(work_prefix))
         
         result['work_prefix'] = work_prefix
     
@@ -1083,7 +1388,7 @@ def parse_osis_ref(osis_ref_string):
     if match.group('start_osis_id'):
         id_match = parser.match(match.group('start_osis_id'))
         if not id_match:
-            raise Exception("Invalid osisID: " + match.group('start_osis_id'))
+            raise OsisError("Invalid osisID: " + match.group('start_osis_id'))
         result['start_osis_id'] = id_match.groupdict()
         result['start_osis_id']['original'] = match.group('start_osis_id')
         
@@ -1091,7 +1396,7 @@ def parse_osis_ref(osis_ref_string):
     if match.group('end_osis_id'):
         id_match = parser.match(match.group('end_osis_id'))
         if not id_match:
-            raise Exception("Invalid osisID: " + match.group('end_osis_id'))
+            raise OsisError("Invalid osisID: " + match.group('end_osis_id'))
         result['end_osis_id'] = id_match.groupdict()
         result['end_osis_id']['original'] = match.group('end_osis_id')
     
@@ -1102,359 +1407,5 @@ def parse_osis_ref(osis_ref_string):
 
 # Tests
 if __name__ == "__main__":
-    import sys
-    
-    # Test OsisWork ########################################
-    
-    work = OsisWork("Bible")
-    assert(work.type == "Bible")
-    assert(str(work) == "Bible")
-    assert("Bible" == str(work))
-    
-    work = OsisWork("KJV")
-    assert(work.type is None)
-    assert(work.name == "KJV")
-    assert("KJV" == str(work))
-    
-    work = OsisWork("Bible.en")
-    assert(work.type == "Bible")
-    assert(work.language == "en")
-    assert("Bible.en" == str(work))
-    
-    work = OsisWork("Bible.en.KJV")
-    assert(work.type == "Bible")
-    assert(work.language == "en")
-    assert(work.name == "KJV")
-    assert("Bible.en.KJV" == str(work))
-    
-    work = OsisWork("Bible.en.KJV.1611")
-    assert(work.language == "en")
-    assert(work.name == "KJV")
-    assert(work.pub_date.year == 1611)
-    assert("Bible.en.KJV.1611" == str(work))
-    
-    work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
-    assert(work.type == "Bible")
-    assert(work.language == "en")
-    assert(work.publisher == "ChurchOfEngland")
-    assert(work.name == "KJV")
-    assert(work.pub_date.year == 1611)
-    assert("Bible.en.ChurchOfEngland.KJV.1611" == str(work))
-    work.publisher = None
-    work.name = "Steph"
-    work.pub_date = work.pub_date.replace(year = 1500)
-    assert("Bible.en.Steph.1500" == str(work))
-    
-    work = OsisWork("KJV.1611.06.07")
-    #work = OsisWork("KJV.1611-06-07")
-    assert(work.name == "KJV")
-    assert(work.pub_date.year == 1611)
-    assert(work.pub_date.month == 6)
-    assert(work.pub_date.day == 7)
-    assert(work.pub_date.isoformat() == "1611-06-07T00:00:00")
-    assert("KJV.1611.06.07" == str(work))
-    
-    work = OsisWork("KJV.1611.06.07.235930")
-    assert(work.pub_date.isoformat() == "1611-06-07T23:59:30")
-    assert("KJV.1611.06.07.235930" == str(work))
-    work.pub_date = work.pub_date.replace(year=2001, hour=0)
-    work.pub_date_granularity = 6
-    assert("KJV.2001.06.07.005930" == str(work))
-    work.pub_date_granularity = 5
-    assert("KJV.2001.06.07.0059" == str(work))
-    work.pub_date_granularity = 4
-    assert("KJV.2001.06.07.00" == str(work))
-    work.pub_date_granularity = 3
-    assert("KJV.2001.06.07" == str(work))
-    work.pub_date_granularity = 2
-    assert("KJV.2001.06" == str(work))
-    work.pub_date_granularity = 1
-    assert("KJV.2001" == str(work))
-    work.pub_date_granularity = 0
-    assert("KJV" == str(work))
-    
-    work = OsisWork()
-    assert(str(work) == "")
-    
-    work = OsisWork(
-        type = "Bible",
-        language = "en-US",
-        publisher = "Baz",
-        name = "WMR",
-        pub_date = datetime(1611, 1, 1),
-        pub_date_granularity = 1 #year
-    )
-    assert(work.type == "Bible")
-    assert(work.language == "en-US")
-    assert(work.publisher == "Baz")
-    assert(work.name == "WMR")
-    assert(work.pub_date.year == 1611)
-    assert("Bible.en-US.Baz.WMR.1611" == str(work))
-    
-    work = OsisWork("Bible.Baz.WMR.1611",
-        language = "en-UK",
-        pub_date = datetime(2000,2,1),
-        pub_date_granularity = 2
-    )
-    assert("Bible.en-UK.Baz.WMR.2000.02" == str(work))
-    
-    work = OsisWork(
-        type = "Bible",
-        language = "en-UK",
-        pub_date = "1992-01-03"
-    )
-    assert("Bible.en-UK.1992.01.03" == str(work))
-    work.pub_date_granularity = 2
-    assert("Bible.en-UK.1992.01" == str(work))
-    
-    work = OsisWork("Bible.en remainder1", error_if_remainder = False)
-    assert(str(work) == "Bible.en")
-    try:
-        work = OsisWork("Bible.en remainder2", error_if_remainder = True)
-        raise Exception(True)
-    except:
-        assert(sys.exc_value is not True)
-    
-    # Test OsisPassage ########################################
-    passage = OsisPassage("John.3.16")
-    assert(len(passage.identifier) == 3)
-    assert("John.3.16" == str(passage))
-    
-    passage = OsisPassage("John")
-    assert(len(passage.identifier) == 1)
-    passage.identifier.append("17")
-    assert(len(passage.identifier) == 2)
-    assert("John.17" == str(passage))
-    
-    passage = OsisPassage("John.A.B\.C\.D")
-    assert(passage.identifier[0] == "John")
-    assert(passage.identifier[1] == "A")
-    assert(passage.identifier[2] == "B.C.D")
-    
-    # Try different ways of passing in kwargs
-    passage = OsisPassage(
-        identifier = "John.2.1",
-        subidentifier = "a"
-    )
-    assert(str(passage) == "John.2.1!a")
-    
-    passage = OsisPassage(
-        identifier = SegmentList("John.2.1"),
-        subidentifier = SegmentList(
-            segments = ["a"]
-        )
-    )
-    assert(str(passage) == "John.2.1!a")
-    
-    passage = OsisPassage(
-        identifier = ["John", 2],
-        subidentifier = ("a", "1")
-    )
-    assert(str(passage) == "John.2!a.1")
-    
-    # Test subidentifier
-    passage = OsisPassage("John.3.16!b")
-    assert(passage.subidentifier[0] == "b")
-    passage.subidentifier[0] = "a"
-    assert("John.3.16!a" == str(passage))
-    assert(str(passage.subidentifier) == "a")
-    passage.subidentifier.append(1)
-    assert(str(passage.subidentifier) == "a.1")
-    passage.subidentifier.pop();
-    passage.subidentifier.append("2");
-    assert(str(passage.subidentifier) == "a.2")
-    
-    
-    
-    # Test identifier
-    assert(str(passage.identifier) == "John.3.16")
-    passage.identifier.pop()
-    passage.identifier.append("Hello World!")
-    assert(str(passage.identifier) == r"John.3.Hello\ World\!")
-    
-    passage = OsisPassage("John", subidentifier = "abc")
-    assert(str(passage) == r"John!abc")
-    assert(str(passage.subidentifier) == r"abc")
-    
-    passage = OsisPassage()
-    assert(str(passage) == "")
-    
-    passage = OsisPassage("John.3!a remainder1", error_if_remainder = False)
-    assert(str(passage) == "John.3!a")
-    try:
-        passage = OsisPassage("John.3!a remainder2", error_if_remainder = True)
-        raise Exception(True)
-    except:
-        assert(sys.exc_value is not True)
-    
-    
-    
-    # Test OsisID ############################################
-    id = OsisID("Bible:John.1")
-    assert(str(id) == "Bible:John.1")
-    assert(str(id.work) == "Bible")
-    assert(str(id.passage) == "John.1")
-    assert(id.passage.identifier[0] == "John")
-    
-    id = OsisID("John.3!a")
-    assert(str(id.work) == "")
-    assert(str(id.passage) == "John.3!a")
-    assert(str(id.passage.subidentifier) == "a")
-    
-    id = OsisID("Bible.en:")
-    assert(str(id) == "Bible.en:")
-    assert(str(id.work) == "Bible.en")
-    
-    id = OsisID()
-    assert(str(id) == "")
-    
-    id = OsisID("Bible.KJV:",
-        passage = "John.3"
-    )
-    assert(str(id) == "Bible.KJV:John.3")
-    id.work = OsisWork()
-    
-    id = OsisID("John.3.16",
-        work = "Bible.NIV"
-    )
-    assert(str(id) == "Bible.NIV:John.3.16")
-    
-    id = OsisID(
-        work = OsisWork("Bible.NIV"),
-        passage = OsisPassage("John.3.16")
-    )
-    assert(str(id) == "Bible.NIV:John.3.16")
-    id.work = OsisWork("Bible.KJV")
-    assert(str(id) == "Bible.KJV:John.3.16")
-    
-    #assert(passage.book == "John")
-    #assert(passage.chapter == "3")
-    #assert(passage.verse == "16")
-    
-    # OsisRef ############################################
-    
-    # OsisRef.Grain
-    grain = OsisRef.Grain("cp[2]")
-    assert(grain.type == "cp")
-    assert(grain.parameters[0] == "2")
-    assert(str(grain) == "cp[2]")
-    
-    # OsisRef.Part
-    ref_part = OsisRef.Part("John.3.16@s[love]")
-    assert(ref_part.passage.identifier[0] == "John")
-    assert(ref_part.passage.identifier[1] == "3")
-    assert(ref_part.passage.identifier[2] == "16")
-    assert(str(ref_part.passage) == "John.3.16")
-    
-    assert(ref_part.grain.type == "s")
-    assert(ref_part.grain.parameters[0] == "love")
-    assert(str(ref_part.grain) == "s[love]")
-    
-    
-    # OsisRef
-    ref = OsisRef("Bible.KJV:John.2")
-    assert(ref.work.type == "Bible")
-    assert(ref.work.name == "KJV")
-    assert(ref.start == ref.end)
-    assert(ref.start is not ref.end) #due to deepcopy
-    assert(ref.start.passage.identifier[0] == "John")
-    assert("Bible.KJV:John.2" == str(ref))
-    ref.end.passage.identifier[1] = "3" #John.3
-    assert("Bible.KJV:John.2-John.3" == str(ref))
-    ref.start.grain.type = "cp"
-    ref.start.grain.parameters.append(1)
-    assert(str(ref.start) == "John.2@cp[1]")
-    
-    ref2 = OsisRef(
-        work = "Bible.KJV",
-        start = "John.2@cp[1]",
-        end = "John.3"
-    )   
-    assert(ref == ref2)
-    
-    ref3 = OsisRef("Bible.KJV:",
-        start = OsisRef.Part(
-            passage = OsisPassage(
-                identifier = ["John", "2"]
-            ),
-            grain = OsisRef.Grain(
-                type = "cp",
-                parameters = [1]
-            )
-        ),
-        end = OsisRef.Part("John.3")
-    )
-    assert(ref2 == ref3)
-    
-    assert(ref3.start != ref3.end)
-    ref3.start.passage.identifier[1] = 3 #chapter
-    ref3.end.grain = OsisRef.Grain("cp[1]")
-    assert(ref3.start == ref3.end)
-    
-    # In OsisRef, work is optional
-    ref = OsisRef("John.1-John.1")
-    assert("John.1" == str(ref)) # collapses
-    ref.end.passage.identifier[1] = 2
-    assert("John.1-John.2" == str(ref)) # uncollapses
-    ref.work = OsisWork("Bible.KJV")
-    assert("Bible.KJV:John.1-John.2" == str(ref))
-    
-    # Try bad OsisRef
-    try:
-        ref = OsisRef("Bible.KJV:John.2.1!a:John.2.1!b  ")
-        raise Exception(True)
-    except:
-        assert(sys.exc_value is not True)
-    
-    
-    ref = OsisRef("Bible:John.1@cp[2]-John.2@cp[3]")
-    assert(str(ref.work) == "Bible")
-    assert(str(ref.start.passage) == "John.1")
-    assert(str(ref.start.grain) == "cp[2]")
-    assert(ref.start.grain.type == "cp")
-    assert(ref.start.grain.parameters[0] == "2")
-    
-    print "All tests passed!"
-    
-    
-    #exit()
-    #bad_works = [
-    #    "@#$%^&",
-    #    "Bible.Hello World Bible Society.NonExistantTranslation"
-    #]
-    #for work in bad_works:
-    #    try:
-    #        obj = OsisWork(work)
-    #        raise Exception(True)
-    #    except:
-    #        assert(sys.exc_value is not True)
-    #
-    #exit()
-    #
-    ## Test full osisID
-    ##osisIDRegExp = re.compile(OSIS_ID_REGEX, re.VERBOSE | re.UNICODE)
-    #ok_passages = [
-    #    "John.1",
-    #    "John.1.13",
-    #    "John.A.13",
-    #    "John.A.B.C.D",
-    #    "John.A.B\.C\.D",
-    #    "Bible:John.1",
-    #    "Bible.KJV:John.1",
-    #    "Bible.KJV.1611:John.1",
-    #    "Bible.ChurchOfEngland.KJV.1611:John.1",
-    #    
-    #    "Esth.1.1!note.c",
-    #    "Esth.1.1!crossReference"
-    #]
-    #for passage in ok_passages:
-    #    passage = OsisPassage(passage)
-    #    
-    #    #matches = osisIDRegExp.match(id)
-    #    #assert(matches)
-    #    #print id, matches.groups()
-    #
-    ## Test OsisID object
-    
-    
-    # Test osisRef (extended)
+    import doctest
+    doctest.testmod()
