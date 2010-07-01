@@ -5,19 +5,25 @@ from django.shortcuts import render_to_response
 from django.http import *
 from api.models import *
 from django.db.models import Q
-from api import osis
+from api.osis import *
 import json
 
 def passage(request, osis_ref):
-    osis_ref_parsed = osis.parse_osis_ref(osis_ref)
+    osis_ref = OsisRef(osis_ref)
     
     #TODO: We should be able to query non-main works as well (i.e. where variants_for_work != None)
     
     try:
-        kwargs = osis_ref_parsed['work_prefix']
-        #If variant ID provided, only query the main work
-        kwargs['variants_for_work'] = None
-        work = Work.objects.get(**kwargs)
+        # This needs a lot of improvements
+        # TODO: osis_slug is used in DB model, but 'name' is used by osis.py;
+        # TODO: make Work.objects.getByOsisWork()
+        work_dict_query = {}
+        for key in ('publisher', 'language', 'publish_date', 'type'):
+            if osis_ref.work.__dict__[key] is not None:
+                work_dict_query[key] = osis_ref.work.__dict__[key]
+        if 'name' in osis_ref.work.__dict__: # 
+            work_dict_query['osis_slug'] = osis_ref.work.__dict__['name']
+        work = Work.objects.get(**work_dict_query)
         
         #main_work = work
         #if work.variants_for_work is not None:
@@ -27,8 +33,8 @@ def passage(request, osis_ref):
     
     # TODO: This is too simplistic; we have more complex passage slugs that we want to support
     data = work.lookup_osis_ref(
-        osis_ref_parsed['groups']['start_osis_id'],
-        osis_ref_parsed['groups']['end_osis_id']
+        str(osis_ref.start),
+        str(osis_ref.end),
     )
     
     # Define the output formats and their templates

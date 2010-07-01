@@ -7,6 +7,11 @@ Copyright (C) 2010 OpenScriptures.org contributors
 Dual licensed under the MIT or GPL Version 2 licenses.
 MIT License: http://creativecommons.org/licenses/MIT/
 GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
+
+= CHANGELOG =
+== 1.1.1 (2010-06-30) ==
+ - Using `publish_date` and `publish_date_granularity` instead of `pub_date*`
+ 
 """
 
 # MIT License:
@@ -34,7 +39,7 @@ __credits__ = [
 ]
 __copyright__ = "Copyright 2010, Open Scriptures"
 __license__ = "GPL 2.0 or MIT"
-__version_info__ = (0,1)
+__version_info__ = (0,1,1)
 __version__ = ".".join([str(part) for part in __version_info__ ])
 __status__ = "Development"
 
@@ -185,7 +190,7 @@ class OsisWork():
      2. language
      3. publisher
      4. name
-     5. pub_date
+     5. publish_date
     All of these fields are optional.
     
     Note that this probably is the incorrect way to implement this model.
@@ -215,7 +220,7 @@ class OsisWork():
     >>> work = OsisWork("Bible.en.KJV.1611")
     >>> assert work.language == "en"
     >>> assert work.name == "KJV"
-    >>> assert work.pub_date.year == 1611
+    >>> assert work.publish_date.year == 1611
     >>> assert "Bible.en.KJV.1611" == str(work)
     
     >>> work = OsisWork("Bible.en.ChurchOfEngland.KJV.1611")
@@ -223,38 +228,38 @@ class OsisWork():
     >>> assert work.language == "en"
     >>> assert work.publisher == "ChurchOfEngland"
     >>> assert work.name == "KJV"
-    >>> assert work.pub_date.year == 1611
+    >>> assert work.publish_date.year == 1611
     >>> assert "Bible.en.ChurchOfEngland.KJV.1611" == str(work)
     >>> work.publisher = None
     >>> work.name = "Steph"
-    >>> work.pub_date = work.pub_date.replace(year = 1500)
+    >>> work.publish_date = work.publish_date.replace(year = 1500)
     >>> assert "Bible.en.Steph.1500" == str(work)
     
     >>> work = OsisWork("KJV.1611.06.07")
     >>> assert work.name == "KJV"
-    >>> assert work.pub_date.year == 1611
-    >>> assert work.pub_date.month == 6
-    >>> assert work.pub_date.day == 7
-    >>> assert work.pub_date.isoformat() == "1611-06-07T00:00:00"
+    >>> assert work.publish_date.year == 1611
+    >>> assert work.publish_date.month == 6
+    >>> assert work.publish_date.day == 7
+    >>> assert work.publish_date.isoformat() == "1611-06-07T00:00:00"
     >>> assert "KJV.1611.06.07" == str(work)
     
     >>> work = OsisWork("KJV.1611.06.07.235930")
-    >>> assert work.pub_date.isoformat() == "1611-06-07T23:59:30"
+    >>> assert work.publish_date.isoformat() == "1611-06-07T23:59:30"
     >>> assert "KJV.1611.06.07.235930" == str(work)
-    >>> work.pub_date = work.pub_date.replace(year=2001, hour=0)
-    >>> work.pub_date_granularity = 6
+    >>> work.publish_date = work.publish_date.replace(year=2001, hour=0)
+    >>> work.publish_date_granularity = 6
     >>> assert "KJV.2001.06.07.005930" == str(work)
-    >>> work.pub_date_granularity = 5
+    >>> work.publish_date_granularity = 5
     >>> assert "KJV.2001.06.07.0059" == str(work)
-    >>> work.pub_date_granularity = 4
+    >>> work.publish_date_granularity = 4
     >>> assert "KJV.2001.06.07.00" == str(work)
-    >>> work.pub_date_granularity = 3
+    >>> work.publish_date_granularity = 3
     >>> assert "KJV.2001.06.07" == str(work)
-    >>> work.pub_date_granularity = 2
+    >>> work.publish_date_granularity = 2
     >>> assert "KJV.2001.06" == str(work)
-    >>> work.pub_date_granularity = 1
+    >>> work.publish_date_granularity = 1
     >>> assert "KJV.2001" == str(work)
-    >>> work.pub_date_granularity = 0
+    >>> work.publish_date_granularity = 0
     >>> assert "KJV" == str(work)
     
     >>> work = OsisWork()
@@ -265,30 +270,30 @@ class OsisWork():
     ...     language = "en-US",
     ...     publisher = "Baz",
     ...     name = "WMR",
-    ...     pub_date = datetime(1611, 1, 1),
-    ...     pub_date_granularity = 1 #year
+    ...     publish_date = datetime(1611, 1, 1),
+    ...     publish_date_granularity = 1 #year
     ... )
     >>> assert work.type == "Bible"
     >>> assert work.language == "en-US"
     >>> assert work.publisher == "Baz"
     >>> assert work.name == "WMR"
-    >>> assert work.pub_date.year == 1611
+    >>> assert work.publish_date.year == 1611
     >>> assert "Bible.en-US.Baz.WMR.1611" == str(work)
     
     >>> work = OsisWork("Bible.Baz.WMR.1611",
     ...    language = "en-UK",
-    ...    pub_date = datetime(2000,2,1),
-    ...    pub_date_granularity = 2
+    ...    publish_date = datetime(2000,2,1),
+    ...    publish_date_granularity = 2
     ... )
     >>> assert "Bible.en-UK.Baz.WMR.2000.02" == str(work)
     
     >>> work = OsisWork(
     ...     type = "Bible",
     ...     language = "en-UK",
-    ...     pub_date = "1992-01-03"
+    ...     publish_date = "1992-01-03"
     ... )
     >>> assert "Bible.en-UK.1992.01.03" == str(work)
-    >>> work.pub_date_granularity = 2
+    >>> work.publish_date_granularity = 2
     >>> assert "Bible.en-UK.1992.01" == str(work)
     
     >>> work = OsisWork("Bible.en remainder1", error_if_remainder = False)
@@ -316,8 +321,8 @@ class OsisWork():
         self.language = None
         self.publisher = None
         self.name = None
-        self.pub_date = None
-        self.pub_date_granularity = 6 #1=year, 2=year-month, 3=year-month-day, 4=year-month-day-hour, etc.
+        self.publish_date = None
+        self.publish_date_granularity = 6 #1=year, 2=year-month, 3=year-month-day, 4=year-month-day-hour, etc.
         
         self.remaining_input_unparsed = ""
         error_if_remainder = kwargs.get('error_if_remainder', True)
@@ -373,9 +378,9 @@ class OsisWork():
                     segment_slugs.append(segments.pop(0))
                 
                 # The Date/Time
-                elif self.pub_date is None and re.match(r'^\d\d\d\d$', segments[0]):
+                elif self.publish_date is None and re.match(r'^\d\d\d\d$', segments[0]):
                     datetime_args = []
-                    self.pub_date_granularity = 0
+                    self.publish_date_granularity = 0
                     
                     datetime_segment_formats = (
                         (
@@ -417,7 +422,7 @@ class OsisWork():
                             break
                         
                         for arg in format[2](matches):
-                            self.pub_date_granularity += 1
+                            self.publish_date_granularity += 1
                             datetime_args.append( arg )
                         
                         # Segment was parsed, so pop it and see if we continue
@@ -431,7 +436,7 @@ class OsisWork():
                         while len(datetime_args) <3: # Yes, I ♥ you!
                             datetime_args.append(1)
                         
-                        self.pub_date = datetime(*datetime_args) #spread!
+                        self.publish_date = datetime(*datetime_args) #spread!
                     
                 else:
                     #TODO: This should glob all unrecognized segments into an etc
@@ -464,31 +469,31 @@ class OsisWork():
         if kwargs.has_key('name'):
             self.name = str(kwargs['name'])
             
-        if kwargs.has_key('pub_date'):
-            if isinstance(kwargs['pub_date'], datetime):
-                self.pub_date = kwargs['pub_date']
+        if kwargs.has_key('publish_date'):
+            if isinstance(kwargs['publish_date'], datetime):
+                self.publish_date = kwargs['publish_date']
             else:
-                matches = re.match(r"(\d\d\d\d)-?(\d\d)?-?(\d\d)?[T ]?(\d\d)?:?(\d\d)?:?(\d\d)?$", str(kwargs['pub_date']))
+                matches = re.match(r"(\d\d\d\d)-?(\d\d)?-?(\d\d)?[T ]?(\d\d)?:?(\d\d)?:?(\d\d)?$", str(kwargs['publish_date']))
                 if not matches:
-                    raise OsisError("pub_date passed as a string must be in ISO format (e.g. YYYY-MM-DDTHH:MM:SS)")
+                    raise OsisError("publish_date passed as a string must be in ISO format (e.g. YYYY-MM-DDTHH:MM:SS)")
                 
                 # Retreive date values from match groups and determine granularity
-                self.pub_date_granularity = 0
+                self.publish_date_granularity = 0
                 groups = []
                 for group in matches.groups():
                     if group is None:
                         break
                     groups.append(int(group))
-                    self.pub_date_granularity += 1
+                    self.publish_date_granularity += 1
                 
                 # datetime objects must have values for
                 while len(groups) <3: # Yes, I ♥ you indeed!
                     groups.append(1)
-                self.pub_date = datetime(*groups)
-                #self.pub_date = datetime.strptime(str(kwargs['pub_date']), "%Y-%m-%dT%H:%M:%S.Z")
+                self.publish_date = datetime(*groups)
+                #self.publish_date = datetime.strptime(str(kwargs['publish_date']), "%Y-%m-%dT%H:%M:%S.Z")
         
-        if kwargs.has_key('pub_date_granularity'):
-            self.pub_date_granularity = int(kwargs['pub_date_granularity'])
+        if kwargs.has_key('publish_date_granularity'):
+            self.publish_date_granularity = int(kwargs['publish_date_granularity'])
     
     #NOTE: if OsisWork extends SegmentList, this obviously won't be necessary
     def get_segments(self):
@@ -506,14 +511,14 @@ class OsisWork():
         if self.name is not None:
             segments.append(self.name)
         
-        if self.pub_date is not None:
+        if self.publish_date is not None:
             date_parts = (
                 'year',
                 'month',
                 'day',
             )
-            for i in range(0, min( len(date_parts), self.pub_date_granularity )):
-                segments.append( "%02d" % getattr(self.pub_date, date_parts[i]) )
+            for i in range(0, min( len(date_parts), self.publish_date_granularity )):
+                segments.append( "%02d" % getattr(self.publish_date, date_parts[i]) )
             
             time_parts = (
                 'hour',
@@ -521,9 +526,9 @@ class OsisWork():
                 'second'
             )
             time = ""
-            for i in range(0, min( len(time_parts), self.pub_date_granularity - 3 )):
-                #segments.append( "%02d" % getattr(self.pub_date, time_parts[i]) )
-                time += "%02d" % getattr(self.pub_date, time_parts[i])
+            for i in range(0, min( len(time_parts), self.publish_date_granularity - 3 )):
+                #segments.append( "%02d" % getattr(self.publish_date, time_parts[i]) )
+                time += "%02d" % getattr(self.publish_date, time_parts[i])
             if time != "":
                 segments.append(time)
         return segments
@@ -859,6 +864,7 @@ class OsisID():
             )
             self.remaining_input_unparsed = self.passage.remaining_input_unparsed
             
+            # TODO: Should ":" be optionally included?
             if error_if_remainder and self.remaining_input_unparsed:
                 raise OsisError("Remaining string not parsed at '%s' for OsisID: %s" % (self.remaining_input_unparsed, unparsed_input))
         
