@@ -3,7 +3,7 @@
 Module for repesenting OSIS objects (osisIDs, osisRefs, etc)
 
 Latest: http://github.com/openscriptures/api/blob/master/osis.py
-Copyright (C) 2010 OpenScriptures.org contributors
+Copyright (C) 2010 Open Scriptures <openscriptures.org> contributors
 Dual licensed under the MIT or GPL Version 2 licenses.
 MIT License: http://creativecommons.org/licenses/MIT/
 GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
@@ -37,7 +37,7 @@ __credits__ = [
     "Weston Ruter",
     # join me!
 ]
-__copyright__ = "Copyright 2010, Open Scriptures"
+__copyright__ = "Copyright 2010, Open Scriptures <openscriptures.org> contributors"
 __license__ = "GPL 2.0 or MIT"
 __version_info__ = (0,1,1)
 __version__ = ".".join([str(part) for part in __version_info__ ])
