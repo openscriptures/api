@@ -1,0 +1,5 @@
+Please see http://github.com/openscriptures/api/commits/master/
+
+Or run the following command to get author list with commit count:
+
+git log | perl -e '%authors = (); while(<STDIN>){ if(/Author: (.+)/){ $authors{$1}++; }  } foreach $author (sort { $authors{$b} <=> $authors{$a} } keys %authors){ printf("%s, %d commits\n", $author, $authors{$author}); }'
