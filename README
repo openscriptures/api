@@ -1,1 +1,11 @@
 Core models and APIs for accessing scriptural linked data.
+
+Copyright (C) 2010 OpenScriptures.org contributors
+
+Dual licensed under the MIT or GPL Version 2 licenses.
+MIT License: http://creativecommons.org/licenses/MIT/
+GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
