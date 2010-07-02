@@ -9,7 +9,7 @@ MIT License: http://creativecommons.org/licenses/MIT/
 GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
 
 CHANGELOG
- - 1.1.1 (2010-06-30)
+ - 0.1.1 (2010-06-30)
    * Using `publish_date` and `publish_date_granularity` instead of `pub_date*`
  
 """
