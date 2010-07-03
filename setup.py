@@ -1,9 +1,11 @@
 from setuptools import setup, find_packages
 
 
+VERSION = __import__('openscriptures_texts').__version__
+
 setup (
     name='openscriptures_texts',
-    version = '0.0.1',
+    version = VERSION,
     author='Weston Ruter',
     author_email='weston@somewhere.org',
     url='git@github.com/openscriptures/openscriptures_texts.git',

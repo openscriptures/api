@@ -1,0 +1,23 @@
+.. _ref-openscriptures_texts-index:
+
+====================
+OpenScriptures Texts
+====================
+
+``openscriptures_texts`` is ...
+
+Contents:
+
+.. toctree::
+   :maxdepth: 2
+
+   gettingstarted
+   reference
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`

@@ -1,0 +1,76 @@
+.. _ref-openscriptures_texts-reference:
+
+
+=========
+Reference
+=========
+
+This document covers various components of ``openscriptures_texts``.
+
+
+Templates
+=========
+
+Templates should be placed in an ``openscriptures_texts/`` folder at the root
+of one of your template search paths.
+
+
+base.html
+---------
+
+
+passage.xhtml
+-------------
+
+
+passage.xml
+-----------
+
+
+passage_debug.html
+------------------
+
+
+Modules
+=======
+
+
+``openscriptures_texts.models``
+-------------------------------
+
+.. automodule:: openscriptures_texts.models
+   :members:
+   :undoc-members:
+
+
+``openscriptures_texts.osis``
+-----------------------------
+
+.. automodule:: openscriptures_texts.osis
+   :members:
+   :undoc-members:
+
+
+``openscriptures_texts.rest``
+-----------------------------
+
+.. automodule:: openscriptures_texts.rest
+   :members:
+   :undoc-members:
+
+
+``openscriptures_texts.rest.views``
+-----------------------------------
+
+.. automodule:: openscriptures_texts.rest.views
+   :members:
+   :undoc-members:
+
+
+``openscriptures_texts.views``
+------------------------------
+
+.. automodule:: openscriptures_texts.views
+   :members:
+   :undoc-members:
+
