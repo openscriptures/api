@@ -1,23 +1,17 @@
 from django.http import HttpResponse
-from django.shortcuts import render_to_response
-from models import *
-import sys, os
+from openscriptures_texts.models import Work, Token
+
 
 def index(request):
-
-    #return render_to_response('polls/detail.html', {'poll': p})
-    
-    
-    html = "<html><head><style>span:hover {background:yellow; outline:solid 1px red;}</style></head><body>"
-    
+    html = "<html><head><style>span:hover {background:yellow; outline:solid 1px red;}</style></head><body>"    
     html += "<h1>Works</h1>"
     for work in Work.objects.all():
         html += work.title + "<br />"
-    
+
     #html += "<h1>Structures</h1>"
     #for ts in TokenStructure.objects.all():
     #    html += ts.osis_id + "<br />"
-    
+
     html += "<h1>Tokens</h1>"
     for token in Token.objects.all():
         if token.type == Token.WHITESPACE:
@@ -29,8 +23,8 @@ def index(request):
             html += "<span id='t" + str(token.pk) + "'>"
             html += token.data
             html += "</span>"
-    
+
     html += "</body></html>"
-    
+
     #html = "<html><body>It is now %s.</body></html>" % now
     return HttpResponse(html)

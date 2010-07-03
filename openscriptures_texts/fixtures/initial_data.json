@@ -1,6 +1,6 @@
 [
   {
-    "model": "api.server",
+    "model": "openscriptures_texts.server",
     "pk": 1,
     "fields": {
 		"is_self": true,
@@ -10,7 +10,7 @@
 	
 	
   {
-    "model": "api.language",
+    "model": "openscriptures_texts.language",
     "pk": "eng",
     "fields": {
 		"name": "English",
@@ -18,7 +18,7 @@
     }
   },
   {
-    "model": "api.language",
+    "model": "openscriptures_texts.language",
     "pk": "hbo",
     "fields": {
 		"name": "Hebrew",
@@ -26,7 +26,7 @@
     }
   },
   {
-    "model": "api.language",
+    "model": "openscriptures_texts.language",
     "pk": "oar",
     "fields": {
 		"name": "Aramaic",
@@ -34,7 +34,7 @@
     }
   },
   {
-    "model": "api.language",
+    "model": "openscriptures_texts.language",
     "pk": "grc",
     "fields": {
 		"name": "Greek",
@@ -45,7 +45,7 @@
   
   
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 1,
     "fields": {
 		"name": "Public Domain",
@@ -54,7 +54,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 2,
     "fields": {
 		"name": "Creative Commons Attribution 3.0",
@@ -63,7 +63,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 3,
     "fields": {
 		"name": "Creative Commons Attribution-No Derivative Works 3.0",
@@ -72,7 +72,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 4,
     "fields": {
 		"name": "Creative Commons Attribution-Noncommercial-No Derivative Works 3.0",
@@ -81,7 +81,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 5,
     "fields": {
 		"name": "Creative Commons Attribution-Noncommercial 3.0",
@@ -90,7 +90,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 6,
     "fields": {
 		"name": "Creative Commons Attribution-Noncommercial-Share Alike 3.0",
@@ -99,7 +99,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 7,
     "fields": {
 		"name": "Creative Commons Attribution-Share Alike 3.0",
@@ -108,7 +108,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 8,
     "fields": {
 		"name": "MIT License",
@@ -117,7 +117,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 9,
     "fields": {
 		"name": "GNU Free Documentation License",
@@ -126,7 +126,7 @@
     }
   },
   {
-    "model": "api.license",
+    "model": "openscriptures_texts.license",
     "pk": 10,
     "fields": {
 		"name": "Fair Use",

@@ -73,8 +73,7 @@ __version__ = ".".join([str(part) for part in __version_info__ ])
 
 import re
 import copy
-import sys
-from datetime import date, time, datetime
+from datetime import datetime
 
 #TODO: We need a way of creating/storing arbitrary canonical book orders
 #TODO: Include facility for converting natural language references into osisRefs?
@@ -453,6 +452,7 @@ class OsisWork():
                     
                 else:
                     #TODO: This should glob all unrecognized segments into an etc
+                    # BUG: ``segment`` is undefined here...
                     raise OsisError("Unexpected segment: %s" % segment)
             
             # If only one slug, then it's the name

@@ -1,7 +1,5 @@
-from django.conf.urls.defaults import *
-from models import *
-import re
-import string
+from django.conf.urls.defaults import patterns
+
 
 # osis module can define a parser, osisRef object
 

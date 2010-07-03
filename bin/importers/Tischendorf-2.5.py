@@ -9,11 +9,11 @@ work2_variant_bit = 0b00000010
 import sys, string, os, re, unicodedata, urllib, zipfile, StringIO, datetime
 from django.core.management import setup_environ
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../')) #There's probably a better way of doing this
-from openscriptures import settings
+from django.conf import settings
 setup_environ(settings)
-from openscriptures.api.models import *
-from openscriptures.api.importers import import_helpers
-from openscriptures.api import osis
+from openscriptures_texts.models import *
+from openscriptures_texts.importers import import_helpers
+from openscriptures_texts import osis
 
 # Abort if MS has already been added (or --force not supplied)
 import_helpers.abort_if_imported(work1_id)

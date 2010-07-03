@@ -1,12 +1,11 @@
 # coding: utf8 #
 
-from django.http import HttpResponse
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import render_to_response
-from django.http import *
-from api.models import *
-from django.db.models import Q
-from api.osis import *
-import json
+
+from openscriptures_texts.models import Work, Structure
+from openscriptures_texts.osis import OsisRef
+
 
 def passage(request, osis_ref):
     osis_ref = OsisRef(osis_ref)

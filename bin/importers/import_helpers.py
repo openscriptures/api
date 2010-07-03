@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import re, unicodedata, os, urllib, sys
-from openscriptures.api.models import *
-from openscriptures.api import osis
+import os
+import sys
+import urllib
+import unicodedata
+
+from openscriptures_texts.models import Work, Token
+from openscriptures_texts import osis
+
 
 def normalize_token(data):
     "Normalize to Unicode NFC, strip out all diacritics, apostrophies, and make lower-case."
