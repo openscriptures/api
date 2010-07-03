@@ -2,5 +2,5 @@ Please see http://github.com/openscriptures/api/commits/master/
 
 Or run the accompanying shell (batch) script to list authors with commit count:
 
-./authors.sh
+./bin/authors.sh
 
