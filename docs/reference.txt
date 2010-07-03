@@ -34,6 +34,21 @@ passage_debug.html
 Modules
 =======
 
+``openscriptures_texts.management.commands.load_tischendorf``
+-------------------------------------------------------------
+
+.. automodule:: openscriptures_texts.management.commands.load_tischendorf
+   :members:
+   :undoc-members:
+
+
+``openscriptures_texts.management.import_helpers``
+--------------------------------------------------
+
+.. automodule:: openscriptures_texts.management.import_helpers
+   :members:
+   :undoc-members:
+
 
 ``openscriptures_texts.models``
 -------------------------------

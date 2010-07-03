@@ -29,9 +29,9 @@ def download_resource(source_url):
             urllib.urlretrieve(source_url, os.path.basename(source_url))
 
 
-def abort_if_imported(workID):
+def abort_if_imported(workID, force=False):
     "Shortcut see if the provided work ID already exists in the system; if so, then abort unless --force command line argument is supplied"
-    if(len(Work.objects.filter(id=workID)) and not (len(sys.argv)>1 and sys.argv[1] == '--force')):
+    if(len(Work.objects.filter(id=workID)) and not force):
         print " (already imported; pass --force option to delete existing work and reimport)"
         exit()
 
@@ -43,11 +43,12 @@ def delete_work(workID):
         work = Work.objects.get(id = workID)
     except:
         return False
-    
-    assert(work.variants_for_work is None)
+
+    if work.variants_for_work is not None:
+        delete_work(work.variants_for_work.id)
     
     # Clear all links to unified text
-    Token.objects.filter(work = workID).update(unified_token=None).delete() #Does this need to be two linces?
+    Token.objects.filter(work = workID).delete() #Does this need to be two linces?
     
     # Delete all variant works
     Work.objects.filter(variants_for_work = workID).delete()
@@ -64,3 +65,12 @@ def get_book_code_args():
         if arg in osis.BIBLE_BOOK_CODES:
             book_codes.append(arg)
     return book_codes
+
+def close_structure(type, bookTokens, structs):
+    if structs.has_key(type):
+        assert(structs[type].start_token is not None)
+        if structs[type].end_token is None:
+            structs[type].end_token = bookTokens[-1]
+        structs[type].save()
+        del structs[type]
+

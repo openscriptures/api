@@ -45,5 +45,20 @@ Hook up ``openscriptures_texts`` to your URLconf:
     )
 
 
+Seeding Database
+================
+
+Install the schema and then run ``load_tischendorf`` to get some data in the
+database::
+
+    ./manage.py load_tischendorf Jude
+
+If you want to load the entire dataset::
+
+    ./manage.py load_tischendorf --force
+
+Where the ``--force`` flag will delete the previously loaded work.
+
+
 
 .. _pip: http://pip.openplans.org/
