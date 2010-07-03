@@ -39,7 +39,9 @@ MIDDLEWARE_CLASSES = (
 )
 
 TEMPLATE_DIRS = (
-    ('%s/templates' % (os.path.dirname(__file__)))
+    ('%s/templates' % (os.path.dirname(__file__))),
+    'django.template.loaders.filesystem.load_template_source',
+    'django.template.loaders.app_directories.load_template_source',
 )
 
 INSTALLED_APPS = (
