@@ -1,1 +1,5 @@
 Django
+django-piston
+
+# for development / documentation / etc.
+sphinx
