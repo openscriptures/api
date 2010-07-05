@@ -1,7 +1,7 @@
 from django.conf.urls.defaults import *
 from django.contrib import admin
 
-from openscriptures_texts import urls as ost_urls
+from openscriptures_api_texts import urls as ost_urls
 
 
 admin.autodiscover()
