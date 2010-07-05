@@ -16,7 +16,7 @@ class WorkServer(models.Model):
 
     is_primary = models.BooleanField(_("Whether the server is canonical (primary) or not (mirror)"))
     work = models.ForeignKey('Work')
-    server = models.ForeignKey('Server')
+    server = models.ForeignKey(Server)
 
 
 #TODO: Should we have a WorkProperty model which allows arbitrary key/value pairs?

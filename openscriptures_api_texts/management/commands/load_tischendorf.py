@@ -62,12 +62,13 @@ from optparse import make_option
 
 from django.core.management.base import BaseCommand
 
-from openscriptures_texts import osis
-from openscriptures_texts.management.import_helpers import abort_if_imported
-from openscriptures_texts.management.import_helpers import close_structure
-from openscriptures_texts.management.import_helpers import delete_work
-from openscriptures_texts.management.import_helpers import download_resource
-from openscriptures_texts.models import Work, Token, Structure, Language, License, WorkServer, Server
+from openscriptures_api import osis
+from openscriptures_api_texts.management.import_helpers import abort_if_imported
+from openscriptures_api_texts.management.import_helpers import close_structure
+from openscriptures_api_texts.management.import_helpers import delete_work
+from openscriptures_api_texts.management.import_helpers import download_resource
+from openscriptures_api_texts.models import Work, Token, Structure, WorkServer
+from openscriptures_api.models import Language, License, Server
 
 
 # TODO: Some of this might be better defined as SETTING

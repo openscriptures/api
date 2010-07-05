@@ -6,8 +6,8 @@ import sys
 import urllib
 import unicodedata
 
-from openscriptures_texts.models import Work, Token
-from openscriptures_texts import osis
+from openscriptures_api_texts.models import Work, Token
+from openscriptures_api import osis
 
 
 def normalize_token(data):
