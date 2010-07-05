@@ -3,8 +3,9 @@
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import render_to_response
 
-from openscriptures_texts.models import Work, Structure
-from openscriptures_texts.osis import OsisRef
+from openscriptures_api_texts.models import Work, Structure
+from openscriptures_api.osis import OsisRef
+
 
 
 def passage(request, osis_ref):
