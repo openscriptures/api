@@ -52,6 +52,8 @@ INSTALLED_APPS = (
     'django.contrib.admin',
     
     # apps for this sample project
-    "openscriptures_texts",
+    "openscriptures_api",
+    "openscriptures_api_texts",
+    #"openscriptures_api_morphs",
 )
 
