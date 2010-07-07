@@ -68,7 +68,7 @@ class Command(BaseCommand):
 #    in the CCT file matches the physical book, so there's a tweak below to prefer it.
 ################################################################################
 
-    def bp5_to_unicode(bp5_word):
+    def bp5_to_unicode(self, bp5_word):
         "Convert a word from Robinson & Pierpont's ASCII format to unicode"
         # we know about all of these character translations - anything else is an error
         table = u' ' * 65 + u'ΑΒΧΔΕΦΓΗΙ ΚΛΜΝΟΠΨΡΣΤΥΣΩΞΘΖ' + u' ' * 6 + u'αβχδεφγηι κλμνοπψρστυςωξθζ' + ' ' * 133
@@ -76,7 +76,7 @@ class Command(BaseCommand):
         assert(u' ' not in res)
         return res
     
-    def read_bp5_file(book):
+    def read_bp5_file(self, book):
         """Read a book in BP5 format from BP5_FILE and turn it into a list of chapters,
         each of which is a list of verses, each of which is a list of words, each of
         which is a tuple starting with the unicode word and followed by one or more strongs
@@ -138,7 +138,7 @@ class Command(BaseCommand):
                     word_match = word_re.match(verse)
                     assert(word_match)
                     verse = verse[word_match.end():]
-                    word.append(bp5_to_unicode(word_match.group(1)))
+                    word.append(self.bp5_to_unicode(word_match.group(1)))
                     while True:
                         number_match = number_re.match(verse)
                         parsing_match = parsing_re.match(verse)
@@ -155,7 +155,7 @@ class Command(BaseCommand):
     
         return clean_chapters
     
-    def cct_to_unicode(bp5_word):
+    def cct_to_unicode(self, bp5_word):
         """Convert a word from Robinson & Pierpont's modified betacode format to unicode, and
         return it along with a plain old un-accented, lowercase version for later comparison with BP5"""
     
@@ -253,7 +253,7 @@ class Command(BaseCommand):
         assert(not re.match(u'.*[\(\)/\\\^\+\|]', res1))
         return (res1, res2)
     
-    def read_cct_file(book):
+    def read_cct_file(self, book):
         """Read a book in CCT format from CCT_FILE and turn it into a list of chapters,
         each of which is a list of verses, each of which is a list of accented words and
         punctuation marks.
@@ -285,7 +285,7 @@ class Command(BaseCommand):
     
             # build the verse
             line = re.sub(r"([,.:;])", r" \1", line)
-            curr_verse = [cct_to_unicode(word) for word in line.strip().split()]
+            curr_verse = [self.cct_to_unicode(word) for word in line.strip().split()]
     
             # append chapters and verses
             if chap != len(chapters):
@@ -315,10 +315,10 @@ class Command(BaseCommand):
         
         books = []
         for book_name in book_names:
-            bp5_chapters = read_bp5_file(book_name)
+            bp5_chapters = self.read_bp5_file(book_name)
             print bp5_chapters[0][0]
             print ' '.join(word[0] for word in bp5_chapters[0][0])
-            cct_chapters = read_cct_file(book_name)
+            cct_chapters = self.read_cct_file(book_name)
             print ' '.join(word[1] for word in cct_chapters[0][0])
             assert(len(bp5_chapters) == len(cct_chapters))
             books.append((bp5_chapters, cct_chapters))
@@ -397,6 +397,24 @@ class Command(BaseCommand):
         abort_if_imported(WORK1_ID, options["force"])
 
         # Download the source file
+        if(not os.path.exists('greek_byzantine_2005_parsed_punc_utf8.txt')):
+            self.prepare_texts()
+
+        # Create the work objects
+        work = self.create_work()
+
+        # Get the subset of OSIS book codes provided on command line
+        limited_book_codes = []
+        for arg in args:
+            id_parts = arg.split(".")
+            if id_parts[0] in osis.BOOK_ORDERS["Bible"]["KJV"]:
+                limited_book_codes.append(id_parts[0])
+        book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
+        if len(limited_book_codes) > 0:
+            book_codes = limited_book_codes
+            
+        # NOTE: Now up to line 220 of Tischendorf importer
+
 
 ### ORIGINAL FILE BELOW ###
 
@@ -408,21 +426,7 @@ if(not os.path.exists('greek_byzantine_2005_parsed_punc_utf8.txt')):
     execfile('greek_byzantine_2005_parsed.prepare_data.py')
 
 import_helpers.delete_work(msID)
-msWork = Work(
-    id           = msID,
-    title        = "Byzantine/Majority Text (2005)",
-    description  = "Parsed with punctuation, accents and breathings",
-    abbreviation = 'Byz-2005',
-    language     = Language('grc'),
-    type         = 'Bible',
-    osis_slug    = 'Byzantine',
-    publish_date = date(2005, 1, 1),
-    originality  = 'manuscript-edition',
-    creator      = "Maurice A. Robinson and William G. Pierpont.",
-    url          = "http://www.byztxt.com/download/BYZ05CCT.ZIP",
-    license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
-)
-msWork.save()
+
 
 # The followig regular epression identifies the parts of the following line:
 #40N	1	1		10	Βίβλος G976 N-NSF γενέσεως G1078 N-GSF Ἰησοῦ G2424 N-GSM χριστοῦ G5547 N-GSM , υἱοῦ G5207 N-GSM Δαυίδ G1138 N-PRI , υἱοῦ G5207 N-GSM Ἀβραάμ G11 N-PRI .
