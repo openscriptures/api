@@ -1,0 +1,91 @@
+.. _ref-texts-reference:
+
+
+=========
+Reference
+=========
+
+This document covers various components of ``texts``.
+
+
+Templates
+=========
+
+Templates should be placed in an ``texts/`` folder at the root
+of one of your template search paths.
+
+
+base.html
+---------
+
+
+passage.xhtml
+-------------
+
+
+passage.xml
+-----------
+
+
+passage_debug.html
+------------------
+
+
+Modules
+=======
+
+``texts.management.commands.load_tischendorf``
+----------------------------------------------
+
+.. automodule:: texts.management.commands.load_tischendorf
+   :members:
+   :undoc-members:
+
+
+``texts.management.import_helpers``
+-----------------------------------
+
+.. automodule:: texts.management.import_helpers
+   :members:
+   :undoc-members:
+
+
+``texts.models``
+----------------
+
+.. automodule:: texts.models
+   :members:
+   :undoc-members:
+
+
+``texts.osis``
+--------------
+
+.. automodule:: texts.osis
+   :members:
+   :undoc-members:
+
+
+``texts.rest``
+--------------
+
+.. automodule:: texts.rest
+   :members:
+   :undoc-members:
+
+
+``texts.rest.views``
+--------------------
+
+.. automodule:: texts.rest.views
+   :members:
+   :undoc-members:
+
+
+``texts.views``
+---------------
+
+.. automodule:: texts.views
+   :members:
+   :undoc-members:
+

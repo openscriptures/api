@@ -1,0 +1,140 @@
+[
+  {
+    "model": "core.server",
+    "pk": 1,
+    "fields": {
+		"is_self": true,
+		"base_url": "/"
+    }
+  },	
+	
+	
+  {
+    "model": "core.language",
+    "pk": "eng",
+    "fields": {
+		"name": "English",
+		"direction": "ltr"
+    }
+  },
+  {
+    "model": "core.language",
+    "pk": "hbo",
+    "fields": {
+		"name": "Hebrew",
+		"direction": "rtl"
+    }
+  },
+  {
+    "model": "core.language",
+    "pk": "oar",
+    "fields": {
+		"name": "Aramaic",
+		"direction": "rtl"
+    }
+  },
+  {
+    "model": "core.language",
+    "pk": "grc",
+    "fields": {
+		"name": "Greek",
+		"direction": "ltr"
+    }
+  },
+  
+  
+  
+  {
+    "model": "core.license",
+    "pk": 1,
+    "fields": {
+		"name": "Public Domain",
+		"abbreviation": "PD",
+		"url": "http://creativecommons.org/licenses/publicdomain/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 2,
+    "fields": {
+		"name": "Creative Commons Attribution 3.0",
+		"abbreviation": "CC-BY-3.0",
+		"url": "http://creativecommons.org/licenses/by/3.0/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 3,
+    "fields": {
+		"name": "Creative Commons Attribution-No Derivative Works 3.0",
+		"abbreviation": "CC-BY-ND-3.0",
+		"url": "http://creativecommons.org/licenses/by-nd/3.0/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 4,
+    "fields": {
+		"name": "Creative Commons Attribution-Noncommercial-No Derivative Works 3.0",
+		"abbreviation": "CC-BY-NC-ND-3.0",
+		"url": "http://creativecommons.org/licenses/by-nc-nd/3.0/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 5,
+    "fields": {
+		"name": "Creative Commons Attribution-Noncommercial 3.0",
+		"abbreviation": "CC-BY-NC-3.0",
+		"url": "http://creativecommons.org/licenses/by-nc/3.0/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 6,
+    "fields": {
+		"name": "Creative Commons Attribution-Noncommercial-Share Alike 3.0",
+		"abbreviation": "CC-BY-NC-SA-3.0",
+		"url": "http://creativecommons.org/licenses/by-nc-sa/3.0/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 7,
+    "fields": {
+		"name": "Creative Commons Attribution-Share Alike 3.0",
+		"abbreviation": "CC-BY-SA-3.0",
+		"url": "http://creativecommons.org/licenses/by-sa/3.0/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 8,
+    "fields": {
+		"name": "MIT License",
+		"abbreviation": "CC-BY-SA-3.0",
+		"url": "http://creativecommons.org/licenses/MIT/"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 9,
+    "fields": {
+		"name": "GNU Free Documentation License",
+		"abbreviation": "GFDL",
+		"url": "http://www.gnu.org/copyleft/fdl.html"
+    }
+  },
+  {
+    "model": "core.license",
+    "pk": 10,
+    "fields": {
+		"name": "Fair Use",
+		"isolatable" : false,
+		"url": "http://en.wikipedia.org/wiki/Fair_use"
+    }
+  }
+  
+  
+  
+]
