@@ -284,8 +284,6 @@ class Structure(models.Model):
     what this needs to do is represent every non-w element in OSIS.
     """
 
-    #Todo: Is there a better way of doing these enumerations? Integers chosen
-    #      instead of a CharField to save space.
     #TODO: We need to be able to represent a lot more than this! To faithfully
     #      store OSIS, it will need be able to represent every feature.
     #      The various structure types each need to have a certain number of
@@ -300,54 +298,133 @@ class Structure(models.Model):
     # PTA: Because, unless you plan to change the key data, it is probably more
     #      more efficient and clean to have them just loaded into memory via
     #      constants.
-
-    BOOK_GROUP = 1
-    BOOK = 2
-    CHAPTER = 3
-    VERSE = 4
-    SECTION = 5
-    SUBSECTION = 6
-    TITLE = 7
-    PARAGRAPH = 8
-    LINE = 9
-    QUOTATION = 10
-    UNCERTAIN1 = 11
-    UNCERTAIN2 = 12
-    PAGE = 13
-    TYPE_NAMES = {
-        BOOK_GROUP: "bookGroup",
-        BOOK: "book",
-        CHAPTER: "chapter",
-        VERSE: "verse",
-        SECTION: "section",
-        SUBSECTION: "subSection",
-        TITLE: "title",
-        PARAGRAPH: "paragraph",
-        LINE: "line",
-        QUOTATION: "quotation",
-        UNCERTAIN1: "uncertain-1", #single square brackets around tokens
-        UNCERTAIN2: "uncertain-2", #double square brackets around tokens
-        PAGE: "page",
-        #TODO: KJV “supplied” phrase
-    }
+    
+    
     TYPE_CHOICES = (
-        (BOOK_GROUP, TYPE_NAMES[BOOK_GROUP]),
-        (BOOK, TYPE_NAMES[BOOK]),
-        (CHAPTER, TYPE_NAMES[CHAPTER]),
-        (VERSE, TYPE_NAMES[VERSE]),
-        (SECTION, TYPE_NAMES[SECTION]),
-        (SUBSECTION, TYPE_NAMES[SUBSECTION]),
-        (TITLE, TYPE_NAMES[TITLE]),
-        (PARAGRAPH, TYPE_NAMES[PARAGRAPH]),
-        (LINE, TYPE_NAMES[LINE]),
-        (QUOTATION, TYPE_NAMES[QUOTATION]),
-        (UNCERTAIN1, TYPE_NAMES[UNCERTAIN1]), #single square brackets around tokens
-        (UNCERTAIN2, TYPE_NAMES[UNCERTAIN2]), #double square brackets around tokens
-        (PAGE, TYPE_NAMES[PAGE]),
-        #...
+        
+        
+        # Element list
+        'a',
+        'abbr',
+        'actor',
+        'caption',
+        'castGroup',
+        'castItem',
+        'castList',
+        'catchWord',
+        'cell',
+        'chapter',
+        'closer',
+        'contributor',
+        'coverage',
+        'creator',
+        'date',
+        'description',
+        #'div', (no need for this since promoting div[type] to full element)
+        'divineName',
+        'figure',
+        'foreign',
+        'format',
+        'head',
+        'header',
+        'hi',
+        'identifier',
+        'index',
+        'inscription',
+        'item',
+        'l',
+        'label',
+        'language',
+        'lb',
+        'lg',
+        'list',
+        'mentioned',
+        #'milestone',      (n/a since all strucutres milestoned)
+        #'milestoneEnd',   (n/a since all strucutres milestoned)
+        #'milestoneStart', (n/a since all strucutres milestoned)
+        'name',
+        'note',
+        'osis',
+        'osisCorpus',
+        'osisText',
+        'p',
+        'publisher',
+        'q',
+        'rdg',
+        'rdgGrp',
+        'refSystem',
+        'reference',
+        'relation',
+        'revisionDesc',
+        'rights',
+        'role',
+        'roleDesc',
+        'row',
+        'salute',
+        'scope',
+        'seg',
+        'seq',
+        'signed',
+        'source',
+        'speaker',
+        'speech',
+        'subject',
+        'table',
+        'teiHeader',
+        'title',
+        'titlePage',
+        'transChange',
+        'type',
+        'verse',
+        'w',
+        'work',
+
+        # Promoting div[type] elements to elements of the name [type]
+        'acknowledgement',
+        'afterword',
+        'annotant',
+        'appendix',
+        'article',
+        'back',
+        'body',
+        'book',
+        'bookGroup',
+        #'chapter', (use existing element above)
+        'colophon',
+        'commentary',
+        'concordance',
+        'coverPage',
+        'dedication',
+        'devotional',
+        'entry',
+        'front',
+        'gazetteer',
+        'glossary',
+        'imprimatur',
+        #'index', (use existing elemen above)
+        'introduction',
+        'majorSection',
+        'map',
+        #'paragraph', (use existing element above)
+        'part',
+        'preface',
+        'section',
+        'subSection',
+        'summary',
+        #'titlePage', (use existing element above)
+        
+        # New elements
+        'page', # used to preserve page boundaries; TEI?
+        
+        # Proposed
+        'doubted', #level1 and level2? rdg?
     )
-    type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, db_index=True)
-    type_name = property(lambda self: self.TYPE_NAMES[self.type])
+    #type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, db_index=True)
+    #type_name = property(lambda self: self.TYPE_NAMES[self.type])
+    
+    # Question: what about using XMLField? Or storing attributes via GeoDjango.DictionaryField
+    element = models.CharField(max_length=32, blank=False, help_text=_("The name of the OSIS "), choices=TYPE_CHOICES)
+    #attributes = 
 
     osis_id = models.CharField(max_length=32, blank=True, db_index=True)
     work = models.ForeignKey(Work, help_text=_("Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it"))
@@ -464,17 +541,40 @@ class Structure(models.Model):
             return self.type
 
 
+class StructureAttribute(models.Model):
+    """
+    Basically an OSIS XML attribute for an associated structure which is an OSIS XML element.
+    
+    The attributes allowed for a Structure should be constrained based on the schema.
+    """
+    structure = models.ForeignKey(Structure, blank=False, help_text=_("The structure that the attributes are for"))
+    name = models.CharField(max_length=32, blank=False, help_text=_("The name of the attribute. May include a limited number of discrete XML namespace prefixes, e.g. 'xml:'."))
+    TYPE_CHOICES = (
+        ('string', "String"),
+        ('boolean', "Boolean"),
+        ('datetime', "Date/Time"),
+        ('langiage', "Language"),
+        ('osisRef', "osisRef"),
+        ('osisID', "osisID"),
+        ('ID', "ID"), #does this even make sense?
+    )
+    type = models.CharField(max_length=32, blank=False, choices=TYPE_CHOICES)
+    value = models.TextField()
+    
+    
+    
+
 # This is an alternative to the above and it allows non-consecutive tokens to be
 # included in a structure. But it incurs a huge amount of overhead. If
 # start_token is null, then it could be assumed that a structure's tokens should
 # be found via StructureToken
-class StructureToken(models.Model):
-    """
-    Non-consecutive tokens can be assigned to a Structure via this model.
-    """
-    structure = models.ForeignKey(Structure)
-    token = models.ForeignKey(Token)
-    is_marker = models.BooleanField(default=False, help_text=_("Whether the token is any such typographical feature which marks up the structure in the text, such as a quotation mark."))
+#class StructureToken(models.Model):
+#    """
+#    Non-consecutive tokens can be assigned to a Structure via this model.
+#    """
+#    structure = models.ForeignKey(Structure)
+#    token = models.ForeignKey(Token)
+#    is_marker = models.BooleanField(default=False, help_text=_("Whether the token is any such typographical feature which marks up the structure in the text, such as a quotation mark."))
 
 
 ################################################################################
