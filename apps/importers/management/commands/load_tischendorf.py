@@ -63,10 +63,10 @@ from optparse import make_option
 from django.core.management.base import BaseCommand
 
 from core import osis
-from texts.management.import_helpers import abort_if_imported
-from texts.management.import_helpers import close_structure
-from texts.management.import_helpers import delete_work
-from texts.management.import_helpers import download_resource
+from importers.management.import_helpers import abort_if_imported
+from importers.management.import_helpers import close_structure
+from importers.management.import_helpers import delete_work
+from importers.management.import_helpers import download_resource
 from texts.models import Work, Token, Structure, WorkServer
 from core.models import Language, License, Server
 
