@@ -143,6 +143,7 @@ INSTALLED_APPS = [
     # project
     "core",
     "texts",
+    "importers",
     # "morphs"
 ]
 
