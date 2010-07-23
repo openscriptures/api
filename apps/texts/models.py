@@ -203,7 +203,10 @@ class Token(models.Model):
     An atomic unit of text, such as a word, punctuation mark, or whitespace
     line break. Corresponds to OSIS w elements.
     """
+    
+    id = models.CharField(_("base32 sha-256 hash of [workID, passage, n-gram token context]"), max_length=52, primary_key=True)
 
+    # TODO: id needs to be a CharField for storing the Base32 hash
     data = models.CharField(_("Unicode data in Normalization Form C (NFC)"), max_length=255, db_index=True)
 
     WORD = 1
@@ -283,158 +286,136 @@ class Structure(models.Model):
     Represent supra-segmental structures in the text, various markup; really
     what this needs to do is represent every non-w element in OSIS.
     """
-
-    #TODO: We need to be able to represent a lot more than this! To faithfully
-    #      store OSIS, it will need be able to represent every feature.
-    #      The various structure types each need to have a certain number of
-    #      possible attribues? Idea: why not just store the OSIS element name in
-    #      one field, and then store all of the the attributes in another? When
-    #      serializing out the data as-is into XML, it would result in
-    #      overlapping hierarchies, so then whichever structure is desired could
-    #      then be presented.
-
-    # IDEA: Instead of making constants, typenames, and choices: why not make
-    #       another model called StructureType which is a ForeignKey?
-    # PTA: Because, unless you plan to change the key data, it is probably more
-    #      more efficient and clean to have them just loaded into memory via
-    #      constants.
     
-    
-    TYPE_CHOICES = (
-        
-        
+    ELEMENT_CHOICES = (
         # Element list
-        'a',
-        'abbr',
-        'actor',
-        'caption',
-        'castGroup',
-        'castItem',
-        'castList',
-        'catchWord',
-        'cell',
-        'chapter',
-        'closer',
-        'contributor',
-        'coverage',
-        'creator',
-        'date',
-        'description',
-        #'div', (no need for this since promoting div[type] to full element)
-        'divineName',
-        'figure',
-        'foreign',
-        'format',
-        'head',
-        'header',
-        'hi',
-        'identifier',
-        'index',
-        'inscription',
-        'item',
-        'l',
-        'label',
-        'language',
-        'lb',
-        'lg',
-        'list',
-        'mentioned',
+        ('a', 'a'),
+        ('abbr', 'abbr'),
+        ('actor', 'actor'),
+        ('caption', 'caption'),
+        ('castGroup', 'castGroup'),
+        ('castItem', 'castItem'),
+        ('castList', 'castList'),
+        ('catchWord', 'catchWord'),
+        ('cell', 'cell'),
+        ('chapter', 'chapter'),
+        ('closer', 'closer'),
+        ('contributor', 'contributor'),
+        ('coverage', 'coverage'),
+        ('creator', 'creator'),
+        ('date', 'date'),
+        ('description', 'description'),
+        #'div', (no need for this since promoting div[type] to full element named `type`)
+        ('divineName', 'divineName'),
+        ('figure', 'figure'),
+        ('foreign', 'foreign'),
+        ('format', 'format'),
+        ('head', 'head'),
+        ('header', 'header'),
+        ('hi', 'hi'),
+        ('identifier', 'identifier'),
+        ('index', 'index'),
+        ('inscription', 'inscription'),
+        ('item', 'item'),
+        ('l', 'l'),
+        ('label', 'label'),
+        ('language', 'language'),
+        ('lb', 'lb'),
+        ('lg', 'lg'),
+        ('list', 'list'),
+        ('mentioned', 'mentioned'),
         #'milestone',      (n/a since all strucutres milestoned)
         #'milestoneEnd',   (n/a since all strucutres milestoned)
         #'milestoneStart', (n/a since all strucutres milestoned)
-        'name',
-        'note',
-        'osis',
-        'osisCorpus',
-        'osisText',
-        'p',
-        'publisher',
-        'q',
-        'rdg',
-        'rdgGrp',
-        'refSystem',
-        'reference',
-        'relation',
-        'revisionDesc',
-        'rights',
-        'role',
-        'roleDesc',
-        'row',
-        'salute',
-        'scope',
-        'seg',
-        'seq',
-        'signed',
-        'source',
-        'speaker',
-        'speech',
-        'subject',
-        'table',
-        'teiHeader',
-        'title',
-        'titlePage',
-        'transChange',
-        'type',
-        'verse',
-        'w',
-        'work',
+        ('name', 'name'),
+        ('note', 'note'),
+        ('osis', 'osis'),
+        ('osisCorpus', 'osisCorpus'),
+        ('osisText', 'osisText'),
+        ('p', 'p'),
+        ('publisher', 'publisher'),
+        ('q', 'q'),
+        ('rdg', 'rdg'),
+        ('rdgGrp', 'rdgGrp'),
+        ('refSystem', 'refSystem'),
+        ('reference', 'reference'),
+        ('relation', 'relation'),
+        ('revisionDesc', 'revisionDesc'),
+        ('rights', 'rights'),
+        ('role', 'role'),
+        ('roleDesc', 'roleDesc'),
+        ('row', 'row'),
+        ('salute', 'salute'),
+        ('scope', 'scope'),
+        ('seg', 'seg'),
+        ('seq', 'seq'),
+        ('signed', 'signed'),
+        ('source', 'source'),
+        ('speaker', 'speaker'),
+        ('speech', 'speech'),
+        ('subject', 'subject'),
+        ('table', 'table'),
+        ('teiHeader', 'teiHeader'),
+        ('title', 'title'),
+        ('titlePage', 'titlePage'),
+        ('transChange', 'transChange'),
+        ('type', 'type'),
+        ('verse', 'verse'),
+        ('w', 'w'),
+        ('work', 'work'),
 
         # Promoting div[type] elements to elements of the name [type]
-        'acknowledgement',
-        'afterword',
-        'annotant',
-        'appendix',
-        'article',
-        'back',
-        'body',
-        'book',
-        'bookGroup',
+        ('acknowledgement', 'acknowledgement'),
+        ('afterword', 'afterword'),
+        ('annotant', 'annotant'),
+        ('appendix', 'appendix'),
+        ('article', 'article'),
+        ('back', 'back'),
+        ('body', 'body'),
+        ('book', 'book'),
+        ('bookGroup', 'bookGroup'),
         #'chapter', (use existing element above)
-        'colophon',
-        'commentary',
-        'concordance',
-        'coverPage',
-        'dedication',
-        'devotional',
-        'entry',
-        'front',
-        'gazetteer',
-        'glossary',
-        'imprimatur',
-        #'index', (use existing elemen above)
-        'introduction',
-        'majorSection',
-        'map',
+        ('colophon', 'colophon'),
+        ('commentary', 'commentary'),
+        ('concordance', 'concordance'),
+        ('coverPage', 'coverPage'),
+        ('dedication', 'dedication'),
+        ('devotional', 'devotional'),
+        ('entry', 'entry'),
+        ('front', 'front'),
+        ('gazetteer', 'gazetteer'),
+        ('glossary', 'glossary'),
+        ('imprimatur', 'imprimatur'),
+        #'index', (use existing element above)
+        ('introduction', 'introduction'),
+        ('majorSection', 'majorSection'),
+        ('map', 'map'),
         #'paragraph', (use existing element above)
-        'part',
-        'preface',
-        'section',
-        'subSection',
-        'summary',
+        ('part', 'part'),
+        ('preface', 'preface'),
+        ('section', 'section'),
+        ('subSection', 'subSection'),
+        ('summary', 'summary'),
         #'titlePage', (use existing element above)
         
         # New elements
-        'page', # used to preserve page boundaries; TEI?
+        ('page', 'page'), # used to preserve page boundaries; TEI?
         
         # Proposed
-        'doubted', #level1 and level2? rdg?
+        #('doubted', 'doubted'), #level1 and level2? rdg?
     )
-    #type = models.PositiveSmallIntegerField(choices=TYPE_CHOICES, db_index=True)
-    #type_name = property(lambda self: self.TYPE_NAMES[self.type])
     
+    element = models.CharField(max_length=32, blank=False, help_text=_("The name of the OSIS "), choices=ELEMENT_CHOICES)
+    # Note: attributes is a related_name for StructureAttribute
     # Question: what about using XMLField? Or storing attributes via GeoDjango.DictionaryField
-    element = models.CharField(max_length=32, blank=False, help_text=_("The name of the OSIS "), choices=TYPE_CHOICES)
-    #attributes = 
 
-    osis_id = models.CharField(max_length=32, blank=True, db_index=True)
+    #osis_id = models.CharField(max_length=32, blank=True, db_index=True) # moved to StructureAttribute
     work = models.ForeignKey(Work, help_text=_("Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it"))
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text=_("Bitwise anded with Work.variant_bit to determine if belongs to work."))
 
     source_url = models.CharField(max_length=255, blank=True, help_text=_("URL for where this structure came from; used for base to Token.relative_source_url"))
-
-    # title?
-    # parent?
-    position = models.PositiveIntegerField(help_text=_("The order where this appears in the work."))
+    
+    position = models.PositiveIntegerField(help_text=_("The order where this appears in the work. Note that this does not need to be unique since two structures could start at the same position."))
 
     numerical_start = models.PositiveIntegerField(null=True, help_text=_("A number that may be associated with this structure, such as a chapter or verse number; corresponds to OSIS @n attribute."))
     numerical_end   = models.PositiveIntegerField(null=True, help_text=_("If the structure spans multiple numerical designations, this is used"))
@@ -442,7 +423,7 @@ class Structure(models.Model):
     start_token = models.ForeignKey(Token, null=True, related_name='start_token_structure_set', help_text=_("The token that starts the structure's content; this may or may not include the start_marker, like quotation marks. <del>If null, then tokens should be discovered via StructureToken.</del>"))
     end_token   = models.ForeignKey(Token, null=True,  related_name='end_token_structure_set',  help_text=_("Same as start_token, but for the end."))
 
-    #Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).
+    # Used to demarcate the inclusive start point for the structure; marks any typographical feature used to markup the structure in the text (e.g. quotation marks).
     start_marker = models.ForeignKey(Token, null=True, related_name='start_marker_structure_set', help_text=_("The optional token that marks the start of the structure; this marker may be included (inside) in the start_token/end_token range as in the example of quotation marks, or it may excluded (outside) as in the case of paragraph markers which are double linebreaks. Outside markers may overlap (be shared) among multiple paragraphs' start/end_markers, whereas inside markers may not."))
     end_marker   = models.ForeignKey(Token, null=True, related_name='end_marker_structure_set',   help_text=_("Same as start_marker, but for the end."))
 
@@ -452,11 +433,9 @@ class Structure(models.Model):
             raise Exception(_("include_outside_markers not implemented yet"))
         if variant_bits is None:
             variant_bits = self.variant_bits
-
-        # Get the tokens from a range
-        #if self.start_token is not None:
+        
         assert(self.end_marker is not None)
-
+        
         # Get all of the tokens between the marker start and marker end
         # and who have variant bits that match the requested variant bits
         tokens = Token.objects.filter(
@@ -464,30 +443,10 @@ class Structure(models.Model):
             position__gte = self.start_token.position,
             position__lte = self.end_token.position
         ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
-
-        # Indicate which of the beginning queried tokens are markers
-        #for token in tokens:
-        #    if token.position >= start_structure.start_token.position:
-        #        break
-        #    token.is_structure_marker = True
-        #
-        ## Indicate which of the ending queried tokens are markers
-        #for token in reversed(tokens):
-        #    if token.position <= end_structure.end_token.position:
-        #        break
-        #    token.is_structure_marker = True
-
+        
         return tokens
 
-        # Get the tokens which are not consecutive (Feature is disabled until deemed necessary)
-        #else:
-        #    items = StructureToken.objects.extra(where=["token__variant_bits & %s != 0"], params=[variant_bits])
-        #    tokens = []
-        #    for item in items:
-        #        items.token.is_structure_marker = item.is_marker
-        #        tokens.append(items.token)
-        #    return tokens
-
+    # Get rid of the bitwise stuff here? Just use the string identifiers?
     SHADOW_NONE  = 0b0000
     SHADOW_START = 0b0001
     SHADOW_END   = 0b0010
@@ -507,21 +466,19 @@ class Structure(models.Model):
     shadow = SHADOW_NONE
     shadow_name = property(lambda self: self.SHADOW_NAMES[self.shadow])
 
-    is_milestoned = False
-
-    #TODO: Include a type filter?
-    def get_related_structures(self, types = [], shadow = SHADOW_NONE):
-        """
-        Get the structures that are related to this structure.
-        
-        types is a list of TYPE that should be returned. Empty means all.
-        
-        If shadow = SHADOW_NONE, then only sub-structures are returned;
-        If shadow = SHADOW_BOTH, then only super-structures are returned.
-        If shadow = SHADOW_START, then only structures that start before
-        If shadow = SHADOW_END, then only structures that end after
-        """
-        raise Exception(_("Not built yet"))
+    #@property
+    #def related_structures(self, elements = [], shadow = SHADOW_NONE):
+    #    """
+    #    Get the structures that are related to this structure.
+    #    
+    #    types is a list of TYPE that should be returned. Empty means all.
+    #    
+    #    If shadow = SHADOW_NONE, then only sub-structures are returned;
+    #    If shadow = SHADOW_BOTH, then only super-structures are returned.
+    #    If shadow = SHADOW_START, then only structures that start before
+    #    If shadow = SHADOW_END, then only structures that end after
+    #    """
+    #    raise Exception(_("Not built yet"))
 
 
     class Meta:
@@ -533,9 +490,9 @@ class Structure(models.Model):
     def __unicode__(self):
         if self.osis_id:
             return self.osis_id
-        elif self.type == self.PARAGRAPH:
+        elif self.element == 'p': #paragraph
             return u"¶" + self.start_token.data + u" … " + self.end_token.data
-        elif self.type == self.UNCERTAIN1:
+        elif self.element == self.UNCERTAIN1:
             return u"[]"
         else:
             return self.type
@@ -547,21 +504,29 @@ class StructureAttribute(models.Model):
     
     The attributes allowed for a Structure should be constrained based on the schema.
     """
-    structure = models.ForeignKey(Structure, blank=False, help_text=_("The structure that the attributes are for"))
-    name = models.CharField(max_length=32, blank=False, help_text=_("The name of the attribute. May include a limited number of discrete XML namespace prefixes, e.g. 'xml:'."))
-    TYPE_CHOICES = (
-        ('string', "String"),
-        ('boolean', "Boolean"),
-        ('datetime', "Date/Time"),
-        ('langiage', "Language"),
-        ('osisRef', "osisRef"),
-        ('osisID', "osisID"),
-        ('ID', "ID"), #does this even make sense?
-    )
-    type = models.CharField(max_length=32, blank=False, choices=TYPE_CHOICES)
-    value = models.TextField()
+    structure = models.ForeignKey(Structure, blank=False, related_name='attributes', help_text=_("The structure that the attributes are for"))
+    name = models.CharField(max_length=32, blank=False, help_text=_("The name of the attribute. May include a limited number of discrete XML namespace prefixes, e.g. 'xml:'."), db_index=True)
+    value = models.TextField(db_index=True, help_text=_("The attribute value."))
     
+    # TODO: Value validation
+    #TYPE_CHOICES = (
+    #    ('string', "String"),
+    #    ('boolean', "Boolean"),
+    #    ('datetime', "Date/Time"),
+    #    ('langiage', "Language"),
+    #    ('osisRef', "osisRef"),
+    #    ('osisID', "osisID"),
+    #    ('ID', "ID"), #does this even make sense?
+    #)
+    #_ATTRIBUTE_TYPES = {
+    #    'osisID': 'osisID',
+    #}
+    #type = models.CharField(max_length=32, blank=False, choices=TYPE_CHOICES)
     
+    class Meta:
+        unique_together = (
+            ('structure', 'name'), # only allow one 
+        )
     
 
 # This is an alternative to the above and it allows non-consecutive tokens to be
