@@ -66,11 +66,11 @@ def get_book_code_args():
             book_codes.append(arg)
     return book_codes
 
-def close_structure(type, bookTokens, structs):
-    if structs.has_key(type):
-        assert(structs[type].start_token is not None)
-        if structs[type].end_token is None:
-            structs[type].end_token = bookTokens[-1]
-        structs[type].save()
-        del structs[type]
+def close_structure(element, bookTokens, structs):
+    if structs.has_key(element):
+        assert(structs[element].start_token is not None)
+        if structs[element].end_token is None:
+            structs[element].end_token = bookTokens[-1]
+        structs[element].save()
+        del structs[element]
 

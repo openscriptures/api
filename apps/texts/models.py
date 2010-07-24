@@ -205,8 +205,6 @@ class Token(models.Model):
     """
     
     id = models.CharField(_("base32 sha-256 hash of [workID, passage, n-gram token context]"), max_length=52, primary_key=True)
-
-    # TODO: id needs to be a CharField for storing the Base32 hash
     data = models.CharField(_("Unicode data in Normalization Form C (NFC)"), max_length=255, db_index=True)
 
     WORD = 1
@@ -409,7 +407,7 @@ class Structure(models.Model):
     # Note: attributes is a related_name for StructureAttribute
     # Question: what about using XMLField? Or storing attributes via GeoDjango.DictionaryField
 
-    #osis_id = models.CharField(max_length=32, blank=True, db_index=True) # moved to StructureAttribute
+    osis_id = models.CharField(max_length=32, blank=True, db_index=True) # the one attribute moved to StructureAttribute
     work = models.ForeignKey(Work, help_text=_("Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it"))
     variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text=_("Bitwise anded with Work.variant_bit to determine if belongs to work."))
 
@@ -484,7 +482,7 @@ class Structure(models.Model):
     class Meta:
         ordering = ['position'] #, 'variant_number'
         unique_together = (
-            ('type', 'position', 'start_token'), #???
+            ('element', 'position', 'start_token'), #???
         )
 
     def __unicode__(self):

@@ -65,11 +65,11 @@ def passage(request, osis_ref):
     # Get the desired hierarchy (serialization order) for Structures
     structure_types = []
     structure_types_always_milestoned = {}
-    STRUCTURE_TYPE_CODES = {}
+    #STRUCTURE_TYPE_CODES = {}
     structure_type_hierarchy = []
-    for choice_tuple in Structure.TYPE_CHOICES: #TODO: There's gotta be a better way to do reverse lookup of choices tuples
-        STRUCTURE_TYPE_CODES[choice_tuple[1]] = choice_tuple[0]
-        structure_types.append(choice_tuple[0])
+    #for choice_tuple in Structure.TYPE_CHOICES: #TODO: There's gotta be a better way to do reverse lookup of choices tuples
+    #    STRUCTURE_TYPE_CODES[choice_tuple[1]] = choice_tuple[0]
+    #    structure_types.append(choice_tuple[0])
     
     
     is_standoff = False
@@ -83,24 +83,24 @@ def passage(request, osis_ref):
             # Predefined hierarchy: Book-Chapter-Verse
             if request.GET["hierarchy"] == 'bcv':
                 structure_type_hierarchy = [
-                    Structure.BOOK_GROUP,
-                    Structure.BOOK,
-                    Structure.CHAPTER,
-                    Structure.VERSE,
+                    'bookGroup',
+                    'book',
+                    'chapter',
+                    'verse',
                 ]
-                structure_types_always_milestoned[Structure.PARAGRAPH] = True
+                structure_types_always_milestoned['p'] = True
             
             # Predefined hierarchy: Book-Section-Paragraph
             elif request.GET["hierarchy"] == 'bsp':
                 structure_type_hierarchy = [
-                    Structure.BOOK_GROUP,
-                    Structure.BOOK,
-                    Structure.SECTION,
-                    Structure.PARAGRAPH,
-                    Structure.LINE
+                    'bookGroup',
+                    'book',
+                    'section',
+                    'p',
+                    'l'
                 ]
-                structure_types_always_milestoned[Structure.VERSE] = True
-                structure_types_always_milestoned[Structure.CHAPTER] = True
+                structure_types_always_milestoned['verse'] = True
+                structure_types_always_milestoned['chapter'] = True
             
             # Predefined hierarchy: Book-Section-Paragraph
             elif request.GET["hierarchy"] == 'milestone':
@@ -113,11 +113,11 @@ def passage(request, osis_ref):
                     always_milestone = struct_type.startswith('~')
                     if always_milestone:
                         struct_type = struct_type[1:]
-                        structure_types_always_milestoned[STRUCTURE_TYPE_CODES[struct_type]] = True
+                        structure_types_always_milestoned[struct_type] = True
                     
-                    if not STRUCTURE_TYPE_CODES.has_key(struct_type):
-                        return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_type, mimetype = "text/plain")
-                    structure_type_hierarchy.append(STRUCTURE_TYPE_CODES[struct_type])
+                    #if not STRUCTURE_TYPE_CODES.has_key(struct_type):
+                    #    return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_type, mimetype = "text/plain")
+                    structure_type_hierarchy.append(struct_type)
             
             # Append any remaining in the order they are defined
             for struct_type in structure_types:
