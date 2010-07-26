@@ -45,7 +45,7 @@ class Work(models.Model):
         ('Bible', 'Bible'),
     )
     #TODO: use short_name?
-    osis_slug = models.SlugField(_("OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV"), max_length=16, db_index=True)
+    osis_slug = models.SlugField(_("OSIS identifier which should correspond to the abbreviation, like NIV, ESV, or KJV"), max_length=24, db_index=True)
     type = models.CharField(max_length=16, choices=TYPES, null=False, db_index=True)
     language = models.ForeignKey(Language, null=True, db_index=True)
     #Note: In the case of Daniel, both Hebrew and Aramaic in the book, though
