@@ -7,7 +7,7 @@
 				<structures>
 					{% for structure in passage.structures %}
 						<structure
-							type="{{ structure.type_name }}"
+							type="{{ structure.element }}"
 							xml:id="s{{ structure.position }}"
 							target="range(#t{% if structure.shadow_start_token_position %}{{structure.shadow_start_token_position}}{% else %}{{structure.start_token.position}}{% endif %}, #t{% if structure.shadow_end_token_position %}{{structure.shadow_end_token_position}}{% else %}{{structure.end_token.position}}{% endif %})"
 							shadow="{{ structure.shadow_name }}"
@@ -33,7 +33,7 @@
 						{% if chunk.structure.is_milestoned %}
 							{% if chunk.is_start %}
 								<structure-start
-									type="{{ chunk.structure.type_name }}"
+									type="{{ chunk.structure.element }}"
 									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
 									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
 									xml:id="s{{ chunk.structure.position }}"
@@ -46,7 +46,7 @@
 						{% else %}
 							{% if chunk.is_start %}
 								<structure
-									type="{{ chunk.structure.type_name }}"
+									type="{{ chunk.structure.element }}"
 									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
 									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
 									xml:id="s{{ chunk.structure.position }}"

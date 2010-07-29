@@ -136,6 +136,7 @@ LINE_PARSER = re.compile(ur"""^
     re.VERBOSE
 )
 
+tempId = 0
 
 class Command(BaseCommand):
     args = '<Jude John ...>'
@@ -300,6 +301,7 @@ class Command(BaseCommand):
                     assert(len(bookTokens) > 0)
 
                     paragraph_marker = Token(
+                        id       = str(tokenCount),
                         data     = u"\u2029", #¶ "\n\n"
                         type     = Token.WHITESPACE, #i.e. PARAGRAPH
                         work     = work1,
@@ -329,6 +331,7 @@ class Command(BaseCommand):
                 # Insert whitespace
                 if not paragraph_marker and len(bookTokens) > 0:
                     ws_token = Token(
+                        id       = str(tokenCount),
                         data     = " ",
                         type     = Token.WHITESPACE,
                         work     = work1,
@@ -357,6 +360,7 @@ class Command(BaseCommand):
 
                     # Make start_marker for UNCERTAIN1
                     open_bracket_token = Token(
+                        id       = str(tokenCount),
                         data     = '[',
                         type     = Token.PUNCTUATION,
                         work     = work1,
@@ -378,6 +382,7 @@ class Command(BaseCommand):
 
                 # Kethiv token
                 token_work1 = Token(
+                    id       = str(tokenCount),
                     data     = lineMatches.group('kethiv'),
                     type     = Token.WORD,
                     work     = work1,
@@ -401,6 +406,7 @@ class Command(BaseCommand):
                 if lineMatches.group('kethiv') != lineMatches.group('qere'):
                     print("%s != %s" % (lineMatches.group('kethiv'), lineMatches.group('qere')))
                     token_work2 = Token(
+                        id       = str(tokenCount),
                         data     = lineMatches.group('qere'),
                         type     = Token.WORD,
                         work     = work1, # yes, this should be work1
@@ -420,6 +426,7 @@ class Command(BaseCommand):
                 assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
                 if lineMatches.group('kethivPunc'):
                     punc_token = Token(
+                        id       = str(tokenCount),
                         data     = lineMatches.group('kethivPunc'),
                         type     = Token.PUNCTUATION,
                         work     = work1,
@@ -440,6 +447,7 @@ class Command(BaseCommand):
 
                     # Make end_marker for UNCERTAIN1
                     close_bracket_token = Token(
+                        id       = str(tokenCount),
                         data     = ']',
                         type     = Token.PUNCTUATION,
                         work     = work1,

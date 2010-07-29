@@ -87,6 +87,7 @@ def passage(request, osis_ref):
                     'book',
                     'chapter',
                     'verse',
+                    'p'
                 ]
                 structure_types_always_milestoned['p'] = True
             
@@ -97,7 +98,9 @@ def passage(request, osis_ref):
                     'book',
                     'section',
                     'p',
-                    'l'
+                    'l',
+                    'chapter',
+                    'verse'
                 ]
                 structure_types_always_milestoned['verse'] = True
                 structure_types_always_milestoned['chapter'] = True
@@ -179,8 +182,8 @@ def passage(request, osis_ref):
         # each whether it is_milestoned
         def sorter(a, b):
             return cmp(
-                structure_type_hierarchy.index(a.type),
-                structure_type_hierarchy.index(b.type)
+                structure_type_hierarchy.index(a.element),
+                structure_type_hierarchy.index(b.element)
             )
         
         for structure_group in (structures_by_token_start_position, structures_by_token_end_position):
@@ -193,7 +196,7 @@ def passage(request, osis_ref):
                     min_end_position = min(structs[0].end_token.position, passage_end_token_position)
                     for i in range(0, len(structs)):
                         # Always milestone
-                        if structure_types_always_milestoned.has_key(structs[i].type):
+                        if structure_types_always_milestoned.has_key(structs[i].element):
                             structs[i].is_milestoned = True
                             continue
                         

@@ -202,6 +202,17 @@ class Token(models.Model):
     """
     An atomic unit of text, such as a word, punctuation mark, or whitespace
     line break. Corresponds to OSIS w elements.
+    
+    What to do about tokens that don't appear in a verse? i.e. when an osisID isn't
+    fully specified or doesn't exist at all? For example, introductory material
+    or titles? We could just use the best available osisID, e.g. it could be as
+    basic as just bookName or bookName.chapterNumber.
+    
+    If a hash is a duplicate with a previous hash, should the subsequent word merely
+    increase the look-behind for the n-gram? This way, the subsequent change won't
+    ripple. But if we change a word in the middle of a verse, and that ID conflicts
+    with a subsequent one, do we really want to change the subsequent ID alone?
+    It wasn't even the token that changed in the first place.
     """
     
     id = models.CharField(_("base32 sha-256 hash of [workID, passage, n-gram token context]"), max_length=52, primary_key=True)
