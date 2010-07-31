@@ -5,10 +5,32 @@ import os
 import sys
 import urllib
 import unicodedata
+import base64
+import hashlib
 
 from texts.models import Work, Token
 from core import osis
 
+def generate_token_id(work_id, passage_id, previous_tokens, token_data):
+    print u"".join((
+            unicode(work_id),
+            unicode(passage_id),
+            u"".join(
+                [unicode(token.data) for token in previous_tokens[-3:]]
+            ),
+            unicode(token_data)
+        ))
+    
+    return base64.b32encode(hashlib.sha256(
+        u"".join((
+            unicode(work_id),
+            unicode(passage_id),
+            u"".join(
+                [unicode(token.data) for token in previous_tokens[-3:]]
+            ),
+            unicode(token_data)
+        ))
+    ).digest())
 
 def normalize_token(data):
     "Normalize to Unicode NFC, strip out all diacritics, apostrophies, and make lower-case."
@@ -44,14 +66,14 @@ def delete_work(workID):
     except:
         return False
 
-    if work.variants_for_work is not None:
-        delete_work(work.variants_for_work.id)
+    #if work.variants_for_work is not None:
+    #    delete_work(work.variants_for_work.id)
     
     # Clear all links to unified text
     Token.objects.filter(work = workID).delete() #Does this need to be two linces?
     
     # Delete all variant works
-    Work.objects.filter(variants_for_work = workID).delete()
+    #Work.objects.filter(variants_for_work = workID).delete()
     
     # Delete work
     #Work.objects.filter(id=workID).update(unified_token=None)

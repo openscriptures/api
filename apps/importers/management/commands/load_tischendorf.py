@@ -67,6 +67,7 @@ from importers.management.import_helpers import abort_if_imported
 from importers.management.import_helpers import close_structure
 from importers.management.import_helpers import delete_work
 from importers.management.import_helpers import download_resource
+from importers.management.import_helpers import generate_token_id
 from texts.models import Work, Token, Structure, WorkServer
 from core.models import Language, License, Server
 
@@ -74,10 +75,7 @@ from core.models import Language, License, Server
 # TODO: Some of this might be better defined as SETTING
 SOURCE_URL = "http://files.morphgnt.org/tischendorf/Tischendorf-2.6.zip"
 
-WORK1_ID = 1 # Tischendorf Kethiv
-WORK1_VARIANT_BIT = 0b00000001
-WORK2_ID = 2 # Tischendorf Qere
-WORK2_VARIANT_BIT = 0b00000010
+WORK_ID = 1
 
 BOOK_FILENAME_LOOKUP = {
 	'Matt'   : "MT.txt"   ,
@@ -150,63 +148,42 @@ class Command(BaseCommand):
             help='Force load despite it already being loaded'),
         )
 
-    def create_works(self):
+    def create_work(self):
         # Delete existing works
-        delete_work(WORK2_ID)
-        delete_work(WORK1_ID)
-
-        # Work for Kethiv edition (base text for qere)
-        work1 = Work(
-            id           = WORK1_ID,
-            title        = "Tischendorf 8th ed. v2.6 Kethiv",
+        delete_work(WORK_ID)
+        
+        # Work for Qere edition (Kethiv is base text)
+        work = Work(
+            id           = WORK_ID,
+            title        = "Tischendorf 8th ed. v2.6 Qere (Corrected)",
             language     = Language('grc'),
             type         = 'Bible',
             osis_slug    = 'Tischendorf',
             publish_date = datetime.date(2010, 7, 4),
             import_date  = datetime.datetime.now(),
-            variant_bit  = WORK1_VARIANT_BIT,
+            #variant_bit  = WORK2_VARIANT_BIT,
+            #variants_for_work = work1,
             creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
             source_url   = SOURCE_URL,
             license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
         )
-        work1.save()
+        work.save()
         WorkServer.objects.create(
-            work = work1,
+            work = work,
             server = Server.objects.get(is_self = True)
         )
-
-        # Work for Qere edition (Kethiv is base text)
-        work2 = Work(
-            id           = WORK2_ID,
-            title        = "Tischendorf 8th ed. v2.6 Qere (Corrected)",
-            language     = Language('grc'),
-            type         = 'Bible',
-            osis_slug    = 'TischendorfCorrected',
-            publish_date = datetime.date(2010, 7, 4),
-            import_date  = datetime.datetime.now(),
-            variant_bit  = WORK2_VARIANT_BIT,
-            variants_for_work = work1,
-            creator      = "<a href='http://en.wikipedia.org/wiki/Constantin_von_Tischendorf' title='Constantin von Tischendorf @ Wikipedia'>Constantin von Tischendorf</a>. Based on G. Clint Yale's Tischendorf text and on Dr. Maurice A. Robinson's Public Domain Westcott-Hort text. Edited by <a href='http://www.hum.aau.dk/~ulrikp/'>Ulrik Sandborg-Petersen</a>.",
-            source_url   = SOURCE_URL,
-            license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
-        )
-        work2.save()
-        WorkServer.objects.create(
-            work = work2,
-            server = Server.objects.get(is_self = True)
-        )
-        return (work1, work2)
+        return work
 
 
     def handle(self, *args, **options):
         # Abort if MS has already been added (or --force not supplied)
-        abort_if_imported(WORK1_ID, options["force"])
+        abort_if_imported(WORK_ID, options["force"])
 
         # Download the source file
         download_resource(SOURCE_URL)
 
         # Create Works
-        (work1, work2) = self.create_works()
+        work = self.create_work()
 
         # Get the subset of OSIS book codes provided on command line
         limited_book_codes = []
@@ -231,12 +208,12 @@ class Command(BaseCommand):
             # Set up the book ref
             structs = {}
             structs['book'] = Structure(
-                work = work1,
+                work = work,
                 element = 'book',
                 osis_id = book_code,
                 position = structCount,
                 numerical_start = book_codes.index(book_code),
-                variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT,
+                #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT,
                 source_url = "zip:" + SOURCE_URL + "!/Tischendorf-2.6/Unicode/" + BOOK_FILENAME_LOOKUP[book_code]
                 #title = osis.BOOK_NAMES["Bible"][book_code]
             )
@@ -267,12 +244,12 @@ class Command(BaseCommand):
                     # Start the next chapter
                     current_chapter = lineMatches.group('chapter')
                     structs['chapter'] = Structure(
-                        work = work1, # remember work2 is subsumed by work1
+                        work = work,
                         element = 'chapter',
                         position = structCount,
                         osis_id = book_code + "." + current_chapter,
                         numerical_start = current_chapter,
-                        variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
+                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
                     )
                     print structs['chapter'].osis_id
                     structCount += 1
@@ -285,12 +262,12 @@ class Command(BaseCommand):
                     # Start the next verse
                     current_verse = lineMatches.group('verse')
                     structs['verse'] = Structure(
-                        work = work1, # remember work2 is subsumed by work1
+                        work = work,
                         element = 'verse',
                         position = structCount,
                         osis_id = book_code + "." + current_chapter + "." + current_verse,
                         numerical_start = current_verse,
-                        variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
+                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
                     )
                     print structs['verse'].osis_id
                     structCount += 1
@@ -301,12 +278,12 @@ class Command(BaseCommand):
                     assert(len(bookTokens) > 0)
 
                     paragraph_marker = Token(
-                        id       = str(tokenCount),
+                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, u"\u2029"),
                         data     = u"\u2029", #¶ "\n\n"
                         type     = Token.WHITESPACE, #i.e. PARAGRAPH
-                        work     = work1,
+                        work     = work,
                         position = tokenCount,
-                        variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
+                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
                     )
                     tokenCount += 1
                     paragraph_marker.save()
@@ -319,10 +296,10 @@ class Command(BaseCommand):
                     assert(not structs.has_key('p'))
                     print("¶")
                     structs['p'] = Structure(
-                        work = work1, # remember work2 is subsumed by work1
+                        work = work,
                         element = 'p',
                         position = structCount,
-                        variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
+                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
                     )
                     if paragraph_marker:
                         structs['p'].start_marker = paragraph_marker
@@ -331,20 +308,20 @@ class Command(BaseCommand):
                 # Insert whitespace
                 if not paragraph_marker and len(bookTokens) > 0:
                     ws_token = Token(
-                        id       = str(tokenCount),
+                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, " "),
                         data     = " ",
                         type     = Token.WHITESPACE,
-                        work     = work1,
+                        work     = work,
                         position = tokenCount,
-                        variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
+                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
                     )
                     tokenCount += 1
                     ws_token.save()
                     bookTokens.append(ws_token)
 
-                assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
-                assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
-                assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
+                #assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
+                #assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
+                #assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
 
                 #if string.find(line, '[') != -1 or string.find(line, ']') != -1 or lineMatches.group('kethiv') != lineMatches.group('qere'):
                 #    print line
@@ -353,17 +330,17 @@ class Command(BaseCommand):
                 lineTokens = []
 
                 # Open UNCERTAIN1 bracket
-                assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
-                if lineMatches.group('kethivStartBracket'):
+                #assert(lineMatches.group('qereStartBracket') == lineMatches.group('qereStartBracket'))
+                if lineMatches.group('qereStartBracket'):
                     assert(not structs.has_key('doubted'))
                     print("### OPEN BRACKET")
 
                     # Make start_marker for UNCERTAIN1
                     open_bracket_token = Token(
-                        id       = str(tokenCount),
+                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, u"["),
                         data     = '[',
                         type     = Token.PUNCTUATION,
-                        work     = work1,
+                        work     = work,
                         position = tokenCount
                     )
                     tokenCount += 1
@@ -372,74 +349,73 @@ class Command(BaseCommand):
 
                     # Create the UNCERTAIN1 structure
                     structs['doubted'] = Structure(
-                        work = work1, # remember work2 is subsumed by work1
+                        work = work,
                         element = 'doubted',
                         position = structCount,
-                        variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT,
+                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT,
                         start_marker = open_bracket_token
                     )
                     structCount += 1
 
-                # Kethiv token
-                token_work1 = Token(
-                    id       = str(tokenCount),
-                    data     = lineMatches.group('kethiv'),
+                token_work = Token(
+                    id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, lineMatches.group('qere')),
+                    data     = lineMatches.group('qere'),
                     type     = Token.WORD,
-                    work     = work1,
+                    work     = work,
                     position = tokenCount,
-                    variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT,
+                    #variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT,
                     relative_source_url = "#line(%d)" % lineNumber
                 )
-                if lineMatches.group('kethiv') == lineMatches.group('qere'):
-                    token_work1.variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
-                else:
-                    token_work1.variant_bits = WORK1_VARIANT_BIT
+                #if lineMatches.group('kethiv') == lineMatches.group('qere'):
+                #    token_work.variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
+                #else:
+                #    token_work.variant_bits = WORK1_VARIANT_BIT
                 tokenCount += 1
-                token_work1.save()
-                lineTokens.append(token_work1)
+                token_work.save()
+                lineTokens.append(token_work)
 
                 # Make this token the start of the UNCERTAIN structure
-                if lineMatches.group('kethivStartBracket'):
-                    structs['doubted'].start_token = token_work1
+                if lineMatches.group('qereStartBracket'):
+                    structs['doubted'].start_token = token_work
 
                 # Qere token
-                if lineMatches.group('kethiv') != lineMatches.group('qere'):
-                    print("%s != %s" % (lineMatches.group('kethiv'), lineMatches.group('qere')))
-                    token_work2 = Token(
-                        id       = str(tokenCount),
-                        data     = lineMatches.group('qere'),
-                        type     = Token.WORD,
-                        work     = work1, # yes, this should be work1
-                        position = tokenCount,   #token_work1.position #should this be the same!?
-                        variant_bits = WORK2_VARIANT_BIT,
-                        relative_source_url = "#line(%d)" % lineNumber
-                        # What will happen with range?? end_token = work1, but then work2?
-                        # Having two tokens at the same position could mean that they are
-                        #  co-variants at that one spot. But then we can't reliably get
-                        #  tokens by a range? Also, the position can indicate transposition?
-                    )
-                    tokenCount += 1
-                    token_work2.save()
-                    lineTokens.append(token_work2)
+                #if lineMatches.group('kethiv') != lineMatches.group('qere'):
+                #    print("%s != %s" % (lineMatches.group('kethiv'), lineMatches.group('qere')))
+                #    token_work2 = Token(
+                #        id       = str(tokenCount),
+                #        data     = lineMatches.group('qere'),
+                #        type     = Token.WORD,
+                #        work     = work,
+                #        position = tokenCount,   #token_work1.position #should this be the same!?
+                #        variant_bits = WORK2_VARIANT_BIT,
+                #        relative_source_url = "#line(%d)" % lineNumber
+                #        # What will happen with range?? end_token = work1, but then work2?
+                #        # Having two tokens at the same position could mean that they are
+                #        #  co-variants at that one spot. But then we can't reliably get
+                #        #  tokens by a range? Also, the position can indicate transposition?
+                #    )
+                #    tokenCount += 1
+                #    token_work2.save()
+                #    lineTokens.append(token_work2)
 
                 # Punctuation token
-                assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
-                if lineMatches.group('kethivPunc'):
+                #assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
+                if lineMatches.group('qerePunc'):
                     punc_token = Token(
-                        id       = str(tokenCount),
-                        data     = lineMatches.group('kethivPunc'),
+                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, lineMatches.group('qerePunc')),
+                        data     = lineMatches.group('qerePunc'),
                         type     = Token.PUNCTUATION,
-                        work     = work1,
+                        work     = work,
                         position = tokenCount,
-                        variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
+                        #variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
                     )
                     tokenCount += 1
                     punc_token.save()
                     lineTokens.append(punc_token)
 
                 # Close UNCERTAIN1 bracket
-                assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
-                if lineMatches.group('kethivEndBracket'):
+                #assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
+                if lineMatches.group('qereEndBracket'):
                     assert(structs.has_key('doubted'))
                     print("### CLOSE BRACKET")
 
@@ -447,12 +423,12 @@ class Command(BaseCommand):
 
                     # Make end_marker for UNCERTAIN1
                     close_bracket_token = Token(
-                        id       = str(tokenCount),
+                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, u']'),
                         data     = ']',
                         type     = Token.PUNCTUATION,
-                        work     = work1,
+                        work     = work,
                         position = tokenCount,
-                        variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
+                        #variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
                     )
                     tokenCount += 1
                     close_bracket_token.save()

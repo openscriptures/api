@@ -32,8 +32,8 @@ class Work(models.Model):
     description = models.TextField(blank=True)
     source_url = models.URLField(_("URL where this resource was originally obtained"), blank=True)
 
-    variants_for_work = models.ForeignKey("self", null=True, default=None, verbose_name=_("Parent work that this work provides variants for"))
-    variant_bit = models.PositiveSmallIntegerField(_("The bit mask that is anded with Token.variant_bits and Structure.variant_bits to query only those which belong to the work."), default=0b00000001)
+    #variants_for_work = models.ForeignKey("self", null=True, default=None, verbose_name=_("Parent work that this work provides variants for"))
+    #variant_bit = models.PositiveSmallIntegerField(_("The bit mask that is anded with Token.variant_bits and Structure.variant_bits to query only those which belong to the work."), default=0b00000001)
 
     #TODO: Allow multiple kinds of identifiers for the work:
     #      Including ISBN, URL, URN, in addition to OSIS. OSIS needs to be unique,
@@ -98,20 +98,20 @@ class Work(models.Model):
         # Token and Structure objects are only associated with non-diff
         #   works, that is where variants_for_work is None
         main_work = self
-        if self.variants_for_work is not None:
-            main_work = self.variants_for_work
+        #if self.variants_for_work is not None:
+        #    main_work = self.variants_for_work
 
         # Allow the variant_bits to be customized to include structures and
         #   tokens from other variants of this work
-        if variant_bits is None:
-            variant_bits = self.variant_bit
+        #if variant_bits is None:
+        #    variant_bits = self.variant_bit
 
         # Get the structure for the start
         structures = Structure.objects.select_related(depth=1).filter(
             work = main_work,
             start_token__isnull = False,
             osis_id = start_osis_id
-        ).extra(where=["variant_bits & %s != 0"], params=[variant_bits])
+        ) #.extra(where=["variant_bits & %s != 0"], params=[variant_bits])
         if len(structures) == 0:
             raise Exception("Start structure with osisID %s not found" % start_osis_id)
         start_structure = structures[0]
@@ -122,7 +122,7 @@ class Work(models.Model):
                 work = main_work,
                 end_token__isnull = False,
                 osis_id = end_osis_id
-            ).extra(where=["variant_bits & %s != 0"], params=[variant_bits])
+            ) #.extra(where=["variant_bits & %s != 0"], params=[variant_bits])
             if len(structures) == 0:
                 raise Exception("End structure with osisID %s not found" % end_osis_id)
             end_structure = structures[0]
@@ -150,7 +150,7 @@ class Work(models.Model):
                 end_token__position__gte = start_structure.start_token.position,
                 end_token__position__lte = end_structure.end_token.position
             )
-        ).extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[variant_bits])
+        ) #.extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[variant_bits])
 
         # Now indicate if the structures are shadowed (virtual)
         for struct in concurrent_structures:
@@ -168,7 +168,7 @@ class Work(models.Model):
             work = main_work,
             position__gte = start_structure.start_token.position,
             position__lte = end_structure.end_token.position
-        ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
+        ) #.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
 
         # Indicate which of the beginning queried tokens are markers (should be none since verse)
         for token in tokens:
@@ -236,7 +236,7 @@ class Token(models.Model):
 
     position = models.PositiveIntegerField(db_index=True)
     work = models.ForeignKey(Work)
-    variant_bits = models.PositiveSmallIntegerField(_("Bitwise anded with Work.variant_bit to determine if belongs to work."), default=0b00000001)
+    #variant_bits = models.PositiveSmallIntegerField(_("Bitwise anded with Work.variant_bit to determine if belongs to work."), default=0b00000001)
     #unified_token = models.ForeignKey('self', null=True, help_text="The token in the merged/unified work that represents this token.")
 
     is_structure_marker = None #This boolean is set when querying via Structure.get_tokens
@@ -263,7 +263,7 @@ class Token(models.Model):
             #source_url__ne = "",
             #source_url__isblank = False,
             work = self.work
-        ).extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[self.variant_bits])
+        ) #.extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[self.variant_bits])
 
 
         if not len(structures):
@@ -420,7 +420,7 @@ class Structure(models.Model):
 
     osis_id = models.CharField(max_length=32, blank=True, db_index=True) # the one attribute moved to StructureAttribute
     work = models.ForeignKey(Work, help_text=_("Must be same as start/end_*_token.work. Must not be a variant work; use the variant_bits to select for it"))
-    variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text=_("Bitwise anded with Work.variant_bit to determine if belongs to work."))
+    #variant_bits = models.PositiveSmallIntegerField(default=0b00000001, help_text=_("Bitwise anded with Work.variant_bit to determine if belongs to work."))
 
     source_url = models.CharField(max_length=255, blank=True, help_text=_("URL for where this structure came from; used for base to Token.relative_source_url"))
     
@@ -440,8 +440,8 @@ class Structure(models.Model):
     def tokens(self, include_outside_markers = False, variant_bits = None):
         if include_outside_markers:
             raise Exception(_("include_outside_markers not implemented yet"))
-        if variant_bits is None:
-            variant_bits = self.variant_bits
+        #if variant_bits is None:
+        #    variant_bits = self.variant_bits
         
         assert(self.end_marker is not None)
         
@@ -451,7 +451,7 @@ class Structure(models.Model):
             work = self.work,
             position__gte = self.start_token.position,
             position__lte = self.end_token.position
-        ).extra(where=['variant_bits & %s != 0'], params=[variant_bits])
+        ) #.extra(where=['variant_bits & %s != 0'], params=[variant_bits])
         
         return tokens
 
