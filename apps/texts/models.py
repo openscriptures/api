@@ -72,18 +72,19 @@ class Work(models.Model):
 
     #Concatenation of previous fields:
     #osis_id = models.CharField(max_length=32, choices=TYPES, null=False, db_index=True)
-    #def get_osis_id(self):
-    #    _osis_id = []
-    #    if self.type:
-    #        _osis_id.append(self.type)
-    #    if self.language:
-    #        _osis_id.append(self.language.code)
-    #    if self.osis_slug:
-    #        _osis_id.append(self.osis_slug)
-    #    if self.publish_date:
-    #        _osis_id.append(self.publish_date.year)
-    #    return ".".join(_osis_id)
-    #osis_id = property(get_osis_id)
+    
+    @property
+    def osis_id(self):
+        _osis_id = []
+        if self.type:
+            _osis_id.append(self.type)
+        if self.language:
+            _osis_id.append(self.language.code)
+        if self.osis_slug:
+            _osis_id.append(self.osis_slug)
+        if self.publish_date:
+            _osis_id.append(str(self.publish_date.year))
+        return ".".join(_osis_id)
 
     copyright = models.TextField(blank=True)
     license = models.ForeignKey(License, null=True)

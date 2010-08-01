@@ -243,6 +243,7 @@ def passage(request, osis_ref):
     
     #TODO: Allow multiple passages to be queried at once
     passage = {
+        'work': work,
         'is_standoff':is_standoff,
         'osis_ref': osis_ref,
         #'osis_ref_parsed': osis_ref_parsed,
