@@ -7,30 +7,26 @@ import urllib
 import unicodedata
 import base64
 import hashlib
+from django.utils.encoding import smart_str
 
 from texts.models import Work, Token
 from core import osis
 
 def generate_token_id(work_id, passage_id, previous_tokens, token_data):
-    print u"".join((
-            unicode(work_id),
-            unicode(passage_id),
-            u"".join(
-                [unicode(token.data) for token in previous_tokens[-3:]]
+    hash = base64.b32encode(hashlib.sha256(
+        "".join((
+            smart_str(work_id),
+            smart_str(passage_id),
+            "".join(
+                [smart_str(token.data) for token in previous_tokens[-3:]]
             ),
-            unicode(token_data)
-        ))
-    
-    return base64.b32encode(hashlib.sha256(
-        u"".join((
-            unicode(work_id),
-            unicode(passage_id),
-            u"".join(
-                [unicode(token.data) for token in previous_tokens[-3:]]
-            ),
-            unicode(token_data)
+            smart_str(token_data)
         ))
     ).digest())
+    
+    hash = hash.strip('=')
+    assert(len(hash) == 52)
+    return hash
 
 def normalize_token(data):
     "Normalize to Unicode NFC, strip out all diacritics, apostrophies, and make lower-case."

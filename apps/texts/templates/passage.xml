@@ -18,7 +18,7 @@
 				</structures>
 				<tokens>
 					{% for token in passage.tokens %}
-						<token xml:id="t{{ token.position }}">
+						<token xml:id="{{ token.id }}">
 							<![CDATA[{{ token.data }}]]>
 						</token>
 					{% endfor %}
@@ -26,7 +26,7 @@
 			{% else %}
 				{% for chunk in passage.chunks %}
 					{% if chunk.token %}
-						<token xml:id="t{{ chunk.token.position }}">
+						<token xml:id="{{ chunk.token.id }}">
 							<![CDATA[{{ chunk.token.data }}]]>
 						</token>
 					{% else %}
