@@ -87,7 +87,7 @@ class OpenScripturesImport():
             )
         self.structCount += 1
        
-    def create_chapter_struct(self):
+    def create_chapter_struct(self):       
         self.structs[Structure.CHAPTER] = Structure(
             work = self.work1,
             type = Structure.CHAPTER,
