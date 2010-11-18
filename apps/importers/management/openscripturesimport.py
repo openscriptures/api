@@ -147,26 +147,21 @@ class OpenScripturesImport():
                 if struct.start_token is None:
                     struct.start_token = self.bookTokens[-1]
 
-    def delete_work(self, workID):
+    def delete_work(self, work):
         "Deletes a work without a greedy cascade"
-    
-        try:
-            work = Work.objects.get(id = workID)
-        except:
-            return False
-
+     
         if work.variants_for_work is not None:
-            delete_work(work.variants_for_work.id)
+            delete_work(work.variants_for_work)
     
         # Clear all links to unified text
-        Token.objects.filter(work = workID).delete() #Does this need to be two linces?
+        Token.objects.filter(work = work).delete() #Does this need to be two linces?
     
         # Delete all variant works
-        Work.objects.filter(variants_for_work = workID).delete()
+        Work.objects.filter(variants_for_work = work).delete()
     
         # Delete work
-        #Work.objects.filter(id=workID).update(unified_token=None)
-        Work.objects.filter(id=workID).delete()
+        #Work.objects.filter(id=workID).update(unified_token=None)        
+        work.delete()
         return True
 
 

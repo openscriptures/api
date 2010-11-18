@@ -99,7 +99,9 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
         elif name == "p":
             # Open new paragraph struct
             self.in_paragraph = 1
-            self.importer.create_paragraph()
+            # Avoid pre-text <p> tags            
+            if self.in_book:
+                self.importer.create_paragraph()
 
         elif name == "w":
             self.in_word = 1
@@ -209,7 +211,8 @@ class Command(BaseCommand):
             )
 
         # Create Works
-        self.importer.delete_work(Work.objects.get(osis_slug="SBLGNT"))
+        if len(Work.objects.filter(osis_slug="SBLGNT")) > 0:        
+            self.importer.delete_work(Work.objects.get(osis_slug="SBLGNT"))
         self.importer.work1 = Work(
             #id           = WORK1_ID,
             title        = "SBL Greek New Testament",
