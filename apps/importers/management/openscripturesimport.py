@@ -197,9 +197,14 @@ class OpenScripturesImport():
     
     def close_structure(self, type):
         if self.structs.has_key(type):
+            # Ensure the structure has a start_token
             assert(self.structs[type].start_token is not None)
             if self.structs[type].end_token is None:
-                self.structs[type].end_token = self.bookTokens[-1]
+            # Exclude whitespace tokens from the end of verses and chapters
+                if self.bookTokens[-1].data == " " and (type == Structure.CHAPTER or type == Structure.VERSE):
+                    self.structs[type].end_token = self.bookTokens[-2]
+                else:
+                    self.structs[type].end_token = self.bookTokens[-1]
             self.structs[type].save()
             del self.structs[type]
 
