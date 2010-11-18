@@ -209,7 +209,7 @@ class Command(BaseCommand):
             )
 
         # Create Works
-        self.importer.delete_work(Work.objects.get(osis_slug="SBLGNT")
+        self.importer.delete_work(Work.objects.get(osis_slug="SBLGNT"))
         self.importer.work1 = Work(
             #id           = WORK1_ID,
             title        = "SBL Greek New Testament",
