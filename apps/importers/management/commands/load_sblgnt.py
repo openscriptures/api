@@ -152,8 +152,8 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
             # Attribute is "id"
             self.in_book = 0
             #self.importer.close_structure(Structure.BOOK)
-            for structType in structs.keys():
-                close_structure(structType, bookTokens, structs)
+            for structType in self.importer.structs.keys():
+                self.importer.close_structure(structType)
             # Re-initialize the bookTokens array 
             self.importer.bookTokens = []
             
