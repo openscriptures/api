@@ -116,6 +116,9 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
         if self.in_word:
             # Here handle word tokens
             self.importer.create_token(data)
+            # Link structures to newly-created start_tokens
+            # Needs to come after token creation is done, but not sure this is the best spot
+            self.importer.link_start_tokens()
 
         elif self.in_suffix:
             # Here handle whitespace and punctuation tokens
@@ -140,10 +143,6 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
                 self.importer.current_verse = data
             self.importer.create_verse_struct()
 
-        # Link structures to newly-created start_tokens
-        # Needs to come after token creation is done, but not sure this is the best spot
-        self.importer.link_start_tokens()
-
     def endElement(self, name):
         """Actions for encountering closing tags"""
 
@@ -152,8 +151,8 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
             # Attribute is "id"
             self.in_book = 0
             #self.importer.close_structure(Structure.BOOK)
-            for structType in self.importer.structs.keys():
-                print structType                
+            self.importer.link_start_tokens()            
+            for structType in self.importer.structs.keys():               
                 self.importer.close_structure(structType)
             # Re-initialize the bookTokens array 
             self.importer.bookTokens = []
