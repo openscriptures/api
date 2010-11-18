@@ -149,7 +149,9 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
 	        # Close struct for book
             # Attribute is "id"
             self.in_book = 0
-            self.importer.close_structure(Structure.BOOK)
+            #self.importer.close_structure(Structure.BOOK)
+            for structType in structs.keys():
+                close_structure(structType, bookTokens, structs)
             # Re-initialize the bookTokens array 
             self.importer.bookTokens = []
             
@@ -193,7 +195,7 @@ class Command(BaseCommand):
         self.importer = OpenScripturesImport()
 
         # Abort if MS has already been added (or --force not supplied)
-        self.importer.abort_if_imported("SBLGNT", options["force"])
+        #self.importer.abort_if_imported("SBLGNT", options["force"])
 
         # Download the source file
         self.importer.download_resource(SOURCE_URL)
@@ -207,6 +209,7 @@ class Command(BaseCommand):
             )
 
         # Create Works
+        self.importer.delete_work(Work.objects.get(osis_slug="SBLGNT")
         self.importer.work1 = Work(
             #id           = WORK1_ID,
             title        = "SBL Greek New Testament",
