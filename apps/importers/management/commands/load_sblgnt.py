@@ -253,3 +253,4 @@ class Command(BaseCommand):
 # TODO
 # Handle the zip file
 # Handle limited books
+# Handle "force" option and re-enable abort-if-imported
