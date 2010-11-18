@@ -11,8 +11,8 @@
 							xml:id="s{{ structure.position }}"
 							target="range(#t{% if structure.shadow_start_token_position %}{{structure.shadow_start_token_position}}{% else %}{{structure.start_token.position}}{% endif %}, #t{% if structure.shadow_end_token_position %}{{structure.shadow_end_token_position}}{% else %}{{structure.end_token.position}}{% endif %})"
 							shadow="{{ structure.shadow_name }}"
-							{% if structure.start_marker %}start-marker="#s{{ structure.start_marker.position }}"{% endif %}
-							{% if structure.end_marker %}end-marker="#s{{ structure.end_marker.position }}"{% endif %}
+							{% if structure.start_marker %}start-marker="#t{{ structure.start_marker.position }}"{% endif %}
+							{% if structure.end_marker %}end-marker="#t{{ structure.end_marker.position }}"{% endif %}
 						/>
 					{% endfor %}
 				</structures>
@@ -37,8 +37,8 @@
 									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
 									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
 									xml:id="s{{ chunk.structure.position }}"
-									{% if chunk.structure.start_marker %}start-marker="#s{{ chunk.structure.start_marker.position }}"{% endif %}
-									{% if chunk.structure.end_marker %}end-marker="#s{{ chunk.structure.end_marker.position }}"{% endif %}
+									{% if chunk.structure.start_marker %}start-marker="#t{{ chunk.structure.start_marker.position }}"{% endif %}
+									{% if chunk.structure.end_marker %}end-marker="#t{{ chunk.structure.end_marker.position }}"{% endif %}
 								/>
 							{% else %}
 								<structure-end xlink:href="#s{{ chunk.structure.position }}" />
@@ -50,8 +50,8 @@
 									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
 									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
 									xml:id="s{{ chunk.structure.position }}"
-									{% if chunk.structure.start_marker %}start-marker="#s{{ chunk.structure.start_marker.position }}"{% endif %}
-									{% if chunk.structure.end_marker %}end-marker="#s{{ chunk.structure.end_marker.position }}"{% endif %}
+									{% if chunk.structure.start_marker %}start-marker="#t{{ chunk.structure.start_marker.position }}"{% endif %}
+									{% if chunk.structure.end_marker %}end-marker="#t{{ chunk.structure.end_marker.position }}"{% endif %}
 								>
 							{% else %}
 								</structure>
