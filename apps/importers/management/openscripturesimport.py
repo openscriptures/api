@@ -33,38 +33,8 @@ class OpenScripturesImport():
         self.current_book = None
         self.current_chapter = None
         self.current_verse = None
-
-    def create_license(self):
-        # TODO: Complete this function
-        pass
-
-    def create_paragraph(self):
-        paragraph_marker = None        
-        # First the token
-        if len(self.bookTokens) > 0:
-            paragraph_marker = Token(
-                data     = u"\u2029", #¶ "\n\n"
-                type     = Token.WHITESPACE, #i.e. PARAGRAPH
-                work     = self.work1,
-                position = self.tokenCount,
-            )        
-            self.tokenCount += 1
-            paragraph_marker.save()
-            if self.structs.has_key(Structure.PARAGRAPH):
-                self.structs[Structure.PARAGRAPH].end_marker = paragraph_marker
-            self.close_structure(Structure.PARAGRAPH)
-            self.bookTokens.append(paragraph_marker)
-        # Then the struct
-        print("¶")
-        self.structs[Structure.PARAGRAPH] = Structure(
-            work = self.work1,
-            type = Structure.PARAGRAPH,
-            position = self.structCount,
-        )
-        if paragraph_marker:
-            self.structs[Structure.PARAGRAPH].start_marker = paragraph_marker
-        self.structCount += 1
-
+        # For the paragraph token object, not the struct
+        self.current_paragraph = None
 
     def create_whitespace_token(self):
         ws_token = Token(
@@ -107,6 +77,32 @@ class OpenScripturesImport():
             numerical_start = self.current_verse,
         )
         print(self.structs[Structure.VERSE].osis_id)
+        self.structCount += 1
+
+    def create_paragraph(self):
+        current_paragraph = None
+        if len(self.bookTokens) > 0 and self.structs.has_key(Structure.PARAGRAPH):
+            current_paragraph = Token(
+                data     = u"\u2029", #¶ "\n\n"
+                type     = Token.WHITESPACE, #i.e. PARAGRAPH
+                work     = self.work1,
+                position = self.tokenCount,
+            )
+            self.tokenCount += 1
+            current_paragraph.save()
+            self.structs[Structure.PARAGRAPH].end_marker = current_paragraph
+            self.close_structure(Structure.PARAGRAPH)            
+            self.bookTokens.append(current_paragraph)
+
+        assert(not self.structs.has_key(Structure.PARAGRAPH))
+        print("¶")
+        self.structs[Structure.PARAGRAPH] = Structure(
+            work = self.work1,
+            type = Structure.PARAGRAPH,
+            position = self.structCount,
+        )
+        if current_paragraph:
+            self.structs[Structure.PARAGRAPH].start_marker = current_paragraph
         self.structCount += 1
 
     def create_token(self, token_data):

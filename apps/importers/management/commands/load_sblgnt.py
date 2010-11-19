@@ -60,20 +60,22 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
     """Class to parse the SBL GNT XML file"""
 
     def __init__(self, importer):
+        self.in_text = 0
         self.in_book = 0
         self.in_book_title = 0
         self.in_paragraph = 0
         self.in_verse = 0
         self.in_word = 0
         self.in_suffix = 0
+        self.children_in_p = -1
         self.importer = importer
 
     def startElement(self, name, attrs):
         """Actions for encountering opening tags"""
         
         if name == "book":
-	    # Open struct for book
-            # Attribute is "id"            
+            # Once we are in the book tag, the real text has begun
+            self.in_text = 1            
             self.in_book = 1
             # Reset chapter and verses
             self.current_verse = 0
@@ -84,23 +86,18 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
                     self.importer.current_book = key
             self.importer.create_book_struct()
 
-        # Looks like we don't have an equivalent for this in OpenScriptures
-        #elif name == "title":
-            #self.in_book_title = 1
-
         elif name == "verse-number":
             self.in_verse = 1
-            # Close previous verse struct (if necessary) and open new verse struct
-            # Attribute is "id"
-            if self.importer.structs.has_key(Structure.VERSE):
-                self.importer.close_structure(Structure.VERSE)
+            # Close previous verse struct (if necessary)
+            self.importer.close_structure(Structure.VERSE)
             
-
         elif name == "p":
             # Open new paragraph struct
             self.in_paragraph = 1
+            # Detect if this is a self-closing tag            
+            self.children_in_p = -1
             # Avoid pre-text <p> tags            
-            if self.in_book:
+            if self.in_text:
                 self.importer.create_paragraph()
 
         elif name == "w":
@@ -109,6 +106,8 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
         elif name == "suffix":
             self.in_suffix = 1
 
+        if self.in_paragraph:
+            self.children_in_p +=1
 
     def characters(self, data):
         """Handle the tags which enclose data needed for import"""
@@ -156,19 +155,17 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
                 self.importer.close_structure(structType)
             # Re-initialize the bookTokens array 
             self.importer.bookTokens = []
-            
-        # Looks like we don't have an equivalent for this in OpenScriptures
-        #elif name == "title":
-            #self.in_book_title = 0
 
         elif name == "verse-number":
             # Verse number tag is self-closing
             self.in_verse = 0
 
         elif name == "p":
-            # Close current paragraph struct
+            # If this is a self-closing tag, link start-token to paragraph token
             self.in_paragraph = 0
-            #self.importer.close_structure(Structure.PARAGRAPH)
+            if self.children_in_p == 0 and self.in_text:
+                print "<p />"
+                self.importer.link_start_tokens()
 
         elif name == "w":
             # Have already tokenized data, nothing more to do            
@@ -248,6 +245,8 @@ class Command(BaseCommand):
         self.parser = xml.sax.make_parser()        
         self.parser.setContentHandler(SBLGNTParser(self.importer))
         self.parser.parse("sblgnt.xml")
+        print "Total tokens %d" % self.importer.tokenCount
+        print "Total structures: %d" % self.importer.structCount
 
 
 # TODO
