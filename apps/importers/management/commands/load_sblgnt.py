@@ -10,6 +10,7 @@ import os
 import unicodedata
 import xml.sax
 import zipfile
+import StringIO
 
 # Django imports
 from django.core.management.base import BaseCommand
@@ -194,7 +195,7 @@ class Command(BaseCommand):
         self.importer = OpenScripturesImport()
 
         # Abort if MS has already been added (or --force not supplied)
-        #self.importer.abort_if_imported("SBLGNT", options["force"])
+        self.importer.abort_if_imported("SBLGNT", options["force"])
 
         # Download the source file
         self.importer.download_resource(SOURCE_URL)
@@ -244,12 +245,11 @@ class Command(BaseCommand):
 		# Initialize the parser and set it up
         self.parser = xml.sax.make_parser()        
         self.parser.setContentHandler(SBLGNTParser(self.importer))
-        self.parser.parse("sblgnt.xml")
+        _zip = zipfile.ZipFile(os.path.basename(SOURCE_URL))
+        self.parser.parse(StringIO.StringIO(_zip.read("sblgnt.xml")))
         print "Total tokens %d" % self.importer.tokenCount
         print "Total structures: %d" % self.importer.structCount
 
 
 # TODO
-# Handle the zip file
 # Handle limited books
-# Handle "force" option and re-enable abort-if-imported

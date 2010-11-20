@@ -180,7 +180,7 @@ class OpenScripturesImport():
 
     def abort_if_imported(self, slug, force=False):
         "Shortcut see if the provided work ID already exists in the system; if so, then abort unless --force command line argument is supplied"
-        if(len(Work.objects.filter(osis_slug=slug)) and not force):
+        if len(Work.objects.filter(osis_slug=slug)) > 0 and not force:
             print " (already imported; pass --force option to delete existing work and reimport)"
             exit()
 
