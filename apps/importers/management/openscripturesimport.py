@@ -56,6 +56,7 @@ class OpenScripturesImport():
             numerical_start = self.book_codes.index(self.current_book),
             )
         self.structCount += 1
+        print self.current_book
        
     def create_chapter_struct(self):       
         self.structs[Structure.CHAPTER] = Structure(
@@ -65,7 +66,7 @@ class OpenScripturesImport():
             osis_id = self.current_book + "." + self.current_chapter,
             numerical_start = self.current_chapter,
         )
-        print(self.structs[Structure.CHAPTER].osis_id)
+        print self.structs[Structure.CHAPTER].osis_id
         self.structCount += 1
 
     def create_verse_struct(self):
@@ -76,7 +77,7 @@ class OpenScripturesImport():
             osis_id = self.current_book + "." + self.current_chapter + "." + self.current_verse,
             numerical_start = self.current_verse,
         )
-        print(self.structs[Structure.VERSE].osis_id)
+        print self.structs[Structure.VERSE].osis_id
         self.structCount += 1
 
     def create_paragraph(self):
