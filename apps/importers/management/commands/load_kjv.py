@@ -9,6 +9,7 @@
 import datetime
 from optparse import make_option
 import os
+import re
 import unicodedata
 import xml.sax
 import zipfile
@@ -26,6 +27,8 @@ from apps.core.models import Language, License, Server
 # TODO: Some of this might be better defined as SETTING
 SOURCE_URL = "http://www.crosswire.org/~dmsmith/kjv2006/sword/kjvxml.zip"
 
+PUNCTUATION_CHARS = ['.', ',', '?', ';', '!', ":"]
+
 class KJVParser(xml.sax.handler.ContentHandler):
     """Class to parse the SBL GNT XML file"""
 
@@ -35,6 +38,9 @@ class KJVParser(xml.sax.handler.ContentHandler):
         self.in_book_title = 0
         self.in_chapter = 0
         self.in_verse = 0
+        self.in_transChange = 0
+        self.in_note = 0
+        self.in_milestone = 0
         self.importer = importer
 
     def startElement(self, name, attrs):
@@ -60,21 +66,46 @@ class KJVParser(xml.sax.handler.ContentHandler):
             
         elif name == "verse":
             self.in_verse = 1
+            names = []
+            values = []
             # Get the verse number from the OSIS id
-            (name, value) = attrs.items()[0]
-            self.importer.current_verse = value.split(".")[1]
-            self.importer.create_verse_struct()
+            for each in attrs.items():
+                (name, value) = each
+                names.append(name)
+                values.append(value)
+            if "sID" in names:
+                self.importer.current_verse = values[0].split(".")[2]
+                self.importer.create_verse_struct()
+            else:
+                self.importer.close_structure(Structure.VERSE)
+            
+        elif name == "transChange":
+            self.in_transChange = 1
+            
+        elif name == "note":
+            self.in_note = 1
+            
+        elif name == "milestone":
+            self.in_miltestone = 1
+            if self.in_text:
+                self.importer.create_paragraph()
 
     def characters(self, data):
         """Handle the tags which enclose data needed for import"""
-
-        if self.in_verse:
-            print "Verse: %s" % data
-            # Here handle word tokens
-            #self.importer.create_token(data)
+        if self.in_text and (not self.in_note):
+            # REGEX to the rescue?
+            tokens = re.split('(\W+)', data)
+            for i in range(len(tokens)):
+                if tokens[i] == ' ':
+                    self.importer.create_whitespace_token()
+                elif tokens[i] in PUNCTUATION_CHARS:
+                    self.importer.create_punct_token(tokens[i])
+                else:
+                    self.importer.create_token(tokens[i])
             # Link structures to newly-created start_tokens
             # Needs to come after first token is created
-            #self.importer.link_start_tokens()
+                if i == 0:
+                    self.importer.link_start_tokens()
 
     def endElement(self, name):
         """Actions for encountering closing tags"""
@@ -91,10 +122,18 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.in_chapter = 0
             self.importer.close_structure(Structure.CHAPTER)
 
-
         elif name == "verse":
             self.in_verse = 0
-            self.importer.close_structure(Structure.VERSE)
+            #self.importer.close_structure(Structure.VERSE)
+            
+        elif name == "transChange":
+            self.in_transChange = 0
+            
+        elif name == "note":
+            self.in_note = 0
+            
+        elif name == "milestone":
+            self.in_milestone = 0
 
 class Command(BaseCommand):
     args = '<Jude John ...>'
