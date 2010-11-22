@@ -35,7 +35,7 @@ class KJVParser(xml.sax.handler.ContentHandler):
     def __init__(self, importer):
         self.in_text = 0
         self.in_book = 0
-        self.in_book_title = 0
+        self.in_title = 0
         self.in_chapter = 0
         self.in_verse = 0
         self.in_transChange = 0
@@ -64,6 +64,13 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.importer.current_chapter =  value.split(".")[1]
             self.importer.create_chapter_struct()
             
+        elif name == "title":
+            self.in_title = 1
+            # Avoid pre-text title tags
+            if self.in_text:
+                print "Title"
+                self.importer.create_title_struct()
+ 
         elif name == "verse":
             names = []
             values = []
@@ -96,8 +103,8 @@ class KJVParser(xml.sax.handler.ContentHandler):
     def characters(self, data):
         """Handle the tags which enclose data needed for import"""
         # Only import inside of verses, avoiding new lines
-        if self.in_text and self.in_verse and (not self.in_note):
-            # REGEX to the rescue?
+        if self.in_text and (self.in_title or self.in_verse) and (not self.in_note):
+            # REGEX to the rescue!
             # Clump alphanumeric characters, including the apostraphe
             punct = re.compile("[%s]" % PUNC_CHRS)
             punct_space = re.compile("[%s]\s" % PUNC_CHRS)
@@ -140,9 +147,10 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.in_chapter = 0
             self.importer.close_structure(Structure.CHAPTER)
 
-        #elif name == "verse":
-            #self.in_verse = 0
-            #self.importer.close_structure(Structure.VERSE)
+        elif name == "title":
+            self.in_title = 0
+            if self.in_text:
+                self.importer.close_structure(Structure.TITLE)
             
         elif name == "transChange":
             self.in_transChange = 0

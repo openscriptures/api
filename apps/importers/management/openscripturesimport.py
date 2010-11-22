@@ -57,7 +57,25 @@ class OpenScripturesImport():
             )
         self.structCount += 1
         print self.current_book
-       
+        
+    def create_title_struct(self):
+        self.structs[Structure.TITLE] = Structure(
+            work = self.work1,
+            type = Structure.TITLE,
+            position = self.structCount,
+            )
+        self.structCount += 1
+     
+    def create_chapter_struct(self):       
+        self.structs[Structure.CHAPTER] = Structure(
+            work = self.work1,
+            type = Structure.CHAPTER,
+            position = self.structCount,
+            osis_id = self.current_book + "." + self.current_chapter,
+            numerical_start = self.current_chapter,
+        )
+        self.structCount += 1     
+     
     def create_chapter_struct(self):       
         self.structs[Structure.CHAPTER] = Structure(
             work = self.work1,
