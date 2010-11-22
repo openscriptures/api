@@ -27,7 +27,7 @@ from apps.core.models import Language, License, Server
 # TODO: Some of this might be better defined as SETTING
 SOURCE_URL = "http://www.crosswire.org/~dmsmith/kjv2006/sword/kjvxml.zip"
 
-PUNCTUATION_CHARS = ['.', ',', '?', ';', '!', ":"]
+PUNC_CHRS = re.escape(ur'.·,;:!?"\'')
 
 class KJVParser(xml.sax.handler.ContentHandler):
     """Class to parse the SBL GNT XML file"""
@@ -65,7 +65,6 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.importer.create_chapter_struct()
             
         elif name == "verse":
-            self.in_verse = 1
             names = []
             values = []
             # Get the verse number from the OSIS id
@@ -76,8 +75,12 @@ class KJVParser(xml.sax.handler.ContentHandler):
             if "sID" in names:
                 self.importer.current_verse = values[0].split(".")[2]
                 self.importer.create_verse_struct()
+                self.in_verse = 1
             else:
+                # Add a space at the end of eeach verse, because they are missing.
+                self.importer.create_whitespace_token()
                 self.importer.close_structure(Structure.VERSE)
+                self.in_verse = 0
             
         elif name == "transChange":
             self.in_transChange = 1
@@ -92,18 +95,33 @@ class KJVParser(xml.sax.handler.ContentHandler):
 
     def characters(self, data):
         """Handle the tags which enclose data needed for import"""
-        if self.in_text and (not self.in_note):
+        # Only import inside of verses, avoiding new lines
+        if self.in_text and self.in_verse and (not self.in_note):
             # REGEX to the rescue?
+            # Clump alphanumeric characters, including the apostraphe
+            punct = re.compile("[%s]" % PUNC_CHRS)
+            punct_space = re.compile("[%s]\s" % PUNC_CHRS)
             tokens = re.split('(\W+)', data)
+            # Last item is null
             for i in range(len(tokens)):
                 if tokens[i] == ' ':
                     self.importer.create_whitespace_token()
-                elif tokens[i] in PUNCTUATION_CHARS:
-                    self.importer.create_punct_token(tokens[i])
-                else:
+                
+                # Match the first character for punctuation
+                elif punct_space.match(tokens[i]):
+                    self.importer.create_punct_token(tokens[i].split(" ")[0])
+                    self.importer.create_whitespace_token()
+                # Fairly sure all punctuation tokens are followed by spaces
+                # But just to be safe
+                #elif punct.match(tokens[i]):
+                    #self.importer.create_punct_token(tokens[i])
+                    
+                # Ensure we aren't adding blank tokens
+                elif tokens[i] != '':
                     self.importer.create_token(tokens[i])
-            # Link structures to newly-created start_tokens
-            # Needs to come after first token is created
+                
+                # Link structures to newly-created start_tokens
+                # Needs to come after first token is created
                 if i == 0:
                     self.importer.link_start_tokens()
 
@@ -122,8 +140,8 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.in_chapter = 0
             self.importer.close_structure(Structure.CHAPTER)
 
-        elif name == "verse":
-            self.in_verse = 0
+        #elif name == "verse":
+            #self.in_verse = 0
             #self.importer.close_structure(Structure.VERSE)
             
         elif name == "transChange":
