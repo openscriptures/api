@@ -41,6 +41,7 @@ class KJVParser(xml.sax.handler.ContentHandler):
         self.in_transChange = 0
         self.in_note = 0
         self.in_milestone = 0
+        self.in_colophon = 0
         self.importer = importer
 
     def startElement(self, name, attrs):
@@ -53,9 +54,21 @@ class KJVParser(xml.sax.handler.ContentHandler):
             # Reset chapter and verses
             self.current_verse = 0
             self.current_chapter = 0
-            (name, value) = attrs.items()[2]
-            self.importer.current_book = value
-            self.importer.create_book_struct()
+            names = []
+            values = []
+            # Get the verse number from the OSIS id
+            for each in attrs.items():
+                (name, value) = each
+                names.append(name)
+                values.append(value)
+            # Avoid problems with the colophon tag
+            if "colophon" in values:
+                self.in_colophon = 1
+                self.importer.create_colophon_struct()
+            else:
+                (name, value) = attrs.items()[2]
+                self.importer.current_book = value
+                self.importer.create_book_struct()
 
         elif name == "chapter":
             self.in_chapter = 1
@@ -68,7 +81,6 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.in_title = 1
             # Avoid pre-text title tags
             if self.in_text:
-                print "Title"
                 self.importer.create_title_struct()
  
         elif name == "verse":
@@ -103,7 +115,7 @@ class KJVParser(xml.sax.handler.ContentHandler):
     def characters(self, data):
         """Handle the tags which enclose data needed for import"""
         # Only import inside of verses, avoiding new lines
-        if self.in_text and (self.in_title or self.in_verse) and (not self.in_note):
+        if self.in_text and (self.in_colophon or self.in_title or self.in_verse) and (not self.in_note):
             # REGEX to the rescue!
             # Clump alphanumeric characters, including the apostraphe
             punct = re.compile("[%s]" % PUNC_CHRS)
@@ -137,7 +149,10 @@ class KJVParser(xml.sax.handler.ContentHandler):
 
         if name == "div":
             self.in_book = 0
-            self.importer.link_start_tokens()            
+            if self.in_colophon:
+                self.in_colophon = 0
+                self.importer.close_structure(Structure.CHAPTER)
+            self.importer.link_start_tokens()
             for structType in self.importer.structs.keys():               
                 self.importer.close_structure(structType)
             # Re-initialize the bookTokens array 
@@ -223,7 +238,8 @@ class Command(BaseCommand):
         self.parser = xml.sax.make_parser()        
         self.parser.setContentHandler(KJVParser(self.importer))
         _zip = zipfile.ZipFile(os.path.basename(SOURCE_URL))
-        self.parser.parse(StringIO.StringIO(_zip.read("kjvlite.xml")))
+        #self.parser.parse(StringIO.StringIO(_zip.read("kjvlite.xml")))
+        self.parser.parse("kjvtest.xml")
         print "Total tokens %d" % self.importer.tokenCount
         print "Total structures: %d" % self.importer.structCount
 

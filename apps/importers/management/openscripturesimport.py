@@ -74,17 +74,16 @@ class OpenScripturesImport():
             osis_id = self.current_book + "." + self.current_chapter,
             numerical_start = self.current_chapter,
         )
-        self.structCount += 1     
-     
-    def create_chapter_struct(self):       
+        print self.structs[Structure.CHAPTER].osis_id
+        self.structCount += 1
+    
+    def create_colophon_struct(self):
         self.structs[Structure.CHAPTER] = Structure(
             work = self.work1,
             type = Structure.CHAPTER,
             position = self.structCount,
-            osis_id = self.current_book + "." + self.current_chapter,
-            numerical_start = self.current_chapter,
+            osis_id = self.current_book + ".c"
         )
-        print self.structs[Structure.CHAPTER].osis_id
         self.structCount += 1
 
     def create_verse_struct(self):
