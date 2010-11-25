@@ -2,12 +2,11 @@
 # encoding: utf-8
 
 # standard library imports
-import base64
 import datetime
-import hashlib
 from optparse import make_option
 import os
 import sys
+from uuid import uuid4
 import urllib
 import unicodedata
 
@@ -22,7 +21,7 @@ from apps.core import osis
 
 class OpenScripturesImport():
     """Class to facilitate the import of data into OpenScriptures models.
-v
+
     OpenScripturesImport handles the creation of various OpenScriptures data model objects
     (works, tokens, structures) and provides the necessary functions to process the data."""
 
@@ -38,17 +37,6 @@ v
         self.current_verse = None
         # For the paragraph token object, not the struct
         self.current_paragraph = None
-
-    def create_whitespace_token(self):
-        ws_token = Token(
-            data     = " ",
-            type     = Token.WHITESPACE,
-            work     = self.work1,
-            position = self.tokenCount,
-            )
-        self.tokenCount += 1
-        ws_token.save()
-        self.bookTokens.append(ws_token)
 
     def create_book_struct(self):
         self.structs["book"] = Structure(
@@ -102,8 +90,9 @@ v
 
     def create_paragraph(self):
         current_paragraph = None
-        if len(self.bookTokens) > 0 and self.structs.has_key(Structure.PARAGRAPH):
+        if len(self.bookTokens) > 0 and self.structs.has_key("paragraph"):
             current_paragraph = Token(
+                id       = uuid4(),
                 data     = u"\u2029", #¶ "\n\n"
                 type     = Token.WHITESPACE, #i.e. PARAGRAPH
                 work     = self.work1,
@@ -126,19 +115,36 @@ v
             self.structs["paragraph"].start_marker = current_paragraph
         self.structCount += 1
 
+
     def create_token(self, token_data):
-        token_work = Token(
+        word_token = Token(
+            id       = uuid4(),
             data     = token_data,
             type     = Token.WORD,
             work     = self.work1,
             position = self.tokenCount,
         )
         self.tokenCount += 1
-        token_work.save()
-        self.bookTokens.append(token_work)
+        word_token.save()
+        self.bookTokens.append(word_token)
+
+
+    def create_whitespace_token(self):
+        ws_token = Token(
+            id       = uuid4(),
+            data     = " ",
+            type     = Token.WHITESPACE,
+            work     = self.work1,
+            position = self.tokenCount,
+            )
+        self.tokenCount += 1
+        ws_token.save()
+        self.bookTokens.append(ws_token)
+
 
     def create_punct_token(self, punct_data):
         punc_token = Token(
+            id       = uuid4(),
             data     = punct_data,
             type     = Token.PUNCTUATION,
             work     = self.work1,
@@ -163,6 +169,8 @@ v
             for struct in self.structs.values():
                 if struct.start_token is None:
                     struct.start_token = self.bookTokens[-1]
+                    struct.save()
+
 
     def delete_work(self, work):
         "Deletes a work without a greedy cascade"
@@ -222,26 +230,8 @@ v
                     self.structs[element].end_token = self.bookTokens[-2]
                 else:
                     self.structs[element].end_token = self.bookTokens[-1]
-            self.structs[element].savbe()
+            self.structs[element].save()
             del self.structs[element]
-
-    def generate_token_id(work_id, passage_id, previous_tokens, token_data):
-        hash = base64.b32encode(hashlib.sha256(
-            "".join((
-                 smart_str(work_id),
-                smart_str(passage_id),
-                "".join(
-                     [smart_str(token.data) for token in previous_tokens[-3:]]
-                ),
-                smart_str(token_data)
-            ))
-        ).digest())
-    
-        hash = hash.strip('=')
-        assert(len(hash) == 52)
-        return hash
-
-
 
 # TODO
 # - Kethiv/Qere

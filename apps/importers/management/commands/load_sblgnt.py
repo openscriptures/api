@@ -17,15 +17,12 @@ from django.core.management.base import BaseCommand
 
 # Open Scriptures imports
 from apps.core import osis
-from apps.importers.management.openscripturesimport import OpenScripturesImport
+from apps.importers.import_helpers import OpenScripturesImport
 from apps.texts.models import Work, Token, Structure, WorkServer
 from apps.core.models import Language, License, Server
 
 # TODO: Some of this might be better defined as SETTING
 SOURCE_URL = "http://sblgnt.com/download/SBLGNTxml.zip"
-
-#WORK1_ID = 3 # SBLGNT
-#WORK1_VARIANT_BIT = 0b00000001
 
 BOOK_ID_LOOKUP = {
 	'Matt'   : "Mt"   ,
@@ -90,7 +87,7 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
         elif name == "verse-number":
             self.in_verse = 1
             # Close previous verse struct (if necessary)
-            self.importer.close_structure(Structure.VERSE)
+            self.importer.close_structure("verse")
             
         elif name == "p":
             # Open new paragraph struct
@@ -135,7 +132,7 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
             # Inclusion of colon means a new chapter
             if ":" in data:              
                 chapter_verse = data.split(":")                
-                self.importer.close_structure(Structure.CHAPTER)
+                self.importer.close_structure("chapter")
                 self.importer.current_chapter = chapter_verse[0]
                 self.importer.create_chapter_struct() 
                 self.importer.current_verse = chapter_verse[1]                  
@@ -152,8 +149,8 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
             self.in_book = 0
             #self.importer.close_structure(Structure.BOOK)
             self.importer.link_start_tokens()            
-            for structType in self.importer.structs.keys():               
-                self.importer.close_structure(structType)
+            for structElement in self.importer.structs.keys():               
+                self.importer.close_structure(structElement)
             # Re-initialize the bookTokens array 
             self.importer.bookTokens = []
 
@@ -177,8 +174,9 @@ class SBLGNTParser(xml.sax.handler.ContentHandler):
             self.in_suffix = 0
 
 class Command(BaseCommand):
-    args = '<Jude John ...>'
-    help = 'Limits the scope of the load to just to the books specified.'
+    # Not implementing selecting books right now
+    #args = '<Jude John ...>'
+    #help = 'Limits the scope of the load to just to the books specified.'
 
     option_list = BaseCommand.option_list + (
         make_option('--force',
@@ -232,15 +230,16 @@ class Command(BaseCommand):
         )
 
         # Get the subset of OSIS book codes provided on command line
-        limited_book_codes = []
-        for arg in args:
-            id_parts = arg.split(".")
-            if id_parts[0] in osis.BOOK_ORDERS["Bible"]["KJV"]:
-                limited_book_codes.append(id_parts[0])
-        book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
-        if len(limited_book_codes) > 0:
-            book_codes = limited_book_codes
-        self.importer.book_codes = book_codes
+        #limited_book_codes = []
+        #for arg in args:
+            #id_parts = arg.split(".")
+            #if id_parts[0] in osis.BOOK_ORDERS["Bible"]["KJV"]:
+                #limited_book_codes.append(id_parts[0])
+        #book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
+        #if len(limited_book_codes) > 0:
+            #book_codes = limited_book_codes
+        #self.importer.book_codes = book_codes
+        self.importer.book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
 
 		# Initialize the parser and set it up
         self.parser = xml.sax.make_parser()        

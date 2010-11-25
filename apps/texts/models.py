@@ -123,7 +123,7 @@ class Work(models.Model):
                 work = main_work,
                 end_token__isnull = False,
                 osis_id = end_osis_id
-            ) #.extra(where=["variant_bits & %s != 0"], params=[variant_bits])
+            ).extra(where=["variant_bits & %s != 0"], params=[variant_bits])
             if len(structures) == 0:
                 raise Exception("End structure with osisID %s not found" % end_osis_id)
             end_structure = structures[0]
@@ -151,7 +151,7 @@ class Work(models.Model):
                 end_token__position__gte = start_structure.start_token.position,
                 end_token__position__lte = end_structure.end_token.position
             )
-        ) #.extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[variant_bits])
+        ).extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[variant_bits])
 
         # Now indicate if the structures are shadowed (virtual)
         for struct in concurrent_structures:
@@ -216,7 +216,7 @@ class Token(models.Model):
     It wasn't even the token that changed in the first place.
     """
     
-    id = models.CharField(_("base32 sha-256 hash of [workID, passage, n-gram token context]"), max_length=52, primary_key=True)
+    id = models.CharField(_("uuid.uuid4() for random unique ID generation"), max_length=52, primary_key=True)
     data = models.CharField(_("Unicode data in Normalization Form C (NFC)"), max_length=255, db_index=True)
 
     WORD = 1
@@ -502,7 +502,7 @@ class Structure(models.Model):
             return self.osis_id
         elif self.element == 'p': #paragraph
             return u"¶" + self.start_token.data + u" … " + self.end_token.data
-        elif self.element == self.UNCERTAIN1:
+        elif self.element == "uncertain":
             return u"[]"
         else:
             return self.type
