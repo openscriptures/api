@@ -20,7 +20,7 @@ from django.core.management.base import BaseCommand
 
 # Open Scriptures imports
 from apps.core import osis
-from apps.importers.management.openscripturesimport import OpenScripturesImport
+from apps.importers.import_helpers import OpenScripturesImport
 from apps.texts.models import Work, Token, Structure, WorkServer
 from apps.core.models import Language, License, Server
 
@@ -98,7 +98,7 @@ class KJVParser(xml.sax.handler.ContentHandler):
             else:
                 # Add a space at the end of eeach verse, because they are missing.
                 self.importer.create_whitespace_token()
-                self.importer.close_structure(Structure.VERSE)
+                self.importer.close_structure("verse")
                 self.in_verse = 0
             
         elif name == "transChange":
@@ -151,21 +151,21 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.in_book = 0
             if self.in_colophon:
                 self.in_colophon = 0
-                self.importer.close_structure(Structure.CHAPTER)
+                self.importer.close_structure("colophon")
             self.importer.link_start_tokens()
-            for structType in self.importer.structs.keys():               
-                self.importer.close_structure(structType)
+            for structElement in self.importer.structs.keys():               
+                self.importer.close_structure(structElement)
             # Re-initialize the bookTokens array 
             self.importer.bookTokens = []
 
         elif name == "chapter":
             self.in_chapter = 0
-            self.importer.close_structure(Structure.CHAPTER)
+            self.importer.close_structure("chapter")
 
         elif name == "title":
             self.in_title = 0
             if self.in_text:
-                self.importer.close_structure(Structure.TITLE)
+                self.importer.close_structure("title")
             
         elif name == "transChange":
             self.in_transChange = 0
@@ -177,8 +177,8 @@ class KJVParser(xml.sax.handler.ContentHandler):
             self.in_milestone = 0
 
 class Command(BaseCommand):
-    args = '<Jude John ...>'
-    help = 'Limits the scope of the load to just to the books specified.'
+    #args = '<Jude John ...>'
+    #help = 'Limits the scope of the load to just to the books specified.'
 
     option_list = BaseCommand.option_list + (
         make_option('--force',
@@ -224,22 +224,21 @@ class Command(BaseCommand):
         )
 
         # Get the subset of OSIS book codes provided on command line
-        limited_book_codes = []
-        for arg in args:
-            id_parts = arg.split(".")
-            if id_parts[0] in osis.BOOK_ORDERS["Bible"]["KJV"]:
-                limited_book_codes.append(id_parts[0])
-        book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
-        if len(limited_book_codes) > 0:
-            book_codes = limited_book_codes
-        self.importer.book_codes = book_codes
+        #limited_book_codes = []
+        #for arg in args:
+            #id_parts = arg.split(".")
+            #if id_parts[0] in osis.BOOK_ORDERS["Bible"]["KJV"]:
+                #limited_book_codes.append(id_parts[0])
+        #book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
+        #if len(limited_book_codes) > 0:
+            #book_codes = limited_book_codes
+        self.importer.book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
 
 		# Initialize the parser and set it up
         self.parser = xml.sax.make_parser()        
         self.parser.setContentHandler(KJVParser(self.importer))
         _zip = zipfile.ZipFile(os.path.basename(SOURCE_URL))
-        #self.parser.parse(StringIO.StringIO(_zip.read("kjvlite.xml")))
-        self.parser.parse("kjvtest.xml")
+        self.parser.parse(StringIO.StringIO(_zip.read("kjvlite.xml")))
         print "Total tokens %d" % self.importer.tokenCount
         print "Total structures: %d" % self.importer.structCount
 
