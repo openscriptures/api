@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <passages xmlns:osis="http://www.bibletechnologies.net/2003/OSIS/namespace" xmlns:xlink="http://www.w3.org/1999/xlink">
 	{% for passage in passages %}
-	<passage osis:scope="{{ passage.osis_ref }}">
+	<passage osis:scope="{{ passage.osis_ref }}" xml:base="/work/{{ passage.work.osis_id }}/">
 		{% spaceless %}
 			{% if passage.is_standoff %}
-				<structures>
+				<structures xml:base="structure/">
 					{% for structure in passage.structures %}
 						<structure
-							type="{{ structure.type_name }}"
+							type="{{ structure.element }}"
 							xml:id="s{{ structure.position }}"
 							target="range(#t{% if structure.shadow_start_token_position %}{{structure.shadow_start_token_position}}{% else %}{{structure.start_token.position}}{% endif %}, #t{% if structure.shadow_end_token_position %}{{structure.shadow_end_token_position}}{% else %}{{structure.end_token.position}}{% endif %})"
 							shadow="{{ structure.shadow_name }}"
@@ -16,9 +16,9 @@
 						/>
 					{% endfor %}
 				</structures>
-				<tokens>
+				<tokens xml:base="token/">
 					{% for token in passage.tokens %}
-						<token xml:id="t{{ token.position }}">
+						<token xml:id="t{{ token.position }}" xlink:href="{{ token.id }}">
 							<![CDATA[{{ token.data }}]]>
 						</token>
 					{% endfor %}
@@ -26,14 +26,14 @@
 			{% else %}
 				{% for chunk in passage.chunks %}
 					{% if chunk.token %}
-						<token xml:id="t{{ chunk.token.position }}">
+						<token xml:id="t{{ chunk.token.position }}" xlink:href="token/{{ chunk.token.id }}">
 							<![CDATA[{{ chunk.token.data }}]]>
 						</token>
 					{% else %}
 						{% if chunk.structure.is_milestoned %}
 							{% if chunk.is_start %}
 								<structure-start
-									type="{{ chunk.structure.type_name }}"
+									type="{{ chunk.structure.element }}"
 									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
 									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
 									xml:id="s{{ chunk.structure.position }}"
@@ -46,7 +46,7 @@
 						{% else %}
 							{% if chunk.is_start %}
 								<structure
-									type="{{ chunk.structure.type_name }}"
+									type="{{ chunk.structure.element }}"
 									{% if chunk.structure.shadow %}shadow="{{ chunk.structure.shadow_name }}"{% endif %}
 									{% if chunk.structure.osis_id %}osis:osisID="{{ chunk.structure.osis_id }}"{% endif %}
 									xml:id="s{{ chunk.structure.position }}"

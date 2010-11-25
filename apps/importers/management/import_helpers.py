@@ -5,10 +5,28 @@ import os
 import sys
 import urllib
 import unicodedata
+import base64
+import hashlib
+from django.utils.encoding import smart_str
 
 from texts.models import Work, Token
 from core import osis
 
+def generate_token_id(work_id, passage_id, previous_tokens, token_data):
+    hash = base64.b32encode(hashlib.sha256(
+        "".join((
+            smart_str(work_id),
+            smart_str(passage_id),
+            "".join(
+                [smart_str(token.data) for token in previous_tokens[-3:]]
+            ),
+            smart_str(token_data)
+        ))
+    ).digest())
+    
+    hash = hash.strip('=')
+    assert(len(hash) == 52)
+    return hash
 
 def normalize_token(data):
     "Normalize to Unicode NFC, strip out all diacritics, apostrophies, and make lower-case."
@@ -44,14 +62,14 @@ def delete_work(workID):
     except:
         return False
 
-    if work.variants_for_work is not None:
-        delete_work(work.variants_for_work.id)
+    #if work.variants_for_work is not None:
+    #    delete_work(work.variants_for_work.id)
     
     # Clear all links to unified text
     Token.objects.filter(work = workID).delete() #Does this need to be two linces?
     
     # Delete all variant works
-    Work.objects.filter(variants_for_work = workID).delete()
+    #Work.objects.filter(variants_for_work = workID).delete()
     
     # Delete work
     #Work.objects.filter(id=workID).update(unified_token=None)
@@ -66,11 +84,11 @@ def get_book_code_args():
             book_codes.append(arg)
     return book_codes
 
-def close_structure(type, bookTokens, structs):
-    if structs.has_key(type):
-        assert(structs[type].start_token is not None)
-        if structs[type].end_token is None:
-            structs[type].end_token = bookTokens[-1]
-        structs[type].save()
-        del structs[type]
+def close_structure(element, bookTokens, structs):
+    if structs.has_key(element):
+        assert(structs[element].start_token is not None)
+        if structs[element].end_token is None:
+            structs[element].end_token = bookTokens[-1]
+        structs[element].save()
+        del structs[element]
 
