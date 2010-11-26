@@ -123,7 +123,7 @@ class Work(models.Model):
                 work = main_work,
                 end_token__isnull = False,
                 osis_id = end_osis_id
-            ).extra(where=["variant_bits & %s != 0"], params=[variant_bits])
+            ) #.extra(where=["variant_bits & %s != 0"], params=[variant_bits])
             if len(structures) == 0:
                 raise Exception("End structure with osisID %s not found" % end_osis_id)
             end_structure = structures[0]
@@ -151,7 +151,7 @@ class Work(models.Model):
                 end_token__position__gte = start_structure.start_token.position,
                 end_token__position__lte = end_structure.end_token.position
             )
-        ).extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[variant_bits])
+        ) #.extra(where=["%s.variant_bits & %%s != 0" % Structure._meta.db_table], params=[variant_bits])
 
         # Now indicate if the structures are shadowed (virtual)
         for struct in concurrent_structures:
@@ -505,7 +505,7 @@ class Structure(models.Model):
         elif self.element == "uncertain":
             return u"[]"
         else:
-            return self.type
+            return self.element
 
 
 class StructureAttribute(models.Model):
