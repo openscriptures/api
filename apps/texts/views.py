@@ -63,13 +63,13 @@ def passage(request, osis_ref):
         output_format = request.GET["output"]
     
     # Get the desired hierarchy (serialization order) for Structures
-    structure_types = []
-    structure_types_always_milestoned = {}
+    structure_elements = []
+    structure_elements_always_milestoned = {}
     #STRUCTURE_TYPE_CODES = {}
-    structure_type_hierarchy = []
+    structure_element_hierarchy = []
     #for choice_tuple in Structure.TYPE_CHOICES: #TODO: There's gotta be a better way to do reverse lookup of choices tuples
     #    STRUCTURE_TYPE_CODES[choice_tuple[1]] = choice_tuple[0]
-    #    structure_types.append(choice_tuple[0])
+    #    structure_elements.append(choice_tuple[0])
     
     
     is_standoff = False
@@ -82,18 +82,18 @@ def passage(request, osis_ref):
             
             # Predefined hierarchy: Book-Chapter-Verse
             if request.GET["hierarchy"] == 'bcv':
-                structure_type_hierarchy = [
+                structure_element_hierarchy = [
                     'bookGroup',
                     'book',
                     'chapter',
                     'verse',
                     'p'
                 ]
-                structure_types_always_milestoned['p'] = True
+                structure_elements_always_milestoned['p'] = True
             
             # Predefined hierarchy: Book-Section-Paragraph
             elif request.GET["hierarchy"] == 'bsp':
-                structure_type_hierarchy = [
+                structure_element_hierarchy = [
                     'bookGroup',
                     'book',
                     'section',
@@ -102,32 +102,32 @@ def passage(request, osis_ref):
                     'chapter',
                     'verse'
                 ]
-                structure_types_always_milestoned['verse'] = True
-                structure_types_always_milestoned['chapter'] = True
+                structure_elements_always_milestoned['verse'] = True
+                structure_elements_always_milestoned['chapter'] = True
             
             # Predefined hierarchy: Book-Section-Paragraph
             elif request.GET["hierarchy"] == 'milestone':
-                for struct_type in structure_types:
-                    structure_types_always_milestoned[struct_type] = True
+                for struct_elem in structure_elements:
+                    structure_elements_always_milestoned[struct_elem] = True
             
             # Custom hierarchy specified in request
             else:
-                for struct_type in request.GET["hierarchy"].split(","):
-                    always_milestone = struct_type.startswith('~')
+                for struct_elem in request.GET["hierarchy"].split(","):
+                    always_milestone = struct_elem.startswith('~')
                     if always_milestone:
-                        struct_type = struct_type[1:]
-                        structure_types_always_milestoned[struct_type] = True
+                        struct_elem = struct_elem[1:]
+                        structure_elements_always_milestoned[struct_elem] = True
                     
-                    #if not STRUCTURE_TYPE_CODES.has_key(struct_type):
-                    #    return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_type, mimetype = "text/plain")
-                    structure_type_hierarchy.append(struct_type)
+                    #if not STRUCTURE_TYPE_CODES.has_key(struct_elem):
+                    #    return HttpResponseBadRequest("Unexpected structure type '%s' provided for hieararchy" % struct_elem, mimetype = "text/plain")
+                    structure_element_hierarchy.append(struct_elem)
             
             # Append any remaining in the order they are defined
-            for struct_type in structure_types:
-                if struct_type not in structure_type_hierarchy:
-                    structure_type_hierarchy.append(struct_type)
+            for struct_elem in structure_elements:
+                if struct_elem not in structure_element_hierarchy:
+                    structure_element_hierarchy.append(struct_elem)
     else: #default order
-        structure_type_hierarchy = structure_types
+        structure_element_hierarchy = structure_elements
     
     passage_start_token_position = data['tokens'][0].position
     passage_end_token_position = data['tokens'][len(data['tokens'])-1].position
@@ -182,8 +182,8 @@ def passage(request, osis_ref):
         # each whether it is_milestoned
         def sorter(a, b):
             return cmp(
-                structure_type_hierarchy.index(a.element),
-                structure_type_hierarchy.index(b.element)
+                structure_element_hierarchy.index(a.element),
+                structure_element_hierarchy.index(b.element)
             )
         
         for structure_group in (structures_by_token_start_position, structures_by_token_end_position):
@@ -196,7 +196,7 @@ def passage(request, osis_ref):
                     min_end_position = min(structs[0].end_token.position, passage_end_token_position)
                     for i in range(0, len(structs)):
                         # Always milestone
-                        if structure_types_always_milestoned.has_key(structs[i].element):
+                        if structure_elements_always_milestoned.has_key(structs[i].element):
                             structs[i].is_milestoned = True
                             continue
                         

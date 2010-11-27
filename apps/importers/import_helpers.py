@@ -88,9 +88,33 @@ class OpenScripturesImport():
         print self.structs["verse"].osis_id
         self.structCount += 1
 
+    def create_uncertain(self):
+        assert(not self.structs.has_key('doubted'))
+        print("### OPEN BRACKET")
+        
+        open_bracket_token = Token(
+            id       = uuid4(),
+            data     = '[',
+            type     = Token.PUNCTUATION,
+            work     = self.work1,
+            position = self.tokenCount
+        )
+        self.tokenCount += 1
+        open_bracket_token.save()
+        self.bookTokens.append(open_bracket_token)
+
+        self.structs['doubted'] = Structure(
+            work = self.work1,
+            element = 'doubted',
+            position = self.structCount,
+            start_marker = open_bracket_token
+            )
+        structCount += 1
+
+
     def create_paragraph(self):
         current_paragraph = None
-        if len(self.bookTokens) > 0 and self.structs.has_key("paragraph"):
+        if len(self.bookTokens) > 0 and self.structs.has_key("p"):
             current_paragraph = Token(
                 id       = uuid4(),
                 data     = u"\u2029", #¶ "\n\n"
@@ -100,19 +124,19 @@ class OpenScripturesImport():
             )
             self.tokenCount += 1
             current_paragraph.save()
-            self.structs["paragraph"].end_marker = current_paragraph
-            self.close_structure("paragraph")            
+            self.structs["p"].end_marker = current_paragraph
+            self.close_structure("p")            
             self.bookTokens.append(current_paragraph)
 
-        assert(not self.structs.has_key("paragraph"))
+        assert(not self.structs.has_key("p"))
         print("¶")
-        self.structs["paragraph"] = Structure(
+        self.structs["p"] = Structure(
             work = self.work1,
-            element = "paragraph",
+            element = "p",
             position = self.structCount,
         )
         if current_paragraph:
-            self.structs["paragraph"].start_marker = current_paragraph
+            self.structs["p"].start_marker = current_paragraph
         self.structCount += 1
 
 
@@ -153,6 +177,7 @@ class OpenScripturesImport():
         self.tokenCount += 1
         punc_token.save()
         self.bookTokens.append(punc_token)
+
 
     def link_start_tokens(self):
         """

@@ -7,3 +7,4 @@ greek_byzantine_2005_parsed_punc_utf8.txt
 greek_byzantine_2005_parsed_utf8.txt
 dev.db-journal
 *.xml
+*~

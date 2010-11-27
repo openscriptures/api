@@ -51,23 +51,21 @@
 #        return results
 
 
+# Standard library imports
 import datetime
+from optparse import make_option
 import os
 import re
 import StringIO
 import unicodedata
 import zipfile
 
-from optparse import make_option
-
+# Django imports
 from django.core.management.base import BaseCommand
 
+# Opensccriptures imports
 from core import osis
-from apps.importers.management.import_helpers import abort_if_imported
-from apps.importers.management.import_helpers import close_structure
-from apps.importers.management.import_helpers import delete_work
-from apps.importers.management.import_helpers import download_resource
-from apps.importers.management.import_helpers import generate_token_id
+from apps.importers.import_helpers import OpenScripturesImport
 from apps.texts.models import Work, Token, Structure, WorkServer
 from apps.core.models import Language, License, Server
 
@@ -148,13 +146,23 @@ class Command(BaseCommand):
             help='Force load despite it already being loaded'),
         )
 
-    def create_work(self):
+
+    def handle(self, *args, **options):
+        importer = OpenScripturesImport()
+        
+        # Abort if MS has already been added (or --force not supplied)
+        importer.abort_if_imported("Tischendorf", options["force"])
+
+        # Download the source file
+        importer.download_resource(SOURCE_URL)
+
+        # Create Works
         # Delete existing works
-        delete_work(WORK_ID)
+        if len(Work.objects.filter(osis_slug="Tischendorf")) > 0:
+            importer.delete_work(Work.objects.get(osis_slug="Tischendorf"))
         
         # Work for Qere edition (Kethiv is base text)
-        work = Work(
-            id           = WORK_ID,
+        importer.work1 = Work(
             title        = "Tischendorf 8th ed. v2.6 Qere (Corrected)",
             language     = Language('grc'),
             type         = 'Bible',
@@ -167,23 +175,11 @@ class Command(BaseCommand):
             source_url   = SOURCE_URL,
             license      = License.objects.get(url="http://creativecommons.org/licenses/publicdomain/")
         )
-        work.save()
+        importer.work1.save()
         WorkServer.objects.create(
-            work = work,
+            work = importer.work1,
             server = Server.objects.get(is_self = True)
         )
-        return work
-
-
-    def handle(self, *args, **options):
-        # Abort if MS has already been added (or --force not supplied)
-        abort_if_imported(WORK_ID, options["force"])
-
-        # Download the source file
-        download_resource(SOURCE_URL)
-
-        # Create Works
-        work = self.create_work()
 
         # Get the subset of OSIS book codes provided on command line
         limited_book_codes = []
@@ -191,40 +187,25 @@ class Command(BaseCommand):
             id_parts = arg.split(".")
             if id_parts[0] in osis.BOOK_ORDERS["Bible"]["KJV"]:
                 limited_book_codes.append(id_parts[0])
-        book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
+        importer.book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
         if len(limited_book_codes) > 0:
-            book_codes = limited_book_codes
+            importer.book_codes = limited_book_codes
 
         # Read each of the Book files
-        structCount = 1
-        tokenCount = 1
         _zip = zipfile.ZipFile(os.path.basename(SOURCE_URL))
-        for book_code in book_codes:
+        for book_code in importer.book_codes:
             if not BOOK_FILENAME_LOOKUP.has_key(book_code):
                 continue
 
-            print("Book: %s" % osis.BOOK_NAMES["Bible"][book_code])
-
-            # Set up the book ref
-            structs = {}
-            structs['book'] = Structure(
-                work = work,
-                element = 'book',
-                osis_id = book_code,
-                position = structCount,
-                numerical_start = book_codes.index(book_code),
-                #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT,
-                source_url = "zip:" + SOURCE_URL + "!/Tischendorf-2.6/Unicode/" + BOOK_FILENAME_LOOKUP[book_code]
-                #title = osis.BOOK_NAMES["Bible"][book_code]
-            )
-
-            structCount += 1
-            bookTokens = []
-            current_chapter = None
-            current_verse = None
+            importer.current_book = book_code
+            importer.create_book_struct()
+            
             lineNumber = -1
 
+            importer.create_paragraph()
+
             for line in StringIO.StringIO(_zip.read("Tischendorf-2.6/Unicode/" + BOOK_FILENAME_LOOKUP[book_code])):
+                in_paragraph = 0
                 lineNumber += 1
                 lineMatches = LINE_PARSER.match(unicodedata.normalize("NFC", unicode(line, 'utf-8')))
                 if lineMatches is None:
@@ -237,87 +218,31 @@ class Command(BaseCommand):
                 #    continue
 
                 # New Chapter start
-                if lineMatches.group('chapter') != current_chapter:
+                if lineMatches.group('chapter') != importer.current_chapter:
                     # End the previous chapter
-                    close_structure('chapter', bookTokens, structs)
+                    importer.close_structure('chapter')
 
                     # Start the next chapter
-                    current_chapter = lineMatches.group('chapter')
-                    structs['chapter'] = Structure(
-                        work = work,
-                        element = 'chapter',
-                        position = structCount,
-                        osis_id = book_code + "." + current_chapter,
-                        numerical_start = current_chapter,
-                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
-                    )
-                    print structs['chapter'].osis_id
-                    structCount += 1
-
+                    importer.current_chapter = lineMatches.group('chapter')
+                    importer.create_chapter_struct()
+                    
                 # New Verse start
-                if lineMatches.group('verse') != current_verse:
+                if lineMatches.group('verse') != importer.current_verse:
                     # End the previous verse
-                    close_structure('verse', bookTokens, structs)
+                    importer.close_structure('verse')
 
                     # Start the next verse
-                    current_verse = lineMatches.group('verse')
-                    structs['verse'] = Structure(
-                        work = work,
-                        element = 'verse',
-                        position = structCount,
-                        osis_id = book_code + "." + current_chapter + "." + current_verse,
-                        numerical_start = current_verse,
-                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
-                    )
-                    print structs['verse'].osis_id
-                    structCount += 1
+                    importer.current_verse = lineMatches.group('verse')
+                    importer.create_verse_struct()
 
                 # End paragraph
-                paragraph_marker = None
-                if lineMatches.group('break') == 'P' and structs.has_key('p'):
-                    assert(len(bookTokens) > 0)
+                if lineMatches.group('break') == 'P':
+                    importer.create_paragraph()
+                    in_paragraph = 1
 
-                    paragraph_marker = Token(
-                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, u"\u2029"),
-                        data     = u"\u2029", #¶ "\n\n"
-                        type     = Token.WHITESPACE, #i.e. PARAGRAPH
-                        work     = work,
-                        position = tokenCount,
-                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
-                    )
-                    tokenCount += 1
-                    paragraph_marker.save()
-                    structs['p'].end_marker = paragraph_marker
-                    close_structure('p', bookTokens, structs)
-                    bookTokens.append(paragraph_marker)
+                if not in_paragraph and len(importer.bookTokens) > 0:
+                    importer.create_whitespace_token()
 
-                # Start paragraph
-                if len(bookTokens) == 0 or lineMatches.group('break') == 'P':
-                    assert(not structs.has_key('p'))
-                    print("¶")
-                    structs['p'] = Structure(
-                        work = work,
-                        element = 'p',
-                        position = structCount,
-                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
-                    )
-                    if paragraph_marker:
-                        structs['p'].start_marker = paragraph_marker
-                    structCount += 1
-
-                # Insert whitespace
-                if not paragraph_marker and len(bookTokens) > 0:
-                    ws_token = Token(
-                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, " "),
-                        data     = " ",
-                        type     = Token.WHITESPACE,
-                        work     = work,
-                        position = tokenCount,
-                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT
-                    )
-                    tokenCount += 1
-                    ws_token.save()
-                    bookTokens.append(ws_token)
 
                 #assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
                 #assert(lineMatches.group('kethivStartBracket') == lineMatches.group('qereStartBracket'))
@@ -327,56 +252,20 @@ class Command(BaseCommand):
                 #    print line
                 #continue
 
-                lineTokens = []
 
                 # Open UNCERTAIN1 bracket
-                #assert(lineMatches.group('qereStartBracket') == lineMatches.group('qereStartBracket'))
-                if lineMatches.group('qereStartBracket'):
-                    assert(not structs.has_key('doubted'))
-                    print("### OPEN BRACKET")
+                if lineMatches.group("qereStartBracket"):
+                    importer.create_uncertain()
 
-                    # Make start_marker for UNCERTAIN1
-                    open_bracket_token = Token(
-                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, u"["),
-                        data     = '[',
-                        type     = Token.PUNCTUATION,
-                        work     = work,
-                        position = tokenCount
-                    )
-                    tokenCount += 1
-                    open_bracket_token.save()
-                    lineTokens.append(open_bracket_token)
+                importer.create_token(lineMatches.group('qere'))
+                # Make sure that structures only start on words
+                importer.link_start_tokens()
 
-                    # Create the UNCERTAIN1 structure
-                    structs['doubted'] = Structure(
-                        work = work,
-                        element = 'doubted',
-                        position = structCount,
-                        #variant_bits = WORK2_VARIANT_BIT | WORK1_VARIANT_BIT,
-                        start_marker = open_bracket_token
-                    )
-                    structCount += 1
 
-                token_work = Token(
-                    id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, lineMatches.group('qere')),
-                    data     = lineMatches.group('qere'),
-                    type     = Token.WORD,
-                    work     = work,
-                    position = tokenCount,
-                    #variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT,
-                    relative_source_url = "#line(%d)" % lineNumber
-                )
-                #if lineMatches.group('kethiv') == lineMatches.group('qere'):
-                #    token_work.variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
-                #else:
-                #    token_work.variant_bits = WORK1_VARIANT_BIT
-                tokenCount += 1
-                token_work.save()
-                lineTokens.append(token_work)
 
                 # Make this token the start of the UNCERTAIN structure
                 if lineMatches.group('qereStartBracket'):
-                    structs['doubted'].start_token = token_work
+                    importer.structs['doubted'].start_token = bookTokens[-1]
 
                 # Qere token
                 #if lineMatches.group('kethiv') != lineMatches.group('qere'):
@@ -401,17 +290,7 @@ class Command(BaseCommand):
                 # Punctuation token
                 #assert(lineMatches.group('kethivPunc') == lineMatches.group('qerePunc'))
                 if lineMatches.group('qerePunc'):
-                    punc_token = Token(
-                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, lineMatches.group('qerePunc')),
-                        data     = lineMatches.group('qerePunc'),
-                        type     = Token.PUNCTUATION,
-                        work     = work,
-                        position = tokenCount,
-                        #variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
-                    )
-                    tokenCount += 1
-                    punc_token.save()
-                    lineTokens.append(punc_token)
+                    importer.create_punct_token(lineMatches.group('qerePunc'))
 
                 # Close UNCERTAIN1 bracket
                 #assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
@@ -419,35 +298,19 @@ class Command(BaseCommand):
                     assert(structs.has_key('doubted'))
                     print("### CLOSE BRACKET")
 
-                    structs['doubted'].end_token = lineTokens[-1]
+                    importer.structs['doubted'].end_token = bookTokens[-1]
 
                     # Make end_marker for UNCERTAIN1
-                    close_bracket_token = Token(
-                        id       = generate_token_id(work.osis_slug, structs['verse'].osis_id, bookTokens, u']'),
-                        data     = ']',
-                        type     = Token.PUNCTUATION,
-                        work     = work,
-                        position = tokenCount,
-                        #variant_bits = WORK1_VARIANT_BIT | WORK2_VARIANT_BIT
-                    )
-                    tokenCount += 1
-                    close_bracket_token.save()
-
+                    importer.create_punct_token("]")
                     # Close the UNCERTAIN1 structure
-                    structs['doubted'].end_marker = close_bracket_token
-                    close_structure('doubted', bookTokens, structs)
-                    lineTokens.append(open_bracket_token)
+                    importer.structs['doubted'].end_marker = bookTokens[-1]
+                    importer.close_structure('doubted')
+                
 
-                # Set the start_token for each structure that isn't set
-                for struct in structs.values():
-                    if struct.start_token is None:
-                        struct.start_token = lineTokens[0]
+            for structElement in importer.structs.keys():
+                importer.close_structure(structElement)
 
-                for token in lineTokens:
-                    bookTokens.append(token)
+            importer.bookTokens = []
 
-            for structElement in structs.keys():
-                close_structure(structElement, bookTokens, structs)
-
-        print("structCount: %s" % str(structCount))
-        print("tokenCount:  %s" % str(tokenCount))
+        print("structCount: %s" % str(importer.structCount))
+        print("tokenCount:  %s" % str(importer.tokenCount))
