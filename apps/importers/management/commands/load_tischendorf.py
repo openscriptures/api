@@ -265,7 +265,7 @@ class Command(BaseCommand):
 
                 # Make this token the start of the UNCERTAIN structure
                 if lineMatches.group('qereStartBracket'):
-                    importer.structs['doubted'].start_token = bookTokens[-1]
+                    importer.structs['doubted'].start_token = importer.bookTokens[-1]
 
                 # Qere token
                 #if lineMatches.group('kethiv') != lineMatches.group('qere'):
@@ -295,15 +295,15 @@ class Command(BaseCommand):
                 # Close UNCERTAIN1 bracket
                 #assert(lineMatches.group('kethivEndBracket') == lineMatches.group('qereEndBracket'))
                 if lineMatches.group('qereEndBracket'):
-                    assert(structs.has_key('doubted'))
+                    assert(importer.structs.has_key('doubted'))
                     print("### CLOSE BRACKET")
 
-                    importer.structs['doubted'].end_token = bookTokens[-1]
+                    importer.structs['doubted'].end_token = importer.bookTokens[-1]
 
                     # Make end_marker for UNCERTAIN1
                     importer.create_punct_token("]")
                     # Close the UNCERTAIN1 structure
-                    importer.structs['doubted'].end_marker = bookTokens[-1]
+                    importer.structs['doubted'].end_marker = importer.bookTokens[-1]
                     importer.close_structure('doubted')
                 
 
@@ -311,6 +311,7 @@ class Command(BaseCommand):
                 importer.close_structure(structElement)
 
             importer.bookTokens = []
+            
 
         print("structCount: %s" % str(importer.structCount))
         print("tokenCount:  %s" % str(importer.tokenCount))

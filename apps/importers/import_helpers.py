@@ -109,7 +109,7 @@ class OpenScripturesImport():
             position = self.structCount,
             start_marker = open_bracket_token
             )
-        structCount += 1
+        self.structCount += 1
 
 
     def create_paragraph(self):

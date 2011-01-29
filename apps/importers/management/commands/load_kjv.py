@@ -234,7 +234,7 @@ class Command(BaseCommand):
             #book_codes = limited_book_codes
         self.importer.book_codes = osis.BOOK_ORDERS["Bible"]["KJV"]
 
-		# Initialize the parser and set it up
+        # Initialize the parser and set it up
         self.parser = xml.sax.make_parser()        
         self.parser.setContentHandler(KJVParser(self.importer))
         _zip = zipfile.ZipFile(os.path.basename(SOURCE_URL))

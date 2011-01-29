@@ -127,7 +127,17 @@ def passage(request, osis_ref):
                 if struct_elem not in structure_element_hierarchy:
                     structure_element_hierarchy.append(struct_elem)
     else: #default order
-        structure_element_hierarchy = structure_elements
+        structure_element_hierarchy = [
+            'bookGroup',
+            'book',
+            'chapter',
+            'verse',
+            'p'
+        ]
+    
+    # TODO: If a text has structure element type that is not listed in structure_element_hierarchy
+    # exception will result. Therefore, this structure_element_hierarchy list should be filled out
+    # with all of the remaining structure element types that exist within a text.
     
     passage_start_token_position = data['tokens'][0].position
     passage_end_token_position = data['tokens'][len(data['tokens'])-1].position
