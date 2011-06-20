@@ -9,3 +9,12 @@ GPL 2.0 license: http://creativecommons.org/licenses/GPL/2.0/
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+QUICK START
+1. create a new virtual directory (or remove your existing one and recreate),
+    e.g. run mkvirtualenv openscriptures_api
+2. run pip install -r requirements/project.txt
+3. run ./manage.py syncdb
+4. run ./manage.py load_tischendorf Jude
+5. run ./manage.py runserver
+6. browse to http://localhost:8000/texts/passage/Bible.Tischendorf:Jude.1.1
